@@ -36,6 +36,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px s
 <body>
 <main>
   <div><div class="muted" id="kicker">Demande de location</div><h1 id="titre">Candidature</h1><div class="muted" id="loy"></div></div>
+  <div class="err" id="top" role="alert"></div>
   <div class="info">Remplis ce formulaire : il prépare un e-mail adressé directement au propriétaire. Rien n'est enregistré sur un serveur. Tu pourras le relire avant de l'envoyer.</div>
   <form id="f" class="card" novalidate>
     <h2>Tes coordonnées</h2>
@@ -69,7 +70,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px s
   $("titre").textContent = titre; if (loyer) $("loy").textContent = "Loyer : " + loyer + " € par mois charges comprises";
   document.title = "Candidature · " + titre;
   $("how").textContent = mailOk ? "Ta candidature sera adressée à " + to + "." : "Le lien est incomplet : l'adresse du propriétaire manque. Demande-lui de t'envoyer un nouveau lien.";
-  if (!mailOk) $("go").disabled = true;
+  if (!mailOk) $("top").textContent = "Le lien est incomplet : l'adresse du propriétaire manque. Demande-lui de t'envoyer un nouveau lien.";
   $("fil").addEventListener("change", () => { const n = [...$("fil").files].map(f => f.name); $("fl").textContent = n.length ? n.length + " fichier(s) : " + n.join(", ") : ""; });
   const clean = s => String(s || "").replace(/\s*\n+\s*/g, " ").trim();
   function build(){
@@ -82,6 +83,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px s
     if (!clean($("nom").value)) return "Indique ton nom et prénom.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean($("mail").value)) && !clean($("tel").value)) return "Indique au moins un e-mail ou un téléphone valide.";
     if (!$("ok").checked) return "Coche la case d'accord pour envoyer ta candidature.";
+    if (!mailOk) return "Le lien est incomplet : l'adresse du propriétaire manque.";
     return "";
   }
   window.__build = build;

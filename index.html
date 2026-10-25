@@ -1109,8 +1109,9 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.9.5";
+const APP_VERSION = "2.9.6";
 const CHANGELOG = [
+  {v:"2.9.6", date:"2026-10-25", titre:"Formulaire « dossier complet »", items:["Après la visite, le courrier « Demande du dossier » contient un 2e lien : une case par pièce (identité, domicile, contrat de travail, 3 bulletins, avis d'imposition, ressources, pièces du garant).","Dans « Coller une candidature ou un dossier reçu », choisis dossier.txt et les pièces : elles se rangent dans les bonnes cases de la fiche, qui passe en « Dossier à vérifier ».","Formulaire de candidature : le message « lien incomplet » est visible en haut et le bouton reste actif."]},
   {v:"2.9.5", date:"2026-10-25", titre:"Pièces jointes des candidatures", items:[
     "Formulaire : la candidature est maintenant aussi jointe sous forme de fichier (candidature.txt) avec les pièces, et un message clair explique quand le téléphone ne permet pas de joindre les pièces.",
     "« Coller une candidature reçue » accepte aussi les fichiers reçus : sélectionne candidature.txt et les pièces (photos, PDF) en une fois, la fiche est remplie et les pièces y sont jointes."]},
@@ -3184,7 +3185,7 @@ function candMail(k, c){
   const T = {
     rep:{l:"Réponse à une demande", s:"Votre demande de location – " + (a.titre || bienName(c.bien)), b:head + "Merci de votre intérêt pour le logement" + (a.loc ? " situé à " + a.loc : "") + ". Il est toujours disponible" + (a.dispo ? " à partir du " + frDate(a.dispo) : "") + ".\n\nLoyer : " + eur(a.loyer) + (Number(a.charges) ? " + " + eur(a.charges) + " de charges" : "") + ". Dépôt de garantie : " + eur(a.depot) + ".\n\n" + (candLink(c.bien) ? "Pour étudier votre demande, merci de remplir ce court formulaire (il prépare un e-mail que vous m'envoyez) :\n" + candLink(c.bien) + "\n\n" : "Pour étudier votre demande, pouvez-vous me préciser : votre numéro de téléphone, votre situation professionnelle, vos revenus mensuels, le nombre d'occupants, votre date d'emménagement souhaitée et, le cas échéant, votre garant ?\n\n") + "Je vous proposerai ensuite une visite." + sign},
     vis:{l:"Invitation à la visite", s:"Visite du logement – " + (c.visite ? fmtVisite(c.visite) : "à confirmer"), b:head + "Je vous propose de visiter le logement " + (c.visite ? "le " + fmtVisite(c.visite) : "à la date convenue") + ", à l'adresse suivante : " + (b.adresse || "à préciser") + ".\n\nMerci de me confirmer votre présence par retour de message. En cas d'empêchement, prévenez-moi pour que nous trouvions un autre créneau." + sign},
-    dos:{l:"Demande du dossier", s:"Votre dossier de location", b:head + "Suite à la visite, si le logement vous intéresse toujours, pouvez-vous m'envoyer votre dossier ? Voici les pièces nécessaires (je ne peux pas en demander d'autres) :\n\n" + pieces + "\n\nVos documents servent uniquement à étudier votre candidature et seront supprimés si elle n'est pas retenue." + sign},
+    dos:{l:"Demande du dossier", s:"Votre dossier de location", b:head + "Suite à la visite, si le logement vous intéresse toujours, pouvez-vous m'envoyer votre dossier ? Voici les pièces nécessaires (je ne peux pas en demander d'autres) :\n\n" + pieces + "\n\n" + (dosLink(c) ? "Le plus simple : ce formulaire a une case par document, il prépare un e-mail avec toutes vos pièces :\n" + dosLink(c) + "\n\n" : "") + "Vos documents servent uniquement à étudier votre candidature et seront supprimés si elle n'est pas retenue." + sign},
     ret:{l:"Dossier retenu", s:"Votre candidature est retenue", b:head + "J'ai le plaisir de vous informer que votre dossier est retenu pour le logement" + (b.adresse ? " situé " + b.adresse : "") + ".\n\nLes prochaines étapes : signature du bail, état des lieux et inventaire du mobilier, versement du dépôt de garantie (" + eur(a.depot) + ") et remise d'une attestation d'assurance habitation.\n\nPouvons-nous convenir d'un rendez-vous pour la signature" + (c.entree ? " autour du " + frDate(c.entree) : "") + " ?" + sign},
     ref:{l:"Réponse négative", s:"Suite à votre candidature", b:head + "Merci d'avoir candidaté pour ce logement et du temps que vous y avez consacré. J'ai le regret de vous informer que je ne pourrai pas donner suite à votre candidature.\n\nJe vous souhaite de trouver rapidement un logement qui vous convienne. Vos documents seront supprimés." + sign}
   };
@@ -3240,8 +3241,9 @@ document.addEventListener("click", async ev => {
     case "cd-paste-read": { try { const t = await navigator.clipboard.readText(); $("#cp-txt").value = t; } catch(e){ toast("Colle le texte à la main dans la zone"); } break; }
     case "cd-paste-ok": { const fl = [...($("#cp-files") ? $("#cp-files").files : [])], tf = fl.find(f => /\.txt$/i.test(f.name) || f.type === "text/plain"), others = fl.filter(f => f !== tf);
       let txt = $("#cp-txt").value; if (!txt.trim() && tf) txt = await tf.text(); const o = parseCandText(txt); if (!o) return toast("Texte non reconnu : il doit contenir « Nom : … »");
-      const c = candFromParsed(o), dup = candList().find(x => !x.del && x.bien === c.bien && ((c.email && x.email && x.email.toLowerCase() === c.email.toLowerCase()) || x.nom.toLowerCase() === c.nom.toLowerCase()));
-      if (dup){ const n = await candAttach(dup, others); persist(); toast(n ? n + " pièce(s) ajoutée(s) à la fiche existante" : "Ce candidat est déjà dans la liste"); sheetCand(dup.id); break; }
+      const isDos = /^\s*DOSSIER\b/i.test(txt); const c = candFromParsed(o); if (isDos){ c.statut = "dos"; c.src = "dossier"; c.note = c.note.replace(/^Pièces annoncées[^\n]*\n?/m, "").trim(); }
+      const dup = candList().find(x => !x.del && x.bien === c.bien && ((c.email && x.email && x.email.toLowerCase() === c.email.toLowerCase()) || x.nom.toLowerCase() === c.nom.toLowerCase()));
+      if (dup){ const n = await candAttach(dup, others); if (isDos && (dup.statut === "dem" || dup.statut === "vis")) dup.statut = "dos"; dup.upd = Date.now(); persist(); V.lsel = dup.bien; V.lsub = "cand"; render(); toast(n ? n + " pièce(s) ajoutée(s) à la fiche de " + dup.nom : "Ce candidat est déjà dans la liste"); sheetCand(dup.id); break; }
       candList().push(c); const n = await candAttach(c, others); persist(); V.lsel = c.bien; V.lsub = "cand"; render(); sheetCand(c.id); toast("Fiche créée" + (n ? " avec " + n + " pièce(s)" : "") + " : vérifie les informations"); break; }
     case "cd-new": sheetCand(""); break;
     case "cd-open": sheetCand(id); break;
@@ -3322,12 +3324,18 @@ async function annoncePdf(bien){
 }
 
 /* ---------- Formulaire de candidature en ligne (page statique) et réception dans l'appli ---------- */
-function candLink(bien){
+function candLink(bien, page, nom){
   const a = annOf(bien); if (!a.mail) return "";
-  const u = new URL("candidature.html", location.href); u.search = ""; u.hash = "";
+  const u = new URL(page || "candidature.html", location.href); u.search = ""; u.hash = "";
   u.searchParams.set("m", a.mail); u.searchParams.set("r", bien); u.searchParams.set("t", a.titre || (a.type + (a.surf ? " " + a.surf + " m²" : "") + (a.loc ? " – " + a.loc : "")));
-  const cc = loyerCC(bien); if (cc) u.searchParams.set("l", String(Math.round(cc))); return u.toString();
+  if (nom) u.searchParams.set("n", nom);
+  const cc = loyerCC(bien); if (cc && !page) u.searchParams.set("l", String(Math.round(cc))); return u.toString();
 }
+const dosLink = c => candLink(c.bien, "dossier.html", c.nom);
+/* Pièces reçues par le formulaire « dossier » : le nom du fichier commence par le code de la case (id-1.jpg, gbul-2.pdf…) */
+const DOS_CODES = {id:"id", dom:"dom", act:"act", bul:"res", imp:"res", res:"res", gid:"gid", gdom:"gdom", gact:"gact", gbul:"gres", gimp:"gres", gres:"gres"};
+const DOS_LABEL = {id:"Pièce d'identité", dom:"Justificatif de domicile", act:"Contrat de travail / situation pro.", bul:"Bulletin de salaire", imp:"Avis d'imposition", res:"Justificatif de ressources", gid:"Garant : identité", gdom:"Garant : domicile", gact:"Garant : situation pro.", gbul:"Garant : bulletin de salaire", gimp:"Garant : avis d'imposition", gres:"Garant : ressources"};
+const dosCode = nom => { const m = /^(g?(?:id|dom|act|bul|imp|res))-\d+\./i.exec(nom || ""); return m ? m[1].toLowerCase() : ""; };
 function parseCandText(t){
   const nrm = x => x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
   const map = {nom:"nom", telephone:"tel", tel:"tel", "e-mail":"email", email:"email", mail:"email", situation:"contrat", "revenus mensuels nets":"rev", revenus:"rev", occupants:"occ", "emmenagement souhaite":"entree", garant:"garant", "revenus du garant":"grev", "pieces jointes":"pj", message:"message", "ref.":"ref", ref:"ref"};
@@ -3346,10 +3354,10 @@ function candFromParsed(o){
   return {id:uid(), bien:ref, nom:o.nom, tel:o.tel || "", email:o.email || "", statut:"dem", dateDem:todayIso(), contrat:ct, rev:num(o.rev), occ:(o.occ || "").replace(/\D/g, ""), entree:ent, garant, grev:num(o.grev), visite:"", note:[(o.message || "").trim(), pj, ct === "Autre" && o.contrat && o.contrat !== "Autre" ? "Situation indiquée : " + o.contrat : ""].filter(Boolean).join("\n"), pieces:{}, fichiers:[], src:"formulaire", upd:Date.now()};
 }
 function sheetPaste(){
-  openSheet(`<h2>Coller une candidature reçue</h2><div class="info">Le formulaire envoie un e-mail à ton adresse. Ouvre-le, copie le texte (de « CANDIDATURE » jusqu'au message) et colle-le ici : la fiche est remplie toute seule.</div>
+  openSheet(`<h2>Coller une candidature reçue</h2><div class="info">Les formulaires (candidature ou dossier) envoient un e-mail à ton adresse. Pour une candidature : copie le texte (de « CANDIDATURE » au message) et colle-le ici. Pour un dossier : enregistre les pièces jointes dans Fichiers, puis choisis-les toutes ci-dessous avec dossier.txt.</div>
     <label class="f">Texte reçu<textarea id="cp-txt" style="min-height:220px" placeholder="CANDIDATURE – …&#10;Nom : …"></textarea></label>
     <div class="btns"><button class="btn ghost sm" data-act="cd-paste-read">Coller depuis le presse-papiers</button></div>
-    <label class="f">Ou choisis les fichiers reçus (candidature.txt et pièces jointes)<input id="cp-files" type="file" multiple accept=".txt,text/plain,.pdf,image/*"></label>
+    <label class="f">Ou choisis les fichiers reçus (candidature.txt ou dossier.txt, et les pièces)<input id="cp-files" type="file" multiple accept=".txt,text/plain,.pdf,image/*"></label>
     <div class="small muted">Enregistre d'abord les pièces jointes de l'e-mail dans Fichiers, puis sélectionne-les toutes ici : le texte remplit la fiche, les autres fichiers y sont joints.</div>
     <div class="btns"><button class="btn" style="flex:1" data-act="cd-paste-ok">Créer la fiche</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
 }
@@ -3360,12 +3368,13 @@ function candCard(bien){
     <div class="small muted">Quand quelqu'un te contacte, envoie-lui ce lien : il remplit ses informations et son e-mail t'arrive tout préparé. Tu colles ensuite le texte reçu ici et la fiche se remplit toute seule.</div>
     ${link ? `<label class="f">Lien à envoyer<input id="cd-link" readonly value="${esc(link)}"></label>
     <div class="btns"><button class="btn sm" data-act="cd-link-copy">Copier le lien</button><button class="btn sm ghost" data-act="cd-link-share">Partager le lien</button></div>` : '<div class="info" style="background:var(--warn-soft)">Indique d\'abord ton e-mail dans « Annonce › Modifier » : le formulaire envoie les candidatures à cette adresse.</div>'}
-    <div class="btns"><button class="btn sm ghost" data-act="cd-paste">Coller une candidature reçue</button></div></div>`;
+    <div class="small muted">Après la visite, le courrier « Demande du dossier » contient un 2e formulaire (une case par pièce : identité, domicile, contrat, bulletins, avis d'imposition, garant).</div>
+    <div class="btns"><button class="btn sm ghost" data-act="cd-paste">Coller une candidature ou un dossier reçu</button></div></div>`;
 }
 
 async function candAttach(c, files){
   let n = 0; c.fichiers = c.fichiers || [];
-  for (const f of files){ const fid = uid(); try { const buf = await f.arrayBuffer(); await flPut(fid, {name:f.name, type:f.type || (/\.pdf$/i.test(f.name) ? "application/pdf" : "application/octet-stream"), buf}); c.fichiers.push({fid, nom:f.name, date:todayIso()}); n++; } catch(e){ toast("Fichier non enregistré (" + f.name + ") : " + (e && e.message || "erreur")); } }
+  for (const f of files){ const fid = uid(); try { const buf = await f.arrayBuffer(); await flPut(fid, {name:f.name, type:f.type || (/\.pdf$/i.test(f.name) ? "application/pdf" : "application/octet-stream"), buf}); const dc = dosCode(f.name); c.fichiers.push({fid, nom:dc ? DOS_LABEL[dc] + " (" + f.name + ")" : f.name, date:todayIso()}); if (dc){ c.pieces = c.pieces || {}; c.pieces[DOS_CODES[dc]] = c.pieces[DOS_CODES[dc]] || todayIso(); if (/^g/.test(dc) && !c.garant) c.garant = "proche"; } n++; } catch(e){ toast("Fichier non enregistré (" + f.name + ") : " + (e && e.message || "erreur")); } }
   if (n) c.upd = Date.now(); return n;
 }
 

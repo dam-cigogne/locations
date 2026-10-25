@@ -229,6 +229,14 @@ details.h p{margin:6px 0 0;font-size:14px}details.h ul{margin:6px 0 0;padding-le
   .wrap[data-tab=home]>.card:not(.hero),.wrap[data-tab=chart]>.card:not(.hero){grid-column:auto}
   nav.tabs .in{max-width:780px}
 }
+
+.thumb{width:44px;height:44px;border-radius:8px;object-fit:cover;flex:none;background:var(--accent-soft);cursor:pointer}
+#viewer{position:fixed;inset:0;z-index:70;background:#000;display:flex;flex-direction:column}
+#viewer .vbar{display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px;color:#fff}
+#viewer .vt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+#viewer .vimg{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;touch-action:pinch-zoom pan-x pan-y;-webkit-overflow-scrolling:touch}
+#viewer .vimg img{max-width:100%;max-height:100%;object-fit:contain}
+#viewer iframe{flex:1;border:0;background:#fff;width:100%}
 </style>
 </head>
 <body>
@@ -1124,8 +1132,9 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.9.11";
+const APP_VERSION = "2.9.12";
 const CHANGELOG = [
+  {v:"2.9.12", date:"2026-10-25", titre:"Documents de chaque locataire", items:["Fiche d'un locataire (aussi les locataires actuels) : bloc « Documents du locataire ». Choisis les fichiers dans Fichiers (iCloud Drive…) avec le type de pièce, puis ouvre-les d'un clic.","Miniatures dans toutes les listes de documents : touche la miniature ou « Ouvrir » pour voir la photo ou le PDF en grand dans l'appli (bouton Partager pour l'enregistrer ou l'envoyer)."]},
   {v:"2.9.11", date:"2026-10-25", titre:"Dossier du locataire", items:["La fiche d'un locataire issu d'une candidature affiche tout son dossier : situation, revenus, occupants, garant, pièces reçues et documents (Ouvrir)."]},
   {v:"2.9.10", date:"2026-10-25", titre:"Noms de pièces lisibles", items:["Formulaire dossier : les pièces jointes portent leur vrai nom (Pièce identité, Contrat de travail, Bulletin de salaire 1, Avis imposition…).","L'appli range toujours chaque pièce au bon endroit à partir de ce nom."]},
   {v:"2.9.9", date:"2026-10-25", titre:"Le bon courrier au bon moment", items:["« Écrire au candidat » propose directement la suite : si la personne a déjà rempli le 1er formulaire, le courrier contient le lien du dossier complet (2e formulaire).","Le courrier d'invitation à la visite contient aussi le lien du dossier."]},
@@ -2645,7 +2654,7 @@ const mimeOf = n => MIMES[(String(n).split(".").pop() || "").toLowerCase()] || "
 const sizeStr = n => n >= 1048576 ? (n / 1048576).toFixed(1).replace(".", ",") + " Mo" : Math.max(1, Math.round(n / 1024)) + " Ko";
 const fileDocs = (bien, kind) => docList("docs").filter(x => x.bien === bien && !x.del && (!kind || x.kind === kind));
 function fileRow(d){
-  return `<div class="row"><div class="main"><div class="t">${esc(d.nom)}</div><div class="s">${esc(d.sub ? annexLabel(d.sub) : (FKIND[d.kind] || "Document"))} · ${frDate(d.date)} · ${sizeStr(d.size || 0)}</div></div>
+  return `<div class="row">${thumb(d.id, d.fname || d.nom, d.type)}<div class="main"><div class="t">${esc(d.nom)}</div><div class="s">${esc(d.sub ? annexLabel(d.sub) : (FKIND[d.kind] || "Document"))} · ${frDate(d.date)} · ${sizeStr(d.size || 0)}</div></div>
     <button class="mini" data-act="fl-open" data-id="${d.id}">Ouvrir</button><button class="mini" data-act="fl-del" data-id="${d.id}" aria-label="Supprimer">×</button></div>`;
 }
 function fileLink(e){
@@ -2704,8 +2713,7 @@ document.addEventListener("click", async ev => {
         persist(); closeSheet(); toast(msg); render(); if (bulkId) bulkFromFile(v, bulkId, f, buf);
       } catch(err){ toast("Import impossible : " + err.message); }
       break; }
-    case "fl-open": { const d = docList("docs").find(x => x.id === id); if (!d) break; const rec = await flGet(id); if (!rec) return toast("Fichier introuvable sur cet appareil");
-      saveFile(d.fname || rec.name || "document", rec.buf, rec.type || mimeOf(d.fname)); break; }
+    case "fl-open": { const d = docList("docs").find(x => x.id === id); if (d) viewFile(id, d.fname || d.nom); break; }
     case "fl-del": { const d = docList("docs").find(x => x.id === id); if (!d) break;
       openSheet(`<h2>Supprimer ce document ?</h2><p style="margin:0">« ${esc(d.nom)} » sera retiré de l'appli. Ton original reste dans tes fichiers.</p><div class="btns"><button class="btn danger" data-act="fl-del-ok" data-id="${id}">Supprimer</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`); break; }
     case "fl-del-ok": { const d = docList("docs").find(x => x.id === id); if (d){ d.del = true; d.upd = Date.now(); flDel(id); for (const k of ["edl", "inv"]) docList(k).forEach(e => { if (e.fichier === id) e.fichier = ""; }); persist(); } closeSheet(); render(); break; }
@@ -3168,7 +3176,7 @@ function sheetCand(id){
   if (!c) return;
   const garantOn = c.garant === "proche" || c.garant === "autre";
   const pcs = CAND_PIECES.map(([k, l, g]) => `<label style="display:flex;gap:8px;align-items:flex-start;padding:4px 0${g ? ";" + (garantOn ? "" : "display:none") : ""}" ${g ? 'class="cd-g"' : ""}><input type="checkbox" id="cd-p-${k}" ${c.pieces && c.pieces[k] ? "checked" : ""} style="margin-top:3px"> <span>${esc(l)}</span></label>`).join("");
-  const files = (c.fichiers || []).map(f => `<div class="row"><div class="main"><div class="t" style="font-size:13.5px">${esc(f.nom)}</div></div><button class="mini" data-act="cf-open" data-id="${c.id}" data-fid="${f.fid}">Ouvrir</button><button class="mini" data-act="cf-del" data-id="${c.id}" data-fid="${f.fid}">Retirer</button></div>`).join("");
+  const files = (c.fichiers || []).map(f => `<div class="row">${thumb(f.fid, f.nom)}<div class="main"><div class="t" style="font-size:13.5px">${esc(f.nom)}</div></div><button class="mini" data-act="cf-open" data-id="${c.id}" data-fid="${f.fid}">Ouvrir</button><button class="mini" data-act="cf-del" data-id="${c.id}" data-fid="${f.fid}">Retirer</button></div>`).join("");
   openSheet(`<h2>${id ? esc(c.nom) : "Nouveau candidat"}</h2>
     ${dxF("cd-nom", "Nom et prénom", c.nom)}
     <div class="tl">${dxF("cd-tel", "Téléphone", c.tel, 'type="tel"')}${dxF("cd-mail", "E-mail", c.email, 'type="email" autocapitalize="off"')}</div>
@@ -3291,7 +3299,13 @@ document.addEventListener("click", async ev => {
     case "cd-del-ok": { await cdErase(id); persist(); closeSheet(); render(); break; }
     case "cd-purge": { const n = candList().filter(c => c.statut === "ref" && !c.del).length; openSheet(`<h2>Effacer les dossiers refusés ?</h2><p style="margin:0">${n} fiche(s) et leurs pièces jointes seront effacées définitivement de cet appareil.</p><div class="btns"><button class="btn danger" data-act="cd-purge-ok">Effacer</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`); break; }
     case "cd-purge-ok": { for (const c of candList().filter(c => c.statut === "ref" && !c.del)) await cdErase(c.id); persist(); closeSheet(); render(); break; }
-    case "cf-open": { const c = candGet(id), f = c && (c.fichiers || []).find(x => x.fid === b.dataset.fid), rec = f && await flGet(f.fid); if (!rec) return toast("Fichier introuvable sur cet appareil"); saveFile(f.nom, rec.buf, rec.type || "application/octet-stream"); break; }
+    case "td-open": { const d = docList("docs").find(x => x.id === id); if (d) viewFile(id, d.fname || d.nom); break; }
+    case "vw-open": viewFile(b.dataset.fid, b.dataset.name); break;
+    case "vw-close": closeViewer(); break;
+    case "vw-share": { const w = V.vw; if (w) saveFile(w.name, w.buf, w.type); break; }
+    case "td-del": { const d = docList("docs").find(x => x.id === id); if (!d) break; openSheet(`<h2>Retirer ce document ?</h2><p style="margin:0">« ${esc(d.nom)} » sera retiré de l'appli. Ton original reste dans tes fichiers.</p><div class="btns"><button class="btn danger" data-act="td-del-ok" data-id="${id}" data-tid="${b.dataset.tid}">Retirer</button><button class="btn ghost" data-act="ledit" data-id="${b.dataset.tid}">Annuler</button></div>`); break; }
+    case "td-del-ok": { const d = docList("docs").find(x => x.id === id); if (d){ d.del = true; d.upd = Date.now(); flDel(id); persist(); } sheetLoc(b.dataset.tid); break; }
+    case "cf-open": { const c = candGet(id), f = c && (c.fichiers || []).find(x => x.fid === b.dataset.fid); if (f) viewFile(f.fid, f.nom); break; }
     case "cf-del": { const c = candGet(id); if (!c) break; c.fichiers = (c.fichiers || []).filter(x => x.fid !== b.dataset.fid); flDel(b.dataset.fid); c.upd = Date.now(); persist(); sheetCand(id); break; }
   }
 });
@@ -3305,6 +3319,12 @@ document.addEventListener("change", async ev => {
     for (const f of t.files){ if (cur.photos.length >= ANN_MAX_PH){ toast("Maximum " + ANN_MAX_PH + " photos"); break; } try { const o = await annCompress(f), pid = uid(); await phPut(pid, o); cur.photos.push(pid); n++; } catch(e){ toast("Photo illisible : " + f.name); } }
     cur.upd = Date.now(); S.annonces = S.annonces || {}; S.annonces[V.lsel] = cur; persist(); render(); if (n) toast(n + " photo(s) ajoutée(s)"); return; }
   if (t.id === "cd-gar"){ document.querySelectorAll("label.cd-g").forEach(l => l.style.display = (t.value === "proche" || t.value === "autre") ? "flex" : "none"); return; }
+  if (t.id === "td-file" && t.files && t.files.length){
+    const tid = t.dataset.tid, tn = S.locataires.find(x => x.id === tid); if (!tn) return; const pt = ($("#td-type") || {}).value || "Autre"; let n = 0;
+    for (const f of [...t.files]){ if (f.size > 25e6){ toast("Fichier trop gros (25 Mo maximum) : " + f.name); continue; }
+      try { const buf = await f.arrayBuffer(), fid = uid(), type = f.type || mimeOf(f.name); await flPut(fid, {name:f.name, type, buf});
+        docList("docs").push({id:fid, bien:tn.bien, kind:"loc", loc:tid, ptype:pt, nom:f.name, fname:f.name, date:todayIso(), type, size:f.size, upd:Date.now()}); n++; } catch(e){ toast("Fichier non enregistré (" + f.name + ") : " + (e && e.message || "erreur")); } }
+    persist(); sheetLoc(tid); if (n) toast(n + " document(s) ajouté(s)"); return; }
   if (t.id === "cd-file" && t.files && t.files.length){
     const idc = (document.querySelector('[data-act="cd-save"]') || {dataset:{}}).dataset.id, c = candGet(idc); if (!c) return;
     const saved = cdSave(idc); if (!saved) return;
@@ -3409,17 +3429,51 @@ async function candAttach(c, files){
 }
 
 /* ---------- Dossier du locataire (repris de sa candidature) ---------- */
+const TD_TYPES = ["Pièce d'identité", "Justificatif de domicile", "Contrat de travail", "Bulletin de salaire", "Avis d'imposition", "Bail / avenant", "Assurance habitation", "Autre"];
+function tenantDocs(tid){
+  const L = docList("docs").filter(x => x.kind === "loc" && x.loc === tid && !x.del).sort((a, b) => (a.ptype || "").localeCompare(b.ptype || "") || (a.nom || "").localeCompare(b.nom || ""));
+  const rows = L.map(d => `<div class="row">${thumb(d.id, d.fname || d.nom, d.type)}<div class="main"><div class="t" style="font-size:13.5px">${esc(d.nom)}</div><div class="s">${esc(d.ptype || "Document")} · ${frDate(d.date)} · ${sizeStr(d.size || 0)}</div></div><button class="mini" data-act="td-open" data-id="${d.id}">Ouvrir</button><button class="mini" data-act="td-del" data-id="${d.id}" data-tid="${tid}" aria-label="Retirer">×</button></div>`).join("");
+  return `<details open class="card" style="padding:12px;gap:6px;background:var(--bg)"><summary style="font-weight:700;font-size:15px;cursor:pointer">Documents du locataire · ${L.length}</summary>
+    <div class="small muted">Choisis les fichiers dans Fichiers (iCloud Drive, Sur mon iPhone…) : l'appli en garde une copie, ouvrable d'un clic. Les documents restent sur cet appareil, non inclus dans la sauvegarde.</div>
+    <div class="rows">${rows || '<div class="small muted">Aucun document.</div>'}</div>
+    <label class="f">Type de pièce<select id="td-type">${TD_TYPES.map(x => `<option>${esc(x)}</option>`).join("")}</select></label>
+    <label class="f">Ajouter des documents<input id="td-file" data-tid="${tid}" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"></label></details>`;
+}
 function tenantDossier(tid){
-  const c = candList().find(x => !x.del && x.loc === tid); if (!c) return "";
+  const c = candList().find(x => !x.del && x.loc === tid); if (!c) return tenantDocs(tid);
   const g = (CAND_GARANT.find(x => x[0] === (c.garant || "")) || [0, ""])[1], row = (l, v) => v ? `<div class="kv"><span>${esc(l)}</span><b>${esc(String(v))}</b></div>` : "";
   const pcs = CAND_PIECES.filter(p => c.pieces && c.pieces[p[0]]).map(p => `<div class="small">✓ ${esc(p[1])} · reçu le ${frDate(c.pieces[p[0]])}</div>`).join("");
-  const fl = (c.fichiers || []).map(f => `<div class="row"><div class="main"><div class="t" style="font-size:13.5px">${esc(f.nom)}</div><div class="s">${frDate(f.date)}</div></div><button class="mini" data-act="cf-open" data-id="${c.id}" data-fid="${f.fid}">Ouvrir</button></div>`).join("");
+  const fl = (c.fichiers || []).map(f => `<div class="row">${thumb(f.fid, f.nom)}<div class="main"><div class="t" style="font-size:13.5px">${esc(f.nom)}</div><div class="s">${frDate(f.date)}</div></div><button class="mini" data-act="cf-open" data-id="${c.id}" data-fid="${f.fid}">Ouvrir</button></div>`).join("");
   return `<details open class="card" style="padding:12px;gap:6px;background:var(--bg)"><summary style="font-weight:700;font-size:15px;cursor:pointer">Dossier de candidature · ${(c.fichiers || []).length} document(s)</summary>
     ${row("Demande du", c.dateDem ? frDate(c.dateDem) : "")}${row("Situation", c.contrat)}${row("Revenus nets / mois", c.rev ? eur(c.rev) : "")}${row("Occupants", c.occ)}${row("Emménagement souhaité", c.entree ? frDate(c.entree) : "")}${row("Garant", g && c.garant ? g : "")}${row("Revenus du garant", c.grev ? eur(c.grev) : "")}${row("Visite", c.visite ? fmtVisite(c.visite) : "")}
     ${c.note ? `<div class="small muted" style="white-space:pre-wrap">${esc(c.note)}</div>` : ""}
     <div class="small muted" style="margin-top:4px">Pièces reçues</div>${pcs || '<div class="small muted">Aucune pièce cochée</div>'}
     <div class="small muted" style="margin-top:4px">Documents (restent sur cet appareil, non inclus dans la sauvegarde)</div><div class="rows">${fl || '<div class="small muted">Aucun document</div>'}</div>
-    <div class="btns"><button class="btn sm ghost" data-act="cd-open" data-id="${c.id}">Ouvrir la fiche candidat</button></div></details>`;
+    <div class="btns"><button class="btn sm ghost" data-act="cd-open" data-id="${c.id}">Ouvrir la fiche candidat</button></div></details>` + tenantDocs(tid);
+}
+
+/* ---------- Miniatures et visionneuse (photos et PDF) ---------- */
+const THUMB_IMG = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44"><rect width="44" height="44" rx="8" fill="#d8eee8"/><path d="M11 31l7-9 5 6 4-5 6 8z" fill="#0E6B5C" opacity=".55"/><circle cx="15" cy="15" r="3" fill="#0E6B5C" opacity=".55"/></svg>');
+const THUMB_PDF = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44"><rect width="44" height="44" rx="8" fill="#f3d9d6"/><rect x="12" y="8" width="20" height="28" rx="3" fill="#fff"/><text x="22" y="26" font-size="9" font-weight="700" text-anchor="middle" fill="#b3261e" font-family="sans-serif">PDF</text></svg>');
+const isPdfName = n => /\.pdf$/i.test(n || "");
+const isImgName = n => /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(n || "");
+function thumb(fid, name, type){ const pdf = isPdfName(name) || type === "application/pdf", img = isImgName(name) || /^image\//.test(type || "");
+  return `<img class="thumb" alt="" data-act="vw-open" data-fid="${fid}" data-name="${esc(name)}"${img ? ` data-thumb="${fid}"` : ""} src="${pdf ? THUMB_PDF : THUMB_IMG}">`; }
+async function fillThumbs(){
+  for (const im of document.querySelectorAll("img[data-thumb]")){ const fid = im.dataset.thumb; delete im.dataset.thumb;
+    try { const r = await flGet(fid); if (r && r.buf && /^image\/(jpe?g|png|gif|webp|bmp)/.test(r.type || "")) im.src = URL.createObjectURL(new Blob([r.buf], {type:r.type})); } catch(e){} }
+}
+{ let tm = 0; new MutationObserver(() => { clearTimeout(tm); tm = setTimeout(fillThumbs, 60); }).observe(document.body, {childList:true, subtree:true}); }
+function closeViewer(){ const v = document.getElementById("viewer"); if (v){ const m = v.querySelector("[data-blob]"); if (m) URL.revokeObjectURL(m.dataset.blob); v.remove(); } V.vw = null; }
+async function viewFile(fid, name){
+  const rec = await flGet(fid); if (!rec) return toast("Fichier introuvable sur cet appareil");
+  const type = rec.type || mimeOf(name), isImg = /^image\//.test(type) && !/heic|heif/.test(type), isPdf = type === "application/pdf";
+  if (!isImg && !isPdf) return saveFile(name || rec.name || "document", rec.buf, type);
+  closeViewer(); V.vw = {name:name || rec.name || "document", buf:rec.buf, type};
+  const url = URL.createObjectURL(new Blob([rec.buf], {type})), v = document.createElement("div"); v.id = "viewer";
+  v.innerHTML = `<div class="vbar"><span class="vt">${esc(V.vw.name)}</span><button class="mini" data-act="vw-share">Partager</button><button class="mini" data-act="vw-close">Fermer</button></div>` +
+    (isImg ? `<div class="vimg"><img data-blob="${url}" src="${url}" alt=""></div>` : `<iframe data-blob="${url}" src="${url}" title="${esc(V.vw.name)}"></iframe>`);
+  document.body.appendChild(v);
 }
 
 /* ============ Démarrage ============ */

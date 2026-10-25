@@ -1138,8 +1138,9 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.9.16";
+const APP_VERSION = "2.9.17";
 const CHANGELOG = [
+  {v:"2.9.17", date:"2026-10-25", titre:"Courriers signés et dossier complet", items:["Réglages : l'historique des mises à jour n'affiche que les 5 dernières ; « Voir les autres » déroule le reste (écran moins long).","Lettres (loyer impayé, attestation de loyer, restitution du dépôt, rappel de sortie) : bouton « Faire signer sur l'écran ». Le bailleur signe (le locataire aussi pour la restitution du dépôt). Le PDF signé avec sa preuve est rangé dans « Documents du locataire ».","Le bail, les états des lieux et les inventaires se signaient déjà à l'écran ; les documents importés (PDF reçus) ne peuvent pas être signés ici.","ZIP du locataire : ajout du dossier « 06 Pièces à joindre au bail et autres documents » (annexes, diagnostics…). Courriers signés dans « 05 Documents du locataire ».","Sauvegarde complète (.zip) : les fichiers gardent leur vrai nom (lisibles sur ordinateur) et un LISEZ-MOI explique comment tout remettre."]},
   {v:"2.9.16", date:"2026-10-25", titre:"Sauvegarde complète avec fichiers", items:["Nouveau bouton « Sauvegarde complète avec fichiers (.zip) » (Réglages › Synchroniser) : données + photos + documents et pièces des locataires. C'est celle à faire avant de changer de téléphone.","Pour restaurer, importe le .zip tel quel (sans le décompresser) : les données et les fichiers reviennent.","L'ancienne sauvegarde devient « Sauvegarde légère (.json) » : données seulement, sans fichiers.","Une explication dans l'appli dit quelle sauvegarde choisir. Aucune n'est chiffrée : garde-les dans un endroit privé."]},
   {v:"2.9.15", date:"2026-10-25", titre:"Inventaire : fichier recopié en vierge et modèle", items:["Nouvel inventaire ou état des lieux d'entrée : choisis un PDF, un Excel ou un CSV (ancien inventaire…). L'appli recopie la liste en vierge, sans les états, directement dans la liste de l'application.","« Garder comme modèle » (dans un inventaire ou un état des lieux) : ce document devient ton modèle ★. Il est proposé en premier et déjà choisi pour tous les nouveaux documents, même sur un autre bien.","Pour la sortie, rien ne change : elle reprend l'entrée, avec la colonne « à l'entrée »."]},
   {v:"2.9.14", date:"2026-10-25", titre:"Dossier rangé par locataire", items:["Fiche d'un locataire : « Exporter le dossier de ce locataire (ZIP) ». L'appli range tout au même endroit, toujours avec les mêmes noms : Gestion locative / bien / Locataires / nom / Bail, États des lieux, Inventaires, Dossier de candidature, Documents.","Biens › Documents : « Tous les locataires (ZIP rangé) » pour refaire tout le classeur d'un coup.","Les baux, états des lieux et inventaires sont rattachés au locataire en place à leur date.","Limite iPhone : l'appli ne peut pas choisir elle-même un dossier d'iCloud Drive. Tu l'indiques une fois par export (« Enregistrer dans Fichiers »), puis tu décompresses le ZIP."]},
@@ -1354,6 +1355,7 @@ const HELP = {
     "Départ : « Clôturer ce locataire » (fiche du locataire) coche seul les étapes retenues, dépôt restitué et locataire clos.",
     "Ce sont des repères généraux : vérifie les délais et les règles sur service-public.fr avant chaque location."]},
   "bld-docs":{t:"Biens › Documents", p:"Tout ce qu'il faut pour un locataire, sans autre site.", l:[
+    "Lettres : « Faire signer sur l\'écran » (bailleur, et locataire pour la restitution du dépôt) : le PDF signé est rangé dans les documents du locataire.",
     "« Tous les locataires (ZIP rangé) » (en bas de cet écran) crée Gestion locative / bien / Locataires / nom / Bail, États des lieux, Inventaires, Dossier de candidature, Documents. Enregistre-le dans Fichiers puis décompresse-le ; si le dossier existe déjà, remplace-le.",
     "Les papiers personnels d'un locataire (identité, contrat…) se rangent dans sa fiche, pas ici.",
     "Inventaire ou état des lieux d\'entrée : tu peux choisir un fichier (PDF, Excel, CSV) : l\'appli le recopie vierge dans la liste. « Garder comme modèle » ★ en fait ta liste standard, proposée par défaut pour chaque nouveau document.",
@@ -1411,10 +1413,10 @@ function sheetTour(i){
 }
 function sheetNews(e){ openSheet(`<div class="small muted">Nouveautés · version ${esc(e.v)} · ${frDate(e.date)}</div><h2>${esc(e.titre)}</h2><ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:14.5px">${e.items.map(x => `<li>${esc(x)}</li>`).join("")}</ul><div class="btns"><button class="btn" style="flex:1" data-act="sheetclose">Compris</button></div>`); }
 function histCard(){
-  const all = V.histAll, L = all ? CHANGELOG : CHANGELOG.slice(0, 20);
+  const all = V.histAll, L = all ? CHANGELOG : CHANGELOG.slice(0, 5);
   return `<div class="card"><h2>Historique des mises à jour</h2><div class="rows">${L.map(e => `<div class="row" style="align-items:flex-start"><div class="main"><div class="t">${esc(e.titre)}</div><div class="s">Version ${esc(e.v)} · ${frDate(e.date)}</div>
     <ul style="margin:4px 0 0;padding-left:16px;font-size:13px;color:var(--muted)">${e.items.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div></div>`).join("")}</div>
-    ${!all && CHANGELOG.length > 20 ? `<div class="btns"><button class="btn ghost sm" data-act="hist-all">Afficher tout</button></div>` : ""}</div>`;
+    ${!all && CHANGELOG.length > 5 ? `<div class="btns"><button class="btn ghost sm" data-act="hist-all">Voir les ${CHANGELOG.length - 5} autres mises à jour</button></div>` : ""}${all && CHANGELOG.length > 5 ? `<div class="btns"><button class="btn ghost sm" data-act="hist-less">Réduire</button></div>` : ""}</div>`;
 }
 const aideCard = () => `<div class="card"><h2>Aide</h2><div class="btns"><button class="btn" data-act="guide">Tout le guide</button><button class="btn ghost" data-act="tour">Parcours guidé</button><button class="btn ghost" data-act="demo">Mode démo</button></div>
   <div class="small muted">Le mode démo charge des données d'exemple à la place des données de cet appareil.</div></div>`;
@@ -1695,6 +1697,7 @@ document.addEventListener("click", ev => {
     case "tour-next": sheetTour(V.tourI + 1); break; case "tour-prev": sheetTour(V.tourI - 1); break;
     case "tour-end": lsSet("loc-tour", "1"); closeSheet(); break;
     case "hist-all": V.histAll = true; render(); break;
+    case "hist-less": V.histAll = false; render(); break;
     case "demo": openSheet(`<h2>Version d'essai</h2><p style="margin:0">Cela remplace les données affichées par de faux biens, adresses, locataires, un état des lieux et un inventaire d'exemple. ${SEC.on || S.demo ? "" : "Tes données sont mises de côté sur cet appareil : le bouton « Retrouver mes données » (Réglages) les remet. "}Exporte quand même une sauvegarde avant.</p><div class="btns"><button class="btn danger" data-act="demo-ok">Charger les données d'exemple</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`); break;
     case "demo-back": { let sv = null; try { sv = JSON.parse(localStorage.getItem("gl-avant-essai")); } catch(e){} if (!sv) return toast("Aucune sauvegarde de côté");
       S = Object.assign(emptyData(), sv); S.demo = false; persist(); try { localStorage.removeItem("gl-avant-essai"); } catch(e){} V.tab = "home"; toast("Tes données sont revenues"); render(); break; }
@@ -2596,9 +2599,11 @@ function sheetLettre(kind){
   if (kind === "attest") spec = `<div class="grid2">${dxF("lt-lhc", "Loyer hors charges (€)", fmtNum(t.loyer ? r2(N(t.loyer) - N(t.charges)) : ""), 'inputmode="decimal"')}${dxF("lt-chg", "Charges (€)", fmtNum(t.charges || ""), 'inputmode="decimal"')}</div>${dxF("lt-debut", "Occupe le logement depuis le", t.debut || "", 'type="date"')}${dxS("lt-jour", "Locataire à jour de ses loyers", [["Oui", "Oui"], ["Non", "Non"]], s.solde >= -0.005 ? "Oui" : "Non")}`;
   if (kind === "depot") spec = `<div class="grid2">${dxF("lt-dep", "Dépôt versé (€)", fmtNum(t.depot || ""), 'inputmode="decimal"')}${dxF("lt-sortie", "Date de sortie", t.fin || todayIso(), 'type="date"')}</div><label class="f">Retenues (une par ligne : libellé ; montant)<textarea id="lt-ret" placeholder="Réparation du volet ; 80"></textarea></label>${dxS("lt-conf", "État des lieux de sortie", [["conforme", "Conforme à l'entrée (1 mois)"], ["ecart", "Écarts constatés (2 mois)"]], "conforme")}`;
   if (kind === "rappel") spec = dxF("lt-sortie", "Date de départ prévue", (s.t && s.t.fin) || "", 'type="date"');
-  openSheet(`<h2>${titre}</h2>${common}${spec}<div class="btns"><button class="btn" style="flex:1" data-act="let-pdf" data-v="${kind}">Créer le PDF</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
+  openSheet(`<h2>${titre}</h2>${common}${spec}<div class="btns"><button class="btn" style="flex:1" data-act="let-pdf" data-v="${kind}">Créer le PDF</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>
+    <div class="btns"><button class="btn ghost" style="flex:1" data-act="let-pdf" data-v="${kind}" data-sign="1">Faire signer sur l'écran</button></div>
+    <div class="small muted">« Faire signer » : tu signes (et, pour la restitution du dépôt, le locataire aussi) avec le doigt. Le PDF signé est rangé dans le dossier du locataire (Documents du locataire) et prêt à envoyer.</div>`);
 }
-function letterPdf(kind, o){
+function letterPdf(kind, o, sig){
   const d = new PdfDoc(kind === "impaye" ? "Loyer impayé" : kind === "attest" ? "Attestation de loyer" : kind === "rappel" ? "Rappel état des lieux de sortie" : "Dépôt de garantie"), M = d.M, R = d.W - M, P = (s, g) => { d.para(s, 10.5, g || 15); d.y -= 4; };
   d.text(M, d.y, o.bail || "(bailleur)", {size:10.5, bold:true}); d.text(R, d.y, o.loc || "(locataire)", {size:10.5, bold:true, right:true}); d.y -= 14;
   d.text(M, d.y, o.badr || "", {size:10}); d.text(R, d.y, o.adr || "", {size:10, right:true}); d.y -= 30;
@@ -2638,7 +2643,14 @@ function letterPdf(kind, o){
     P(o.net >= 0 ? "Le versement sera effectué par virement sur le compte que vous voudrez bien m'indiquer." : "Je vous remercie de bien vouloir régler ce solde dans les meilleurs délais.");
     P("Je vous prie d'agréer, Madame, Monsieur, mes salutations distinguées."); d.y -= 20; d.text(R, d.y, o.bail || "", {size:10.5, right:true});
   }
-  return d.finish(kind === "impaye" ? "Lettre de loyer impayé" : kind === "attest" ? "Attestation de loyer" : kind === "rappel" ? "Rappel avant état des lieux de sortie" : "Restitution du dépôt de garantie");
+  const ttl = kind === "impaye" ? "Lettre de loyer impayé" : kind === "attest" ? "Attestation de loyer" : kind === "rappel" ? "Rappel avant état des lieux de sortie" : "Restitution du dépôt de garantie";
+  if (sig){ d.need(150); d.y -= 8;
+    if (sig.locataire) d.text(M, d.y, "Lu et approuvé par le locataire", {size:9, color:"#5C6B66"});
+    if (sig.bailleur) d.text(R, d.y, "Signature électronique du bailleur", {size:9, right:true, color:"#5C6B66"}); d.y -= 62;
+    for (const [k, x, right] of [["bailleur", R, true], ["locataire", M, false]]){ const g = sig[k]; if (!g) continue; const h = Math.min(56, 160 * g.h / g.w), w = h === 56 ? 56 * g.w / g.h : 160;
+      d.image(right ? x - w - 4 : x + 4, d.y + 3, w, h, g); d.text(x, d.y - 11, "Signé le " + hhmm(g.ts), {size:8, right, color:"#5C6B66"}); }
+    proofPage(d, sig, ttl + " · " + (o.adr || "")); }
+  return d.finish(ttl);
 }
 
 document.addEventListener("click", ev => {
@@ -2659,7 +2671,14 @@ document.addEventListener("click", ev => {
       if (v === "depot"){ o.dep = parseNum(dxV("lt-dep")) || 0; o.sortie = dxV("lt-sortie") || todayIso(); o.conf = dxV("lt-conf");
         o.ret = dxV("lt-ret").split("\n").map(l => { const k = l.lastIndexOf(";"); return k < 0 ? null : [l.slice(0, k).trim(), parseNum(l.slice(k + 1)) || 0]; }).filter(x => x && x[0] && x[1] > 0); o.net = r2(o.dep - sum(o.ret.map(r => r[1]))); if (!(o.dep > 0)) return toast("Indique le dépôt versé"); }
       if (v === "rappel") o.sortie = dxV("lt-sortie");
-      saveFile({impaye:"loyer-impaye-", attest:"attestation-loyer-", depot:"restitution-depot-", rappel:"rappel-etat-des-lieux-sortie-"}[v] + V.bsel + "-" + todayIso() + ".pdf", letterPdf(v, o), "application/pdf"); break; }
+      const fn = {impaye:"loyer-impaye-", attest:"attestation-loyer-", depot:"restitution-depot-", rappel:"rappel-etat-des-lieux-sortie-"}[v] + V.bsel + "-" + todayIso() + ".pdf";
+      if (b.dataset.sign){ const bien = V.bsel, tn = soldeLoc(bien).t, titre = {impaye:"Lettre de loyer impayé", attest:"Attestation de loyer", depot:"Restitution du dépôt de garantie", rappel:"Rappel avant l'état des lieux de sortie"}[v];
+        const parties = [{key:"bailleur", label:"Bailleur", name:o.bail || "Bailleur"}].concat(v === "depot" ? [{key:"locataire", label:"Locataire", name:o.loc || "Locataire"}] : []);
+        signFlow(parties, async res => { const pdf = letterPdf(v, o, res), fid = uid(), name = "signe-" + fn;
+          await flPut(fid, {name, type:"application/pdf", buf:pdf.buffer});
+          docList("docs").push(Object.assign({id:fid, bien, kind:tn ? "loc" : "autre", nom:titre + " (signé le " + frDate(res.ts.slice(0, 10)) + ")", fname:name, date:res.ts.slice(0, 10), type:"application/pdf", size:pdf.length, upd:Date.now()}, tn ? {loc:tn.id, ptype:"Courrier signé"} : {}));
+          persist(); render(); await saveFile(name, pdf, "application/pdf", titre + " signé électroniquement le " + hhmm(res.ts) + "."); }, "ce courrier", JSON.stringify(o)); break; }
+      saveFile(fn, letterPdf(v, o), "application/pdf"); break; }
   }
 });
 
@@ -2789,7 +2808,7 @@ function sigBlock(d, ville, date, sig){
 }
 function proofPage(d, sig, titre){
   d.newPage(); d.text(d.M, d.y, "PREUVE DE SIGNATURE ÉLECTRONIQUE", {size:15, bold:true, color:"#0E6B5C"}); d.y -= 26; d.para("Document : " + titre, 10.5, 15); d.y -= 6;
-  dTable(d, [{h:"Rôle", w:110}, {h:"Nom", w:230}, {h:"Date et heure de signature", w:171}], [["Bailleur", sig.bailleur.nom || "", hhmm(sig.bailleur.ts)], ["Locataire", sig.locataire.nom || "", hhmm(sig.locataire.ts)]]);
+  dTable(d, [{h:"Rôle", w:110}, {h:"Nom", w:230}, {h:"Date et heure de signature", w:171}], [["Bailleur", sig.bailleur], ["Locataire", sig.locataire]].filter(r => r[1]).map(r => [r[0], r[1].nom || "", hhmm(r[1].ts)]));
   d.para("Empreinte numérique (SHA-256) du contenu et des signatures :", 10, 14); const hx = sig.hash || "indisponible"; d.para(hx.slice(0, 32), 10, 14); d.para(hx.slice(32), 10, 14); d.y -= 8;
   d.para("Signatures électroniques simples (articles 1366 et 1367 du Code civil ; règlement européen n° 910/2014 « eIDAS »), tracées à l'écran de l'appareil du bailleur, en présence des signataires, après leur mention « lu et approuvé ». L'identité des signataires n'est pas vérifiée par un tiers de confiance : cette preuve est moins forte qu'une signature électronique avancée ou qualifiée. Conserve ce PDF : le document et l'empreinte ci-dessus en font foi.", 9.5, 13.5);
 }
@@ -3586,6 +3605,7 @@ async function locataireFiles(tid){
   for (const e of docList("inv").filter(x => x.bien === t.bien && !x.del && mine(x))){ if (e.fichier && !e.items.some(i => i.etat || i.com)) continue;
     add("03 Inventaires", e.date + " - Inventaire " + (e.type === "sortie" ? "sortie" : "entrée") + (e.sig ? " (signé)" : "") + ".pdf", invPdf(e)); }
   await addFiles("inv", "03 Inventaires");
+  for (const d of fileDocs(t.bien, "autre")){ const r = await flGet(d.id); if (r) add("06 Pièces à joindre au bail et autres documents", (d.sub ? annexLabel(d.sub) + " - " : "") + (d.fname || d.nom), new Uint8Array(r.buf)); }
   const c = candList().find(x => !x.del && x.loc === tid);
   if (c) for (const f of (c.fichiers || [])){ const r = await flGet(f.fid); if (r) add("04 Dossier de candidature", f.nom, new Uint8Array(r.buf)); }
   for (const d of docList("docs").filter(x => x.kind === "loc" && x.loc === tid && !x.del)){ const r = await flGet(d.id); if (r) add("05 Documents du locataire", (d.ptype ? d.ptype + " - " : "") + (d.fname || d.nom), new Uint8Array(r.buf)); }
@@ -3622,8 +3642,9 @@ async function exportFullZip(){
   const db = PH.db || await phOpen(), enc = new TextEncoder(), files = [], ents = [];
   const all = db ? await new Promise(res => { try { const tx = db.transaction("p"), st = tx.objectStore("p"), ks = st.getAllKeys(), vs = st.getAll(); tx.oncomplete = () => res([ks.result, vs.result]); tx.onerror = tx.onabort = () => res([[], []]); } catch(e){ res([[], []]); } }) : [[], []];
   all[0].forEach((key, n) => { const v = all[1][n]; if (v == null) return;
-    if (v.buf instanceof ArrayBuffer){ const meta = Object.assign({}, v); delete meta.buf; ents.push({n, key, bin:true, meta}); files.push({name:"fichiers/" + n + ".bin", data:new Uint8Array(v.buf)}); }
+    if (v.buf instanceof ArrayBuffer){ const meta = Object.assign({}, v); delete meta.buf; const fn = "fichiers/" + n + " - " + cleanName(meta.name || "fichier"); ents.push({n, key, bin:true, meta, file:fn}); files.push({name:fn, data:new Uint8Array(v.buf)}); }
     else { ents.push({n, key, bin:false}); files.push({name:"fichiers/" + n + ".json", data:enc.encode(JSON.stringify(v))}); } });
+  files.unshift({name:"LISEZ-MOI.txt", data:enc.encode("Sauvegarde complète de l'appli Mes locations (" + todayIso() + ").\r\n- donnees.json : toutes les données de l'appli.\r\n- fichiers/ : tes documents et photos (les fichiers portent leur nom d'origine, précédé d'un numéro). Tu peux les ouvrir sur ordinateur.\r\nPour tout remettre dans l'appli : importe ce .zip tel quel (sans le décompresser) dans Réglages › Synchroniser.\r\nCe dossier contient des papiers personnels : garde-le dans un endroit privé.")});
   files.unshift({name:"manifest.json", data:enc.encode(JSON.stringify({v:1, date:todayIso(), entries:ents}))});
   files.unshift({name:"donnees.json", data:enc.encode(JSON.stringify(S))});
   await saveFile("mes-locations-sauvegarde-complete.zip", zipStore(files), "application/zip");
@@ -3632,7 +3653,7 @@ async function restoreFull(files){
   const dec = new TextDecoder(), man = files.find(f => f.name === "manifest.json"); if (!man) return 0;
   const m = JSON.parse(dec.decode(man.data)), by = new Map(files.map(f => [f.name, f.data])), db = PH.db || await phOpen(); if (!db) throw new Error("stockage indisponible"); let n = 0;
   await new Promise((res, rej) => { const tx = db.transaction("p", "readwrite"), st = tx.objectStore("p");
-    for (const e of m.entries){ if (e.bin){ const d = by.get("fichiers/" + e.n + ".bin"); if (d){ st.put(Object.assign({}, e.meta, {buf:d.slice().buffer}), e.key); n++; } }
+    for (const e of m.entries){ if (e.bin){ const d = by.get(e.file || ("fichiers/" + e.n + ".bin")); if (d){ st.put(Object.assign({}, e.meta, {buf:d.slice().buffer}), e.key); n++; } }
       else { const d = by.get("fichiers/" + e.n + ".json"); if (d){ st.put(JSON.parse(dec.decode(d)), e.key); n++; } } }
     tx.oncomplete = res; tx.onerror = tx.onabort = () => rej(tx.error || new Error("écriture impossible")); });
   PH.cache = {}; return n;

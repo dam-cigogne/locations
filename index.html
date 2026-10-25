@@ -1109,8 +1109,11 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.9.0";
+const APP_VERSION = "2.9.1";
 const CHANGELOG = [
+  {v:"2.9.1", date:"2026-10-25", titre:"PDF de l'annonce avec photos", items:[
+    "Onglet Location › Annonce : ajoute jusqu'à 12 photos (la première sert de couverture) et crée un PDF d'annonce propre, prêt à envoyer par Mail ou Messages.",
+    "Le PDF contient le prix, la surface, la disponibilité, le DPE en couleur, la description, les conditions, comment candidater et la galerie de photos. Les photos restent sur ton téléphone, hors sauvegarde JSON."]},
   {v:"2.9.0", date:"2026-10-25", titre:"Mise en location : annonce et candidatures", items:[
     "Nouvel onglet « Location » : pour chaque bien, une annonce prête à publier (texte généré, contrôle des mentions manquantes, suivi des sites où elle est publiée).",
     "Candidatures : une fiche par candidat (coordonnées, situation, revenus, garant, visite), les pièces reçues à cocher (liste légale limitative), une note indicative revenus / loyer, et la possibilité de joindre les pièces sur ton téléphone.",
@@ -1283,7 +1286,7 @@ const HELP = {
     "Le nom, l'adresse du bien et le loyer sont repris dans les relances, les quittances et les bilans (Excel et PDF).",
     "« Dont charges » sert à séparer loyer et charges sur la quittance."]},
   "rent":{t:"Location", p:"Trouver un locataire sans serveur : tout passe par ton e-mail.", l:[
-    "Annonce : remplis les infos du bien, copie le texte et publie-le sur le site de ton choix (tes photos s'ajoutent sur le site).",
+    "Annonce : remplis les infos du bien, ajoute tes photos, crée le PDF à envoyer par Mail ou Messages, ou copie le texte pour un site d'annonces.",
     "Candidats : crée une fiche à chaque demande reçue, réponds avec les courriers prêts à l'emploi, note la visite, coche les pièces reçues.",
     "La note compare les revenus au loyer charges comprises (3 fois = vert). Elle est indicative : ne refuse jamais pour un motif discriminatoire.",
     "Retenir : crée le locataire du bien et prépare l'arrivée (bail, inventaire, état des lieux).",
@@ -2147,8 +2150,8 @@ PdfDoc.prototype.finish = function(sub){
   add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
   this.pages.forEach((ops, i) => {
     const head = [], foot = [];
-    this.cur = head; this.text(this.M, this.H - 40, "Mes locations", {size:11, bold:true, color:"#0E6B5C"}); this.text(this.W - this.M, this.H - 40, sub || this.title, {size:9.5, right:true, color:"#5C6B66"}); this.line(this.M, this.H - 48, this.W - this.M, this.H - 48);
-    this.cur = foot; this.line(this.M, 44, this.W - this.M, 44); this.text(this.M, 30, "Généré le " + frDate(todayIso()), {size:8.5, color:"#5C6B66"}); this.text(this.W - this.M, 30, "Page " + (i + 1) + " / " + n, {size:8.5, right:true, color:"#5C6B66"});
+    if (!this.clean){ this.cur = head; this.text(this.M, this.H - 40, "Mes locations", {size:11, bold:true, color:"#0E6B5C"}); this.text(this.W - this.M, this.H - 40, sub || this.title, {size:9.5, right:true, color:"#5C6B66"}); this.line(this.M, this.H - 48, this.W - this.M, this.H - 48);
+    this.cur = foot; this.line(this.M, 44, this.W - this.M, 44); this.text(this.M, 30, "Généré le " + frDate(todayIso()), {size:8.5, color:"#5C6B66"}); this.text(this.W - this.M, 30, "Page " + (i + 1) + " / " + n, {size:8.5, right:true, color:"#5C6B66"}); } else if (n > 1){ this.cur = foot; this.text(this.W - this.M, 24, "Page " + (i + 1) + " / " + n, {size:8, right:true, color:"#8A9690"}); }
     const stream = head.concat(ops, foot).join("\n"), used = (this.pageImg || {})[i] || [];
     add("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + this.W + " " + this.H + "] /Resources << /Font << /F1 3 0 R /F2 4 0 R >>" + (used.length ? " /XObject << " + used.map(k => "/Im" + k + " " + idImg(k) + " 0 R").join(" ") + " >>" : "") + " >> /Contents " + idCont(i) + " 0 R >>");
     add("<< /Length " + stream.length + " >>\nstream\n" + stream + "\nendstream");
@@ -3010,7 +3013,7 @@ const nf1 = n => (Math.round(n * 10) / 10).toString().replace(".", ",");
 
 function annDefaults(bien){
   const b = S.biens.find(x => x.id === bien) || {}, t = live(S.locataires).filter(x => x.bien === bien).sort((a, c) => (c.debut || "").localeCompare(a.debut || ""))[0] || {};
-  return {titre:"", type:"Appartement meublé", surf:"", loc:"", loyer:b.loyer || t.loyer || "", charges:t.charges || "", depot:b.loyer || t.depot || "", dispo:"", dpe:"", ges:"", equip:"", mail:(S.cfg && S.cfg.candMail) || "", tel:"", pub:{}, statut:"brouillon"};
+  return {titre:"", type:"Appartement meublé", surf:"", loc:"", loyer:b.loyer || t.loyer || "", charges:t.charges || "", depot:b.loyer || t.depot || "", dispo:"", dpe:"", ges:"", equip:"", mail:(S.cfg && S.cfg.candMail) || "", tel:"", pub:{}, photos:[], statut:"brouillon"};
 }
 function annOf(bien){ return Object.assign(annDefaults(bien), annGet(bien) || {}); }
 function loyerCC(bien){ const a = annOf(bien); return (Number(a.loyer) || 0) + (Number(a.charges) || 0); }
@@ -3069,7 +3072,13 @@ function viewAnnonce(bien){
     ${w.length ? `<div class="info" style="background:var(--warn-soft)">${w.map(x => "• " + esc(x)).join("<br>")}</div>` : ""}
     <label class="f" style="margin-top:8px">Texte prêt à publier<textarea id="an-txt" readonly style="min-height:240px">${esc(txt)}</textarea></label>
     <div class="btns"><button class="btn" data-act="an-edit">Modifier l'annonce</button><button class="btn ghost" data-act="an-copy">Copier le texte</button><button class="btn ghost" data-act="an-share">Partager</button></div>
-    <div class="small muted">Ajoute tes photos directement sur le site de l'annonce (l'appli ne les envoie pas). Pour le texte de l'annonce, vérifie les mentions obligatoires sur le site choisi et, si ta commune est en zone d'encadrement des loyers, le loyer de référence.</div></div>
+    <div class="btns"><button class="btn" style="flex:1" data-act="an-pdf">Créer le PDF de l'annonce</button></div>
+    <div class="small muted">Le PDF reprend le texte et tes photos : envoie-le par Mail ou Messages. Pour les sites d'annonces, ajoute aussi les photos sur le site. Vérifie les mentions obligatoires sur le site choisi et, si ta commune est en zone d'encadrement des loyers, le loyer de référence.</div></div>
+    <div class="card"><div class="top"><h2>Photos de l'annonce</h2><span class="small muted">${(a.photos || []).length} / ${ANN_MAX_PH}</span></div>
+    ${(a.photos || []).length ? `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${a.photos.map((pid, i) => `<div><img data-ph="${pid}" alt="Photo ${i + 1}" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;background:var(--line)">
+      <div style="display:flex;gap:4px;margin-top:4px">${i ? `<button class="mini" data-act="an-ph-first" data-pid="${pid}" style="flex:1">1re</button>` : '<span class="chip ok" style="flex:1;text-align:center">Couverture</span>'}<button class="mini" data-act="an-ph-del" data-pid="${pid}">✕</button></div></div>`).join("")}</div>` : '<div class="empty">Aucune photo. Ajoute-en pour un PDF complet.</div>'}
+    <label class="f" style="margin-top:8px">Ajouter des photos<input id="an-ph" type="file" accept="image/*" multiple></label>
+    <div class="small muted">La première photo sert de couverture. Les photos restent sur cet appareil (elles ne sont pas dans la sauvegarde JSON).</div></div>
     <div class="card"><h2>Où l'annonce est publiée</h2><div class="rows">${sites}</div>
     <div class="btns"><button class="btn sm ghost" data-act="an-state" data-v="${a.statut === "louee" ? "brouillon" : "louee"}">${a.statut === "louee" ? "Remettre en recherche" : "Logement loué : fermer l'annonce"}</button></div>
     <div class="small muted">Quand tu retiens un candidat, l'annonce passe automatiquement en « Louée ». Pense à la retirer des sites.</div></div>`;
@@ -3193,6 +3202,9 @@ document.addEventListener("click", async ev => {
       persist(); closeSheet(); render(); break; }
     case "an-copy": { const t = annText(V.lsel); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast("Texte copié")).catch(() => { const e = $("#an-txt"); if (e){ e.removeAttribute("readonly"); e.select(); } toast("Sélectionné : copie-le"); }); break; }
     case "an-share": { const t = annText(V.lsel); try { if (navigator.share) await navigator.share({title:"Annonce " + bienName(V.lsel), text:t}); else toast("Utilise « Copier le texte »"); } catch(e){} break; }
+    case "an-pdf": { const w = annChecks(V.lsel).filter(x => !/e-mail|quartier/.test(x)); toast("Création du PDF…"); try { const bytes = await annoncePdf(V.lsel); saveFile("annonce-" + V.lsel + ".pdf", bytes, "application/pdf"); if (w.length) toast("PDF créé. À compléter : " + w[0]); } catch(err){ toast("PDF impossible : " + err.message); } break; }
+    case "an-ph-first": { const cur = annOf(V.lsel); cur.photos = [b.dataset.pid].concat((cur.photos || []).filter(x => x !== b.dataset.pid)); cur.upd = Date.now(); S.annonces = S.annonces || {}; S.annonces[V.lsel] = cur; persist(); render(); break; }
+    case "an-ph-del": { const cur = annOf(V.lsel); cur.photos = (cur.photos || []).filter(x => x !== b.dataset.pid); phDel(b.dataset.pid); cur.upd = Date.now(); S.annonces = S.annonces || {}; S.annonces[V.lsel] = cur; persist(); render(); break; }
     case "an-state": { S.annonces = S.annonces || {}; const cur = annOf(V.lsel); cur.statut = v; cur.upd = Date.now(); S.annonces[V.lsel] = cur; persist(); render(); break; }
     case "cd-new": sheetCand(""); break;
     case "cd-open": sheetCand(id); break;
@@ -3224,6 +3236,10 @@ document.addEventListener("change", async ev => {
   const t = ev.target; if (!t) return;
   if (t.dataset && t.dataset.pub){ const cur = annOf(V.lsel); cur.pub = cur.pub || {}; if (t.checked) cur.pub[t.dataset.pub] = todayIso(); else delete cur.pub[t.dataset.pub]; if (Object.keys(cur.pub).length && cur.statut === "brouillon") cur.statut = "publiee"; cur.upd = Date.now(); S.annonces = S.annonces || {}; S.annonces[V.lsel] = cur; persist(); render(); return; }
   if (t.id === "cm-tpl"){ const c = candGet(V.mailFor || ""); if (c){ const m = candMail(t.value, c); $("#cm-sub").value = m.s; $("#cm-msg").value = m.b; } return; }
+  if (t.id === "an-ph" && t.files && t.files.length){
+    const cur = annOf(V.lsel); cur.photos = cur.photos || []; let n = 0;
+    for (const f of t.files){ if (cur.photos.length >= ANN_MAX_PH){ toast("Maximum " + ANN_MAX_PH + " photos"); break; } try { const o = await annCompress(f), pid = uid(); await phPut(pid, o); cur.photos.push(pid); n++; } catch(e){ toast("Photo illisible : " + f.name); } }
+    cur.upd = Date.now(); S.annonces = S.annonces || {}; S.annonces[V.lsel] = cur; persist(); render(); if (n) toast(n + " photo(s) ajoutée(s)"); return; }
   if (t.id === "cd-gar"){ document.querySelectorAll("label.cd-g").forEach(l => l.style.display = (t.value === "proche" || t.value === "autre") ? "flex" : "none"); return; }
   if (t.id === "cd-file" && t.files && t.files.length){
     const idc = (document.querySelector('[data-act="cd-save"]') || {dataset:{}}).dataset.id, c = candGet(idc); if (!c) return;
@@ -3232,6 +3248,40 @@ document.addEventListener("change", async ev => {
     persist(); sheetCand(idc); toast("Pièce(s) jointe(s)");
   }
 });
+
+/* ---------- Photos et PDF de l'annonce ---------- */
+const ANN_MAX_PH = 12;
+function annCompress(file){ return new Promise((res, rej) => { const img = new Image(), url = URL.createObjectURL(file);
+  img.onload = () => { const k = Math.min(1, 1400 / Math.max(img.width, img.height)), c = document.createElement("canvas"); c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); res({d:c.toDataURL("image/jpeg", 0.78), w:c.width, h:c.height}); };
+  img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("image")); }; img.src = url; }); }
+const DPE_COL = {A:"#319834", B:"#33CC31", C:"#9FD62B", D:"#E5D800", E:"#FCB900", F:"#FC9935", G:"#E8302F"};
+async function annoncePdf(bien){
+  const a = annOf(bien), d = new PdfDoc("Annonce"), M = d.M, W = d.W - 2 * M, R = d.W - M, cc = (Number(a.loyer) || 0) + (Number(a.charges) || 0);
+  d.clean = true; d.y = d.H - 52;
+  const photos = []; for (const pid of a.photos || []){ const o = await phGet(pid); if (o) photos.push(o); }
+  const title = a.titre || (a.type + (a.surf ? " de " + a.surf + " m²" : "") + (a.loc ? " – " + a.loc : ""));
+  d.para(title, 21, 26); if (a.loc && a.titre){ d.text(M, d.y, a.loc, {size:11, color:"#5C6B66"}); d.y -= 18; } d.y -= 4;
+  d.rect(M, d.y - 46, W, 46, "#E3F1EC"); d.text(M + 14, d.y - 30, eur(cc) + " / mois" + (Number(a.charges) ? " charges comprises" : ""), {size:19, bold:true, color:"#0E6B5C"});
+  d.text(R - 12, d.y - 20, Number(a.charges) ? "dont " + eur(a.charges) + " de charges" : "hors charges", {size:9.5, right:true, color:"#3C4A45"}); d.text(R - 12, d.y - 34, "Dépôt de garantie : " + eur(a.depot), {size:9.5, right:true, color:"#3C4A45"}); d.y -= 62;
+  const facts = [["Type", a.type || ""], ["Surface", a.surf ? a.surf + " m²" : "—"], ["Disponible", a.dispo ? frDate(a.dispo) : "Immédiatement"], ["DPE", a.dpe || "—"]], cw = W / facts.length;
+  facts.forEach(([l, v], i) => { const x = M + i * cw; d.text(x, d.y, l.toUpperCase(), {size:7.5, bold:true, color:"#8A9690"});
+    if (l === "DPE" && DPE_COL[v]){ d.rect(x, d.y - 24, 22, 18, DPE_COL[v]); d.text(x + 11, d.y - 19, v, {size:12, bold:true, center:true, color:"#FFFFFF"}); if (a.ges) d.text(x + 30, d.y - 19, "GES " + a.ges, {size:9.5, color:"#3C4A45"}); }
+    else d.text(x, d.y - 17, String(v).slice(0, 26), {size:11, bold:true}); }); d.y -= 38;
+  if (photos[0]){ const o = photos[0], h = Math.min(290, W * o.h / o.w), w = h === 290 ? 290 * o.w / o.h : W; d.need(h + 20); d.image(M + (W - w) / 2, d.y - h, w, h, o); d.y -= h + 18; }
+  if (a.equip && a.equip.trim()){ d.h("Description", 13); for (const par of a.equip.trim().split(/\n+/)) d.para(par, 10.5, 15); }
+  d.h("Conditions", 13); d.para("Loyer : " + eur(a.loyer) + (Number(a.charges) ? " + " + eur(a.charges) + " de charges, soit " + eur(cc) + " charges comprises" : " par mois") + ".", 10.5, 15); d.para("Dépôt de garantie : " + eur(a.depot) + ".", 10.5, 15); if (a.dpe) d.para("Performance énergétique (DPE) : classe " + a.dpe + (a.ges ? " · GES : classe " + a.ges : "") + ".", 10.5, 15);
+  d.h("Pour candidater", 13); d.para("Écrivez-moi" + (a.mail ? " à " + a.mail : "") + (a.tel ? " ou appelez le " + a.tel : "") + " en indiquant : votre nom, un numéro de téléphone, votre situation professionnelle, vos revenus mensuels, le nombre d'occupants, votre date d'emménagement souhaitée et, si vous en avez un, votre garant. Une visite vous sera proposée, puis les pièces justificatives vous seront demandées.", 10.5, 15);
+  const more = photos.slice(1);
+  if (more.length){ d.newPage(); d.y = d.H - 52; d.text(M, d.y, "Photos", {size:15, bold:true, color:"#0E6B5C"}); d.y -= 22;
+    const gap = 10, cw2 = (W - gap) / 2; let col = 0, rowH = 0;
+    for (const o of more){ const h = Math.min(190, cw2 * o.h / o.w), w = h === 190 ? 190 * o.w / o.h : cw2;
+      if (col === 0 && d.y - h < 50){ d.newPage(); d.y = d.H - 52; }
+      d.image(M + col * (cw2 + gap) + (cw2 - w) / 2, d.y - h, w, h, o); rowH = Math.max(rowH, h);
+      if (col === 1){ d.y -= rowH + gap; col = 0; rowH = 0; } else col = 1; }
+  }
+  return d.finish("Annonce");
+}
 
 /* ============ Démarrage ============ */
 const migrate = () => { if (!S.cfg || typeof S.cfg !== "object") S.cfg = {bailleur:"", adr:{}}; if (!Array.isArray(S.modeles)) S.modeles = []; if (!Array.isArray(S.clotures)) S.clotures = []; if (!S.rapp || typeof S.rapp !== "object") S.rapp = {}; for (const k of ["biens","tarifs","journal","factures","locataires","seen","partages","edl","inv","docs"]) if (!Array.isArray(S[k])) S[k] = []; };

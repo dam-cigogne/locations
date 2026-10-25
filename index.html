@@ -956,9 +956,10 @@ function viewSet(){
   return `<div class="top"><div class="app">Réglages</div><button class="q" data-act="help" aria-label="Aide">?</button></div>${V.msg ? `<div class="info">${esc(V.msg)}</div>` : ""}${pend}
   <div class="card"><h2>Synchroniser avec Excel</h2>
     <div class="small muted"><b>Excel → appli</b> : dans Excel, bouton « Exporter vers l'appli », puis importe ici <b>export_appli.xlsx</b>. Les lignes déjà connues sont mises à jour, les nouvelles ajoutées, celles supprimées dans Excel retirées.<br><b>Appli → Excel</b> : exporte le journal, enregistre-le dans Fichiers › dossier IMPORT, puis bouton « Importer depuis l'appli » dans Excel.</div>
-    <label class="f">Importer un fichier (export_appli.xlsx ou sauvegarde .json)<input id="file" type="file" accept=".xlsx,.xlsm,.json,.xls"></label>
-    <div class="btns"><button class="btn" data-act="exp-journal">Exporter le journal (.xlsx)</button><button class="btn ghost" data-act="exp-json">Sauvegarde complète (.json)</button></div>
-    <div class="small muted">La sauvegarde .json n'est pas chiffrée : à garder hors de tout dossier partagé.</div></div>
+    <label class="f">Importer un fichier (export_appli.xlsx, sauvegarde .json ou .zip)<input id="file" type="file" accept=".xlsx,.xlsm,.json,.zip,.xls"></label>
+    <div class="btns"><button class="btn" data-act="exp-journal">Exporter le journal (.xlsx)</button><button class="btn ghost" data-act="exp-json">Sauvegarde légère (.json)</button></div>
+    <div class="btns"><button class="btn" data-act="exp-zip">Sauvegarde complète avec fichiers (.zip)</button></div>
+    <div class="small muted"><b>Quelle sauvegarde choisir ?</b><br>• <b>Légère (.json)</b> : tes données (biens, opérations, locataires, fiches, états des lieux et inventaires en texte). Petite, mais <b>sans</b> photos ni fichiers (pièces d'identité, contrats, PDF importés).<br>• <b>Complète avec fichiers (.zip)</b> : tout, photos et documents des locataires compris. C'est celle à faire avant de changer de téléphone. Pour restaurer, importe le .zip ci-dessus tel quel (ne le décompresse pas).<br>• <b>Dossier d'un locataire (ZIP rangé)</b> : sert à classer dans iCloud Drive, ce n'est pas une sauvegarde.<br>Aucune n'est chiffrée et le .zip contient des papiers personnels : garde-les dans un endroit privé, jamais dans un dossier partagé.</div></div>
   ${biensCard()}${bourseCardSet()}${secCard()}${themeCard()}${confortCard()}${modelesCard()}${archCard()}${demoCard()}${aideCard()}${histCard()}
   <div class="card"><h2>Données</h2><div class="small muted">${live(S.biens).length} bien(s) · ${live(S.journal).length} opération(s) · ${live(S.factures).length} facture(s) · ${live(S.locataires).length} locataire(s)</div>
     ${V.wipe ? `<div class="small">Cette action efface tout ce qui est stocké sur cet appareil.</div><div class="btns"><button class="btn danger" data-act="wipe-yes">Oui, tout effacer</button><button class="btn ghost" data-act="wipe-no">Annuler</button></div>`
@@ -986,7 +987,11 @@ function closeSheet(){ $("#sheetbg").hidden = true; $("#sheet").innerHTML = ""; 
 /* ============ Import ============ */
 async function onFile(file){
   try {
-    if (/\.json$/i.test(file.name)){
+    if (/\.zip$/i.test(file.name)){
+      const fs = zipRead(await file.arrayBuffer()), dj = fs.find(f => f.name === "donnees.json"); if (!dj) throw new Error("ce ZIP n'est pas une sauvegarde complète de l'appli.");
+      const obj = JSON.parse(new TextDecoder().decode(dj.data)); if (!obj || !Array.isArray(obj.journal)) throw new Error("Sauvegarde non reconnue.");
+      V.pending = {kind:"json", name:file.name, data:obj, zip:fs, d:{journal:obj.journal, biens:obj.biens || [], factures:[], locataires:obj.locataires || []}};
+    } else if (/\.json$/i.test(file.name)){
       const obj = JSON.parse(await file.text()); if (!obj || !Array.isArray(obj.journal)) throw new Error("Sauvegarde non reconnue.");
       V.pending = {kind:"json", name:file.name, data:obj, d:{journal:obj.journal, biens:obj.biens || [], factures:[], locataires:obj.locataires || []}};
     } else {
@@ -999,11 +1004,11 @@ async function onFile(file){
 }
 function bkSummary(o){
   const nb = (o.biens || []).filter(b => !b.del).length, nl = (o.locataires || []).filter(x => !x.del).length, no = (o.journal || []).filter(x => !x.del).length;
-  return "Sauvegarde complète : " + nb + " bien(s), " + nl + " locataire(s), " + no + " opération(s), bailleur : " + ((o.cfg && o.cfg.bailleur) || "non renseigné") + "." + (o.demo ? " ⚠ Ce sont des données d'exemple (version d'essai), pas tes vraies données." : "") + (!nb ? " ⚠ Aucun bien dans ce fichier." : "");
+  return (V.pending && V.pending.zip ? "Sauvegarde avec fichiers (" + V.pending.zip.filter(f => /^fichiers\//.test(f.name)).length + " fichier(s)/photo(s)) : " : "Sauvegarde complète : ") + nb + " bien(s), " + nl + " locataire(s), " + no + " opération(s), bailleur : " + ((o.cfg && o.cfg.bailleur) || "non renseigné") + "." + (o.demo ? " ⚠ Ce sont des données d'exemple (version d'essai), pas tes vraies données." : "") + (!nb ? " ⚠ Aucun bien dans ce fichier." : "");
 }
 function commitImport(replace){
   const p = V.pending; if (!p) return;
-  if (p.kind === "json"){ S = Object.assign(emptyData(), p.data); S.demo = false; V.msg = "Sauvegarde restaurée : " + (S.biens || []).filter(b => !b.del).length + " bien(s), " + (S.locataires || []).filter(x => !x.del).length + " locataire(s), bailleur : " + ((S.cfg && S.cfg.bailleur) || "non renseigné") + "."; }
+  if (p.kind === "json"){ S = Object.assign(emptyData(), p.data); S.demo = false; if (p.zip) restoreFull(p.zip).then(n => { toast(n + " fichier(s) et photo(s) restauré(s)"); render(); }).catch(e => toast("Fichiers non restaurés : " + e.message)); V.msg = "Sauvegarde restaurée : " + (S.biens || []).filter(b => !b.del).length + " bien(s), " + (S.locataires || []).filter(x => !x.del).length + " locataire(s), bailleur : " + ((S.cfg && S.cfg.bailleur) || "non renseigné") + "."; }
   else {
     const d = p.d, fromExcel = !!d.biens;
     if (replace || S.demo){ const base = emptyData(); S = base; }
@@ -1133,8 +1138,9 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.9.15";
+const APP_VERSION = "2.9.16";
 const CHANGELOG = [
+  {v:"2.9.16", date:"2026-10-25", titre:"Sauvegarde complète avec fichiers", items:["Nouveau bouton « Sauvegarde complète avec fichiers (.zip) » (Réglages › Synchroniser) : données + photos + documents et pièces des locataires. C'est celle à faire avant de changer de téléphone.","Pour restaurer, importe le .zip tel quel (sans le décompresser) : les données et les fichiers reviennent.","L'ancienne sauvegarde devient « Sauvegarde légère (.json) » : données seulement, sans fichiers.","Une explication dans l'appli dit quelle sauvegarde choisir. Aucune n'est chiffrée : garde-les dans un endroit privé."]},
   {v:"2.9.15", date:"2026-10-25", titre:"Inventaire : fichier recopié en vierge et modèle", items:["Nouvel inventaire ou état des lieux d'entrée : choisis un PDF, un Excel ou un CSV (ancien inventaire…). L'appli recopie la liste en vierge, sans les états, directement dans la liste de l'application.","« Garder comme modèle » (dans un inventaire ou un état des lieux) : ce document devient ton modèle ★. Il est proposé en premier et déjà choisi pour tous les nouveaux documents, même sur un autre bien.","Pour la sortie, rien ne change : elle reprend l'entrée, avec la colonne « à l'entrée »."]},
   {v:"2.9.14", date:"2026-10-25", titre:"Dossier rangé par locataire", items:["Fiche d'un locataire : « Exporter le dossier de ce locataire (ZIP) ». L'appli range tout au même endroit, toujours avec les mêmes noms : Gestion locative / bien / Locataires / nom / Bail, États des lieux, Inventaires, Dossier de candidature, Documents.","Biens › Documents : « Tous les locataires (ZIP rangé) » pour refaire tout le classeur d'un coup.","Les baux, états des lieux et inventaires sont rattachés au locataire en place à leur date.","Limite iPhone : l'appli ne peut pas choisir elle-même un dossier d'iCloud Drive. Tu l'indiques une fois par export (« Enregistrer dans Fichiers »), puis tu décompresses le ZIP."]},
   {v:"2.9.13", date:"2026-10-25", titre:"Clôturer un locataire", items:["Fiche d'un locataire : bouton « Clôturer ce locataire ». Tu indiques la date de départ et les retenues : l'appli calcule le dépôt à rendre, coche les étapes du départ et note le résumé dans la fiche.","Options (cases à cocher) : dépôt déjà rendu, préparer l'opération de remboursement dans le journal (tu valides toi-même), effacer le dossier et les documents du locataire.","Le « Comment ça marche » de Location est refait : il décrit tout le parcours, de l'annonce au départ."]},
@@ -1377,7 +1383,8 @@ const HELP = {
     "Le bouton Exporter produit le bilan d'un mois en Excel ou en PDF."]},
   set:{t:"Réglages", p:"Échange avec Excel, sécurité et confort.", l:[
     "Excel → appli : importe export_appli.xlsx. Appli → Excel : exporte le journal, puis lance l'import dans le classeur.",
-    "La sauvegarde .json n'est pas chiffrée : garde-la hors des dossiers partagés.",
+    "Sauvegarde légère (.json) : tes données, sans photos ni fichiers. Sauvegarde complète avec fichiers (.zip) : tout, y compris pièces d'identité, contrats et photos des locataires ; à faire avant de changer de téléphone, et à restaurer en important le .zip tel quel.",
+    "Aucune sauvegarde n'est chiffrée : garde-les dans un endroit privé, jamais dans un dossier partagé.",
     "Le code et Face ID chiffrent tes données sur le téléphone. Si tu oublies le code, il faut tout effacer puis réimporter depuis Excel.",
     "Bailleur et biens : modifiables ici. Le bailleur est repris sur les quittances et les bilans.",
     "Apparence : 5 palettes, et le mode sombre automatique, fixe ou à horaires.",
@@ -1778,7 +1785,7 @@ function viewWelcome(){
       <div class="row"><div class="main"><div class="t">Tout reste sur ton téléphone</div><div class="s">Aucun envoi sur internet. Tu peux verrouiller l'appli par un code (Réglages).</div></div></div></div></div>
     <div class="btns"><button class="btn" style="flex:1" data-act="wz-go">Créer mon premier bien</button></div>
     <div class="card"><h2>J'ai déjà mon classeur Excel</h2><div class="small muted">Importe le fichier <b>export_appli.xlsx</b> : biens, tarifs, opérations et locataires sont repris.</div>
-      <label class="f">Fichier (export_appli.xlsx ou sauvegarde .json)<input id="file" type="file" accept=".xlsx,.xlsm,.json,.xls"></label></div>
+      <label class="f">Fichier (export_appli.xlsx, sauvegarde .json ou .zip)<input id="file" type="file" accept=".xlsx,.xlsm,.json,.zip,.xls"></label></div>
     <div class="btns"><button class="btn ghost" data-act="wz-demo">Voir avec des données d'exemple</button></div>`;
   if (st === 1) return `<div class="top"><button class="btn ghost sm" data-act="wz-back">‹ Retour</button><button class="q" data-act="help" aria-label="Aide">?</button></div>${dots}
     <div class="card"><h2>Le bailleur</h2><div class="small muted">C'est toi : ce nom et cette adresse apparaissent sur les quittances et les bilans.</div>
@@ -3593,6 +3600,46 @@ document.addEventListener("click", async ev => {
   const b = ev.target.closest("[data-act]"); if (!b) return;
   if (b.dataset.act === "zip-loc"){ const t = S.locataires.find(x => x.id === b.dataset.id); if (t) await exportLocataires([t.id], "Gestion locative - " + cleanName(t.nom)); }
   if (b.dataset.act === "zip-loc-all") await exportLocataires(live(S.locataires).map(x => x.id), "Gestion locative");
+});
+
+
+/* ---------- Sauvegarde complète avec fichiers (ZIP) et restauration ---------- */
+function zipRead(buf){
+  const u = new Uint8Array(buf), dv = new DataView(buf); let e = -1;
+  for (let i = u.length - 22; i >= Math.max(0, u.length - 70000); i--) if (dv.getUint32(i, true) === 0x06054b50){ e = i; break; }
+  if (e < 0) throw new Error("ZIP illisible");
+  const n = dv.getUint16(e + 10, true), dec = new TextDecoder(), out = []; let p = dv.getUint32(e + 16, true);
+  for (let k = 0; k < n; k++){
+    if (dv.getUint32(p, true) !== 0x02014b50) throw new Error("ZIP abîmé");
+    const meth = dv.getUint16(p + 10, true), size = dv.getUint32(p + 24, true), nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true), name = dec.decode(u.subarray(p + 46, p + 46 + nl));
+    p += 46 + nl + el + cl; if (name.endsWith("/")) continue;
+    if (meth !== 0) throw new Error("ZIP recompressé : utilise le ZIP créé par l'appli, tel quel");
+    const s = off + 30 + dv.getUint16(off + 26, true) + dv.getUint16(off + 28, true); out.push({name, data:u.subarray(s, s + size)}); }
+  return out;
+}
+async function exportFullZip(){
+  toast("Préparation de la sauvegarde…");
+  const db = PH.db || await phOpen(), enc = new TextEncoder(), files = [], ents = [];
+  const all = db ? await new Promise(res => { try { const tx = db.transaction("p"), st = tx.objectStore("p"), ks = st.getAllKeys(), vs = st.getAll(); tx.oncomplete = () => res([ks.result, vs.result]); tx.onerror = tx.onabort = () => res([[], []]); } catch(e){ res([[], []]); } }) : [[], []];
+  all[0].forEach((key, n) => { const v = all[1][n]; if (v == null) return;
+    if (v.buf instanceof ArrayBuffer){ const meta = Object.assign({}, v); delete meta.buf; ents.push({n, key, bin:true, meta}); files.push({name:"fichiers/" + n + ".bin", data:new Uint8Array(v.buf)}); }
+    else { ents.push({n, key, bin:false}); files.push({name:"fichiers/" + n + ".json", data:enc.encode(JSON.stringify(v))}); } });
+  files.unshift({name:"manifest.json", data:enc.encode(JSON.stringify({v:1, date:todayIso(), entries:ents}))});
+  files.unshift({name:"donnees.json", data:enc.encode(JSON.stringify(S))});
+  await saveFile("mes-locations-sauvegarde-complete.zip", zipStore(files), "application/zip");
+}
+async function restoreFull(files){
+  const dec = new TextDecoder(), man = files.find(f => f.name === "manifest.json"); if (!man) return 0;
+  const m = JSON.parse(dec.decode(man.data)), by = new Map(files.map(f => [f.name, f.data])), db = PH.db || await phOpen(); if (!db) throw new Error("stockage indisponible"); let n = 0;
+  await new Promise((res, rej) => { const tx = db.transaction("p", "readwrite"), st = tx.objectStore("p");
+    for (const e of m.entries){ if (e.bin){ const d = by.get("fichiers/" + e.n + ".bin"); if (d){ st.put(Object.assign({}, e.meta, {buf:d.slice().buffer}), e.key); n++; } }
+      else { const d = by.get("fichiers/" + e.n + ".json"); if (d){ st.put(JSON.parse(dec.decode(d)), e.key); n++; } } }
+    tx.oncomplete = res; tx.onerror = tx.onabort = () => rej(tx.error || new Error("écriture impossible")); });
+  PH.cache = {}; return n;
+}
+document.addEventListener("click", async ev => {
+  const b = ev.target.closest("[data-act]"); if (!b) return;
+  if (b.dataset.act === "exp-zip"){ if (S.demo) toast("Attention : ce sont des données d'exemple"); try { await exportFullZip(); } catch(e){ toast("Sauvegarde impossible : " + e.message); } }
 });
 
 /* ============ Démarrage ============ */

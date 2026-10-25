@@ -77,13 +77,14 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px s
   const mailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to);
   $("titre").textContent = titre; document.title = "Dossier · " + titre; if (nomQ) $("nom").value = nomQ;
   if (!mailOk) $("top").textContent = "Le lien est incomplet : l'adresse du propriétaire manque. Demande-lui de t'envoyer un nouveau lien.";
+  const NOMS = {id:"Pièce identité", dom:"Justificatif domicile", act:"Contrat de travail", bul:"Bulletin de salaire", imp:"Avis imposition", res:"Autres ressources", gid:"Garant - Pièce identité", gdom:"Garant - Justificatif domicile", gact:"Garant - Contrat de travail", gbul:"Garant - Bulletin de salaire", gimp:"Garant - Avis imposition"};
   const clean = s => String(s || "").replace(/\s*\n+\s*/g, " ").trim();
   const ext = n => { const m = /\.[A-Za-z0-9]{1,5}$/.exec(n || ""); return m ? m[0].toLowerCase() : ".jpg"; };
   $("hg").addEventListener("change", () => { $("gbox").hidden = !$("hg").checked; });
   document.querySelectorAll(".fi").forEach(i => i.addEventListener("change", () => { const n = [...i.files].map(f => f.name); $("fl-" + i.dataset.k).textContent = n.length ? n.length + " fichier(s)" : ""; }));
   function collect(){
     const out = [];
-    document.querySelectorAll(".fi").forEach(i => { const k = i.dataset.k; if (k.charAt(0) === "g" && !$("hg").checked) return; [...i.files].forEach((f, n) => out.push(new File([f], k + "-" + (n + 1) + ext(f.name), {type: f.type || (/\.pdf$/i.test(f.name) ? "application/pdf" : "image/jpeg")}))); });
+    document.querySelectorAll(".fi").forEach(i => { const k = i.dataset.k; if (k.charAt(0) === "g" && !$("hg").checked) return; const L = [...i.files]; L.forEach((f, n) => out.push(new File([f], NOMS[k] + (L.length > 1 ? " " + (n + 1) : "") + ext(f.name), {type: f.type || (/\.pdf$/i.test(f.name) ? "application/pdf" : "image/jpeg")}))); });
     return out;
   }
   function build(files){

@@ -1123,8 +1123,9 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.9.9";
+const APP_VERSION = "2.9.10";
 const CHANGELOG = [
+  {v:"2.9.10", date:"2026-10-25", titre:"Noms de pièces lisibles", items:["Formulaire dossier : les pièces jointes portent leur vrai nom (Pièce identité, Contrat de travail, Bulletin de salaire 1, Avis imposition…).","L'appli range toujours chaque pièce au bon endroit à partir de ce nom."]},
   {v:"2.9.9", date:"2026-10-25", titre:"Le bon courrier au bon moment", items:["« Écrire au candidat » propose directement la suite : si la personne a déjà rempli le 1er formulaire, le courrier contient le lien du dossier complet (2e formulaire).","Le courrier d'invitation à la visite contient aussi le lien du dossier."]},
   {v:"2.9.8", date:"2026-10-25", titre:"Lien du dossier dans la fiche candidat", items:["Dans la fiche d'un candidat : boutons « Copier le lien du dossier » et « Partager » pour envoyer le 2e formulaire (une case par pièce).","Formulaires : le champ date ne dépasse plus de l'écran sur iPhone."]},
   {v:"2.9.7", date:"2026-10-25", titre:"Tablette et grand écran", items:["L'appli s'adapte à la taille de l'écran : plus large sur tablette, Accueil et Bilan en deux colonnes en grand écran, fenêtres centrées."]},
@@ -3357,7 +3358,12 @@ const dosLink = c => candLink(c.bien, "dossier.html", c.nom);
 /* Pièces reçues par le formulaire « dossier » : le nom du fichier commence par le code de la case (id-1.jpg, gbul-2.pdf…) */
 const DOS_CODES = {id:"id", dom:"dom", act:"act", bul:"res", imp:"res", res:"res", gid:"gid", gdom:"gdom", gact:"gact", gbul:"gres", gimp:"gres", gres:"gres"};
 const DOS_LABEL = {id:"Pièce d'identité", dom:"Justificatif de domicile", act:"Contrat de travail / situation pro.", bul:"Bulletin de salaire", imp:"Avis d'imposition", res:"Justificatif de ressources", gid:"Garant : identité", gdom:"Garant : domicile", gact:"Garant : situation pro.", gbul:"Garant : bulletin de salaire", gimp:"Garant : avis d'imposition", gres:"Garant : ressources"};
-const dosCode = nom => { const m = /^(g?(?:id|dom|act|bul|imp|res))-\d+\./i.exec(nom || ""); return m ? m[1].toLowerCase() : ""; };
+const DOS_NOMS = [["gid","garant piece identite"],["gdom","garant justificatif domicile"],["gact","garant contrat de travail"],["gbul","garant bulletin de salaire"],["gimp","garant avis imposition"],["gres","garant autres ressources"],["id","piece identite"],["dom","justificatif domicile"],["act","contrat de travail"],["bul","bulletin de salaire"],["imp","avis imposition"],["res","autres ressources"]];
+const dosCode = nom => {
+  const n = String(nom || "").replace(/\.[A-Za-z0-9]{1,5}$/, "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  const f = DOS_NOMS.find(x => n === x[1] || n.startsWith(x[1] + " ")); if (f) return f[0];
+  const m = /^(g?(?:id|dom|act|bul|imp|res))-\d+\./i.exec(nom || ""); return m ? m[1].toLowerCase() : "";
+};
 function parseCandText(t){
   const nrm = x => x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
   const map = {nom:"nom", telephone:"tel", tel:"tel", "e-mail":"email", email:"email", mail:"email", situation:"contrat", "revenus mensuels nets":"rev", revenus:"rev", occupants:"occ", "emmenagement souhaite":"entree", garant:"garant", "revenus du garant":"grev", "pieces jointes":"pj", message:"message", "ref.":"ref", ref:"ref"};
@@ -3396,7 +3402,7 @@ function candCard(bien){
 
 async function candAttach(c, files){
   let n = 0; c.fichiers = c.fichiers || [];
-  for (const f of files){ const fid = uid(); try { const buf = await f.arrayBuffer(); await flPut(fid, {name:f.name, type:f.type || (/\.pdf$/i.test(f.name) ? "application/pdf" : "application/octet-stream"), buf}); const dc = dosCode(f.name); c.fichiers.push({fid, nom:dc ? DOS_LABEL[dc] + " (" + f.name + ")" : f.name, date:todayIso()}); if (dc){ c.pieces = c.pieces || {}; c.pieces[DOS_CODES[dc]] = c.pieces[DOS_CODES[dc]] || todayIso(); if (/^g/.test(dc) && !c.garant) c.garant = "proche"; } n++; } catch(e){ toast("Fichier non enregistré (" + f.name + ") : " + (e && e.message || "erreur")); } }
+  for (const f of files){ const fid = uid(); try { const buf = await f.arrayBuffer(); await flPut(fid, {name:f.name, type:f.type || (/\.pdf$/i.test(f.name) ? "application/pdf" : "application/octet-stream"), buf}); const dc = dosCode(f.name); c.fichiers.push({fid, nom:dc && /^[a-z]*g?(id|dom|act|bul|imp|res)-\d/i.test(f.name) ? DOS_LABEL[dc] + " (" + f.name + ")" : f.name, date:todayIso()}); if (dc){ c.pieces = c.pieces || {}; c.pieces[DOS_CODES[dc]] = c.pieces[DOS_CODES[dc]] || todayIso(); if (/^g/.test(dc) && !c.garant) c.garant = "proche"; } n++; } catch(e){ toast("Fichier non enregistré (" + f.name + ") : " + (e && e.message || "erreur")); } }
   if (n) c.upd = Date.now(); return n;
 }
 

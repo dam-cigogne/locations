@@ -896,7 +896,7 @@ function sheetLoc(id){
     <div class="grid2"><label class="f">Loyer charges comprises (€)<input id="t-loyer" inputmode="decimal" value="${fmtNum(t.loyer)}"></label><label class="f">Dont charges (€)<input id="t-chg" inputmode="decimal" value="${fmtNum(t.charges || "")}"></label></div>
     <label class="f">Dépôt de garantie (€)<input id="t-depot" inputmode="decimal" value="${fmtNum(t.depot)}"></label>
     <label class="f">Note<input id="t-note" value="${esc(t.note)}"></label>
-    ${id ? `<div class="card" style="padding:12px;gap:6px;background:var(--bg)"><b style="font-size:14px">Le locataire part ?</b><div class="small muted">« Clôturer » enregistre la date de fin, coche les étapes du départ, calcule le dépôt à rendre et, si tu veux, efface son dossier. Rien n'est supprimé sans ton accord.</div><button class="btn ghost sm" data-act="tcl-open" data-id="${id}">Clôturer ce locataire</button></div>` : ""}
+    ${id ? `<div class="card" style="padding:12px;gap:6px;background:var(--bg)"><b style="font-size:14px">Le locataire part ?</b><div class="small muted">« Clôturer » enregistre la date de fin, coche les étapes du départ, calcule le dépôt à rendre et, si tu veux, efface son dossier. Rien n'est supprimé sans ton accord.</div><button class="btn ghost sm" data-act="tcl-open" data-id="${id}">Clôturer ce locataire</button></div><div class="card" style="padding:12px;gap:6px;background:var(--bg)"><b style="font-size:14px">Ranger son dossier dans iCloud Drive</b><div class="small muted">Crée un ZIP déjà rangé : Gestion locative / bien / Locataires / nom / (Bail, États des lieux, Inventaires, Dossier de candidature, Documents). Choisis « Enregistrer dans Fichiers », puis appuie sur le ZIP pour le décompresser. Si le dossier existe déjà, l'iPhone crée une copie « 2 » : remplace l'ancien dossier par le nouveau.</div><button class="btn sm" data-act="zip-loc" data-id="${id}">Exporter le dossier de ce locataire (ZIP)</button></div>` : ""}
     <div class="btns"><button class="btn" data-act="l-save" data-id="${id||""}" style="flex:1">Enregistrer</button>${id ? `<button class="btn danger" data-act="l-del" data-id="${id}">Supprimer</button>` : ""}<button class="btn ghost" data-act="sheetclose">Fermer</button></div>`);
 }
 function sheetRelance(id){
@@ -1133,8 +1133,9 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.9.13";
+const APP_VERSION = "2.9.14";
 const CHANGELOG = [
+  {v:"2.9.14", date:"2026-10-25", titre:"Dossier rangé par locataire", items:["Fiche d'un locataire : « Exporter le dossier de ce locataire (ZIP) ». L'appli range tout au même endroit, toujours avec les mêmes noms : Gestion locative / bien / Locataires / nom / Bail, États des lieux, Inventaires, Dossier de candidature, Documents.","Biens › Documents : « Tous les locataires (ZIP rangé) » pour refaire tout le classeur d'un coup.","Les baux, états des lieux et inventaires sont rattachés au locataire en place à leur date.","Limite iPhone : l'appli ne peut pas choisir elle-même un dossier d'iCloud Drive. Tu l'indiques une fois par export (« Enregistrer dans Fichiers »), puis tu décompresses le ZIP."]},
   {v:"2.9.13", date:"2026-10-25", titre:"Clôturer un locataire", items:["Fiche d'un locataire : bouton « Clôturer ce locataire ». Tu indiques la date de départ et les retenues : l'appli calcule le dépôt à rendre, coche les étapes du départ et note le résumé dans la fiche.","Options (cases à cocher) : dépôt déjà rendu, préparer l'opération de remboursement dans le journal (tu valides toi-même), effacer le dossier et les documents du locataire.","Le « Comment ça marche » de Location est refait : il décrit tout le parcours, de l'annonce au départ."]},
   {v:"2.9.12", date:"2026-10-25", titre:"Documents de chaque locataire", items:["Fiche d'un locataire (aussi les locataires actuels) : bloc « Documents du locataire ». Choisis les fichiers dans Fichiers (iCloud Drive…) avec le type de pièce, puis ouvre-les d'un clic.","Miniatures dans toutes les listes de documents : touche la miniature ou « Ouvrir » pour voir la photo ou le PDF en grand dans l'appli (bouton Partager pour l'enregistrer ou l'envoyer)."]},
   {v:"2.9.11", date:"2026-10-25", titre:"Dossier du locataire", items:["La fiche d'un locataire issu d'une candidature affiche tout son dossier : situation, revenus, occupants, garant, pièces reçues et documents (Ouvrir)."]},
@@ -1326,7 +1327,7 @@ const HELP = {
   "bld-loc":{t:"Biens › Locataires", p:"Une fiche simple par locataire.", l:[
     "Nom, téléphone, bail, loyer et dépôt de garantie. Appeler, SMS ou e-mail en un appui.",
     "Les fiches restent sur ton téléphone (chiffrées si le code est activé) et dans le classeur Excel.",
-    "Dans la fiche : le dossier de candidature, les documents du locataire (miniatures) et « Clôturer ce locataire » pour son départ.",
+    "Dans la fiche : « Exporter le dossier de ce locataire (ZIP) » pour tout ranger dans iCloud Drive (Gestion locative / bien / Locataires / nom), le dossier de candidature, les documents du locataire (miniatures) et « Clôturer ce locataire » pour son départ.",
     "Le nom, l'adresse du bien et le loyer sont repris dans les relances, les quittances et les bilans (Excel et PDF).",
     "« Dont charges » sert à séparer loyer et charges sur la quittance."]},
   "rent":{t:"Location", p:"Du candidat au départ du locataire, sans serveur : tout passe par ton e-mail.", l:[
@@ -1337,7 +1338,8 @@ const HELP = {
     "5. La note compare les revenus au loyer charges comprises (3 fois = vert). Elle est indicative : ne refuse jamais pour un motif discriminatoire.",
     "6. Retenir : crée le locataire du bien, garde son dossier dans sa fiche et prépare l'arrivée (bail, inventaire, état des lieux).",
     "7. Pendant la location : dans la fiche du locataire, « Documents du locataire » : ajoute depuis Fichiers (iCloud Drive…) ses papiers. Miniature ou « Ouvrir » = grand affichage, bouton pour enregistrer ou partager.",
-    "8. Départ : fiche du locataire › « Clôturer ce locataire ». Date de fin, retenues, dépôt à rendre, étapes cochées ; tu choisis d'effacer ou non son dossier. Le suivi détaillé est dans Biens › Arrivée/Départ.",
+    "8. Ranger : dans la fiche du locataire, « Exporter le dossier de ce locataire (ZIP) » donne un dossier toujours rangé pareil, à décompresser dans iCloud Drive.",
+    "9. Départ : fiche du locataire › « Clôturer ce locataire ». Date de fin, retenues, dépôt à rendre, étapes cochées ; tu choisis d'effacer ou non son dossier. Le suivi détaillé est dans Biens › Arrivée/Départ.",
     "Les fiches, pièces et documents restent sur cet appareil et ne sont pas dans la sauvegarde. Efface les dossiers des candidats non retenus."]},
   "bld-mvt":{t:"Biens › Arrivée/Départ", p:"La démarche complète, étape par étape.", l:[
     "Deux listes : le départ (en haut) et l'arrivée. Coche chaque étape quand elle est faite : la date s'inscrit.",
@@ -1345,6 +1347,7 @@ const HELP = {
     "Départ : « Clôturer ce locataire » (fiche du locataire) coche seul les étapes retenues, dépôt restitué et locataire clos.",
     "Ce sont des repères généraux : vérifie les délais et les règles sur service-public.fr avant chaque location."]},
   "bld-docs":{t:"Biens › Documents", p:"Tout ce qu'il faut pour un locataire, sans autre site.", l:[
+    "« Tous les locataires (ZIP rangé) » (en bas de cet écran) crée Gestion locative / bien / Locataires / nom / Bail, États des lieux, Inventaires, Dossier de candidature, Documents. Enregistre-le dans Fichiers puis décompresse-le ; si le dossier existe déjà, remplace-le.",
     "Les papiers personnels d'un locataire (identité, contrat…) se rangent dans sa fiche, pas ici.",
     "Avant de signer, « PDF de relecture » sort le document sans signature pour le relire avec le locataire.",
     "À la création d'un état des lieux ou d'un inventaire, tu peux reprendre la liste d'un autre document pour le préparer à l'avance.",
@@ -2331,7 +2334,9 @@ function viewDocs(){
     <div class="btns"><button class="btn sm ghost" data-act="im-open" data-v="autre">Importer un document</button></div>
     <div class="rows">${fileDocs(id, "autre").map(fileRow).join("") || '<div class="empty">Aucun document.</div>'}</div></div>
   <div class="card"><h2>Ranger dans iCloud Drive ou OneDrive</h2><div class="small muted">Crée un dossier ZIP déjà rangé (Bail, États des lieux, Inventaires, Autres documents, un dossier par bien). Dans la fenêtre de partage, choisis « Enregistrer dans Fichiers » puis ton dossier iCloud Drive ou OneDrive.</div>
-    <div class="btns"><button class="btn sm" data-act="zip-bien">Dossier de ce bien (ZIP)</button><button class="btn sm ghost" data-act="zip-all">Tous les biens (ZIP)</button></div></div>`;
+    <div class="btns"><button class="btn sm" data-act="zip-bien">Dossier de ce bien (ZIP)</button><button class="btn sm ghost" data-act="zip-all">Tous les biens (ZIP)</button></div>
+    <div class="small muted" style="margin-top:6px">Un dossier par locataire, toujours rangé pareil : <b>Gestion locative / bien / Locataires / nom / Bail, États des lieux, Inventaires, Dossier de candidature, Documents</b>. Les documents sont rattachés au locataire en place à leur date.</div>
+    <div class="btns"><button class="btn sm" data-act="zip-loc-all">Tous les locataires (ZIP rangé)</button></div></div>`;
 }
 function dxTop(e, titre){
   return `<div class="btns"><button class="btn ghost sm" data-act="dx-back">‹ Documents</button></div>
@@ -3519,6 +3524,40 @@ document.addEventListener("click", async ev => {
   persist(); closeSheet();
   if (wOp && rest > 0){ V.back = V.tab; V.editId = null; V.draft = newDraft({type:"Dépense", bien:t.bien, cat:"Divers", lib:"Restitution dépôt de garantie - " + t.nom, mont:fmtNum(rest), montAuto:false, note:"Dépôt " + eur(t.depot || 0) + " moins retenues " + eur(ret)}); V.tab = "add"; render(); toast("Vérifie la catégorie puis enregistre"); return; }
   V.tab = "bld"; V.bsel = t.bien; V.bsub = "mvt"; render(); toast("Locataire clôturé : à restituer " + eur(rest));
+});
+
+
+/* ---------- Dossier rangé par locataire (ZIP) : Gestion locative / bien / Locataires / nom / ... ---------- */
+async function locataireFiles(tid){
+  const t = S.locataires.find(x => x.id === tid && !x.del); if (!t) return [];
+  const root = "Gestion locative/" + cleanName(bienName(t.bien)) + "/Locataires/" + cleanName(t.nom), out = [], used = new Set();
+  const mine = d => d.tid ? d.tid === tid : ((tenantFor(t.bien, d.date || todayIso()) || {}).id === tid);
+  const add = (dir, name, data) => { let n = root + "/" + dir + "/" + cleanName(name), i = 2; const k = n.lastIndexOf(".");
+    while (used.has(n)) n = (k < 0 ? n : n.slice(0, k)) + " (" + i++ + ")" + (k < 0 ? "" : n.slice(k)); used.add(n); out.push({name:n, data}); };
+  const addFiles = async (kind, dir) => { for (const d of fileDocs(t.bien, kind).filter(mine)){ const r = await flGet(d.id); if (r) add(dir, d.date + " - " + (d.fname || d.nom), new Uint8Array(r.buf)); } };
+  const enc = new TextEncoder(), fiche = ["FICHE LOCATAIRE", "Nom : " + t.nom, "Bien : " + bienName(t.bien), t.tel ? "Téléphone : " + t.tel : "", t.email ? "E-mail : " + t.email : "", "Début du bail : " + (t.debut ? frDate(t.debut) : ""), "Fin du bail : " + (t.fin ? frDate(t.fin) : ""), "Loyer charges comprises : " + eur(t.loyer || 0), "Dont charges : " + eur(t.charges || 0), "Dépôt de garantie : " + eur(t.depot || 0), t.note ? "Note : " + t.note : ""].filter(Boolean).join("\n");
+  add("00 Fiche", "Fiche locataire.txt", enc.encode(fiche));
+  await addFiles("bail", "01 Bail");
+  for (const e of docList("edl").filter(x => x.bien === t.bien && !x.del && mine(x))){ if (e.fichier && !e.pieces.some(p => p.items.some(i => i.etat || i.com || (i.ph || []).length))) continue;
+    add("02 États des lieux", e.date + " - État des lieux " + (e.type === "sortie" ? "sortie" : "entrée") + (e.sig ? " (signé)" : "") + ".pdf", await edlPdf(e)); }
+  await addFiles("edl", "02 États des lieux");
+  for (const e of docList("inv").filter(x => x.bien === t.bien && !x.del && mine(x))){ if (e.fichier && !e.items.some(i => i.etat || i.com)) continue;
+    add("03 Inventaires", e.date + " - Inventaire " + (e.type === "sortie" ? "sortie" : "entrée") + (e.sig ? " (signé)" : "") + ".pdf", invPdf(e)); }
+  await addFiles("inv", "03 Inventaires");
+  const c = candList().find(x => !x.del && x.loc === tid);
+  if (c) for (const f of (c.fichiers || [])){ const r = await flGet(f.fid); if (r) add("04 Dossier de candidature", f.nom, new Uint8Array(r.buf)); }
+  for (const d of docList("docs").filter(x => x.kind === "loc" && x.loc === tid && !x.del)){ const r = await flGet(d.id); if (r) add("05 Documents du locataire", (d.ptype ? d.ptype + " - " : "") + (d.fname || d.nom), new Uint8Array(r.buf)); }
+  return out;
+}
+async function exportLocataires(ids, nom){
+  toast("Préparation du dossier…"); let files = []; for (const id of ids) files = files.concat(await locataireFiles(id));
+  if (files.length <= ids.length) return toast("Rien à ranger pour l'instant");
+  await saveFile(nom + ".zip", zipStore(files), "application/zip");
+}
+document.addEventListener("click", async ev => {
+  const b = ev.target.closest("[data-act]"); if (!b) return;
+  if (b.dataset.act === "zip-loc"){ const t = S.locataires.find(x => x.id === b.dataset.id); if (t) await exportLocataires([t.id], "Gestion locative - " + cleanName(t.nom)); }
+  if (b.dataset.act === "zip-loc-all") await exportLocataires(live(S.locataires).map(x => x.id), "Gestion locative");
 });
 
 /* ============ Démarrage ============ */

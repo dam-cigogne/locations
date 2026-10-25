@@ -880,6 +880,7 @@ function sheetFacture(id){
 function sheetLoc(id){
   const t = id ? S.locataires.find(x => x.id === id) : {bien:V.bsel || bienIds()[0] || "",nom:"",tel:"",email:"",debut:"",fin:"",loyer:"",depot:"",note:""};
   openSheet(`<h2>${id ? "Modifier le locataire" : "Nouveau locataire"}</h2>
+    ${id && typeof tenantDossier === "function" ? tenantDossier(id) : ""}
     <label class="f">Bien<select id="t-bien">${bienIds().map(b => `<option value="${esc(b)}" ${b===t.bien?"selected":""}>${esc(bienName(b))}</option>`).join("")}</select></label>
     <label class="f">Nom<input id="t-nom" value="${esc(t.nom)}"></label>
     <div class="grid2"><label class="f">Téléphone<input id="t-tel" type="tel" value="${esc(t.tel)}"></label><label class="f">E-mail<input id="t-mail" type="email" autocapitalize="none" value="${esc(t.email)}"></label></div>
@@ -1123,8 +1124,9 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.9.10";
+const APP_VERSION = "2.9.11";
 const CHANGELOG = [
+  {v:"2.9.11", date:"2026-10-25", titre:"Dossier du locataire", items:["La fiche d'un locataire issu d'une candidature affiche tout son dossier : situation, revenus, occupants, garant, pièces reçues et documents (Ouvrir)."]},
   {v:"2.9.10", date:"2026-10-25", titre:"Noms de pièces lisibles", items:["Formulaire dossier : les pièces jointes portent leur vrai nom (Pièce identité, Contrat de travail, Bulletin de salaire 1, Avis imposition…).","L'appli range toujours chaque pièce au bon endroit à partir de ce nom."]},
   {v:"2.9.9", date:"2026-10-25", titre:"Le bon courrier au bon moment", items:["« Écrire au candidat » propose directement la suite : si la personne a déjà rempli le 1er formulaire, le courrier contient le lien du dossier complet (2e formulaire).","Le courrier d'invitation à la visite contient aussi le lien du dossier."]},
   {v:"2.9.8", date:"2026-10-25", titre:"Lien du dossier dans la fiche candidat", items:["Dans la fiche d'un candidat : boutons « Copier le lien du dossier » et « Partager » pour envoyer le 2e formulaire (une case par pièce).","Formulaires : le champ date ne dépasse plus de l'écran sur iPhone."]},
@@ -3285,7 +3287,7 @@ document.addEventListener("click", async ev => {
       const an = annOf(c.bien); an.statut = "louee"; an.upd = Date.now(); S.annonces = S.annonces || {}; S.annonces[c.bien] = an;
       const r = mvtRec(c.bien, "arr"); r.done.dos = r.done.dos || todayIso(); r.upd = Date.now();
       persist(); closeSheet(); V.tab = "bld"; V.bsel = c.bien; V.bsub = "mvt"; render(); toast("Locataire créé : prépare maintenant l'arrivée"); break; }
-    case "cd-del": openSheet(`<h2>Supprimer ce candidat ?</h2><p style="margin:0">La fiche et les pièces jointes sont effacées définitivement de cet appareil.</p><div class="btns"><button class="btn danger" data-act="cd-del-ok" data-id="${id}">Supprimer</button><button class="btn ghost" data-act="cd-open" data-id="${id}">Annuler</button></div>`); break;
+    case "cd-del": openSheet(`<h2>Supprimer ce candidat ?</h2><p style="margin:0">La fiche et les pièces jointes sont effacées définitivement de cet appareil.${(candGet(id) || {}).statut === "ret" ? " Attention : ce candidat est devenu locataire, son dossier ne sera plus consultable dans sa fiche." : ""}</p><div class="btns"><button class="btn danger" data-act="cd-del-ok" data-id="${id}">Supprimer</button><button class="btn ghost" data-act="cd-open" data-id="${id}">Annuler</button></div>`); break;
     case "cd-del-ok": { await cdErase(id); persist(); closeSheet(); render(); break; }
     case "cd-purge": { const n = candList().filter(c => c.statut === "ref" && !c.del).length; openSheet(`<h2>Effacer les dossiers refusés ?</h2><p style="margin:0">${n} fiche(s) et leurs pièces jointes seront effacées définitivement de cet appareil.</p><div class="btns"><button class="btn danger" data-act="cd-purge-ok">Effacer</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`); break; }
     case "cd-purge-ok": { for (const c of candList().filter(c => c.statut === "ref" && !c.del)) await cdErase(c.id); persist(); closeSheet(); render(); break; }
@@ -3404,6 +3406,20 @@ async function candAttach(c, files){
   let n = 0; c.fichiers = c.fichiers || [];
   for (const f of files){ const fid = uid(); try { const buf = await f.arrayBuffer(); await flPut(fid, {name:f.name, type:f.type || (/\.pdf$/i.test(f.name) ? "application/pdf" : "application/octet-stream"), buf}); const dc = dosCode(f.name); c.fichiers.push({fid, nom:dc && /^[a-z]*g?(id|dom|act|bul|imp|res)-\d/i.test(f.name) ? DOS_LABEL[dc] + " (" + f.name + ")" : f.name, date:todayIso()}); if (dc){ c.pieces = c.pieces || {}; c.pieces[DOS_CODES[dc]] = c.pieces[DOS_CODES[dc]] || todayIso(); if (/^g/.test(dc) && !c.garant) c.garant = "proche"; } n++; } catch(e){ toast("Fichier non enregistré (" + f.name + ") : " + (e && e.message || "erreur")); } }
   if (n) c.upd = Date.now(); return n;
+}
+
+/* ---------- Dossier du locataire (repris de sa candidature) ---------- */
+function tenantDossier(tid){
+  const c = candList().find(x => !x.del && x.loc === tid); if (!c) return "";
+  const g = (CAND_GARANT.find(x => x[0] === (c.garant || "")) || [0, ""])[1], row = (l, v) => v ? `<div class="kv"><span>${esc(l)}</span><b>${esc(String(v))}</b></div>` : "";
+  const pcs = CAND_PIECES.filter(p => c.pieces && c.pieces[p[0]]).map(p => `<div class="small">✓ ${esc(p[1])} · reçu le ${frDate(c.pieces[p[0]])}</div>`).join("");
+  const fl = (c.fichiers || []).map(f => `<div class="row"><div class="main"><div class="t" style="font-size:13.5px">${esc(f.nom)}</div><div class="s">${frDate(f.date)}</div></div><button class="mini" data-act="cf-open" data-id="${c.id}" data-fid="${f.fid}">Ouvrir</button></div>`).join("");
+  return `<details open class="card" style="padding:12px;gap:6px;background:var(--bg)"><summary style="font-weight:700;font-size:15px;cursor:pointer">Dossier de candidature · ${(c.fichiers || []).length} document(s)</summary>
+    ${row("Demande du", c.dateDem ? frDate(c.dateDem) : "")}${row("Situation", c.contrat)}${row("Revenus nets / mois", c.rev ? eur(c.rev) : "")}${row("Occupants", c.occ)}${row("Emménagement souhaité", c.entree ? frDate(c.entree) : "")}${row("Garant", g && c.garant ? g : "")}${row("Revenus du garant", c.grev ? eur(c.grev) : "")}${row("Visite", c.visite ? fmtVisite(c.visite) : "")}
+    ${c.note ? `<div class="small muted" style="white-space:pre-wrap">${esc(c.note)}</div>` : ""}
+    <div class="small muted" style="margin-top:4px">Pièces reçues</div>${pcs || '<div class="small muted">Aucune pièce cochée</div>'}
+    <div class="small muted" style="margin-top:4px">Documents (restent sur cet appareil, non inclus dans la sauvegarde)</div><div class="rows">${fl || '<div class="small muted">Aucun document</div>'}</div>
+    <div class="btns"><button class="btn sm ghost" data-act="cd-open" data-id="${c.id}">Ouvrir la fiche candidat</button></div></details>`;
 }
 
 /* ============ Démarrage ============ */

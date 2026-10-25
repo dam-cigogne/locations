@@ -917,7 +917,7 @@ function viewBilan(){
   return topbar("Bilan", yearNav()) + `
   <div class="card hero"><div class="lbl">Cash flow ${y} (2 biens)</div><div class="big num">${eur(st.cf)}</div>
     <div class="sub">Loyers ${eur(st.rec)} − charges ${eur(st.dep)}. Encaissé à ce jour : ${eur(st.benef)}.</div></div>
-  <div class="btns"><button class="btn ghost sm" data-act="export-open">Exporter un mois (Excel / PDF)</button></div>
+  <div class="btns"><button class="btn ghost sm" data-act="export-open">Exporter un mois ou une année (Excel / PDF)</button></div>
   <div class="card"><h2>Par bien</h2>${ids.map(id => { const s = stats(id, y); return `<div class="env" style="padding:6px 0"><div class="top"><b>${esc(bienName(id))}</b><span class="num ${signCl(s.cf)}">${eur(s.cf)}</span></div>
     <div class="small muted">Loyers ${eur(s.rec)} · charges ${eur(s.dep)} · solde fin d'année ${eur(soldeBien(id, y))}</div></div>`; }).join("")}
     ${kv("Argent mis en épargne cette année (net)", eur(st.ep), "muted")}</div>
@@ -1148,8 +1148,9 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.9.20";
+const APP_VERSION = "2.9.21";
 const CHANGELOG = [
+  {v:"2.9.21", date:"2026-10-26", titre:"Bilan de l'année", items:["Bilan › Exporter : tu peux maintenant choisir « Année complète » en plus d'un mois, en Excel ou en PDF.","Le bilan annuel contient : le résultat par bien, le détail mois par mois, les totaux par catégorie (loyers, travaux, assurance, crédit…) et la liste de toutes les opérations de l'année.","Pratique pour préparer la compta de fin d'année ou comparer deux années. Rien n'est modifié dans tes données."]},
   {v:"2.9.20", date:"2026-10-26", titre:"Annonce : mise en page du PDF", items:["Le texte de ton annonce tient maintenant sur la 1re page : la photo principale s'adapte à la place restante au lieu de pousser le texte sur une page presque vide.","Les autres photos sont rangées en grille régulière (cases de même taille, photo entière centrée), à la suite du texte, au lieu de tailles différentes sur une page à part.","Les champs vides (surface, DPE) ne s'affichent plus avec un tiret : seuls les renseignements remplis apparaissent. Pour les afficher, remplis-les dans Annonce › Modifier."]},
   {v:"2.9.19", date:"2026-10-25", titre:"Annonce : ton texte bien placé", items:["Quand tu écris ton propre texte d'annonce, le PDF le place tel quel sous la photo, comme corps de l'annonce. Les blocs automatiques « Conditions » et « Pour candidater » ne sont plus ajoutés (ton texte les contient déjà). Le bandeau prix et les infos clés (surface, DPE) restent en haut.","Annonce › Mon texte : nouveau champ pour importer ton texte depuis un fichier Word (.docx) ou texte (.txt), sans copier-coller.","Réglages : chaque bouton d'export est expliqué (journal Excel, sauvegarde légère, sauvegarde complète avec fichiers)."]},
   {v:"2.9.18", date:"2026-10-25", titre:"Restaurer plus facilement", items:["Réglages › Synchroniser › « Importer un fichier » accepte maintenant tout fichier : sauvegarde .zip ou .json, Excel, et aussi un dossier rangé (« ZIP rangé » d'un locataire).","Le fichier est reconnu à son contenu, pas seulement à son nom. Un message te dit si la lecture a échoué et pourquoi, et l'écran défile jusqu'au bouton de validation.","Dossier rangé importé : les fichiers retournent dans la fiche du locataire du même nom (documents, candidature, bail, états des lieux, inventaires, pièces du bail).","Où restaurer : Réglages › Synchroniser avec Excel › Importer un fichier.","Les cartes « Ranger dans iCloud Drive » (Biens › Documents) et « Exporter le dossier de ce locataire » sont retirées : la sauvegarde complète avec fichiers suffit pour tout garder et tout restaurer."]},
@@ -1324,7 +1325,7 @@ const HELP = {
     "Touche le rond d'une ligne pour la pointer quand tu la vois passer sur le relevé de banque.",
     "« À pointer » regroupe tout ce qui est passé mais pas encore vérifié. « À saisir en compta » : dépenses payées, pas encore saisies sur jedeclaremonmeuble.",
     "Rechercher : un mot, un montant, une date ou un mois, dans tout le journal.",
-    "Exporter : le bilan du mois en Excel ou en PDF.",
+    "Exporter : le bilan d'un mois ou d'une année complète, en Excel ou en PDF.",
     "Clôturer le mois : tu saisis le solde réel du relevé, l'appli crée l'ajustement si besoin et te propose ce que tu peux mettre de côté.",
     "Les lignes prévues sont archivées 30 jours après pointage (elles restent comptées partout). Le lien « archivées » les montre."]},
   "bld-loyers":{t:"Biens › Loyers", p:"Les loyers du bien choisi, mois par mois.", l:[
@@ -1392,7 +1393,7 @@ const HELP = {
     "Le cash flow = loyers − charges (encaissé + prévu).",
     "« Par bien » compare le Studio et le T2. « Mois par mois » : bleu = loyers, orange = charges.",
     "« Toutes les années » : résultats, soldes et bourse versée cumulée.",
-    "Le bouton Exporter produit le bilan d'un mois en Excel ou en PDF."]},
+    "Le bouton Exporter produit le bilan d'un mois ou de l'année complète (par bien, mois par mois, par catégorie, toutes les opérations), en Excel ou en PDF."]},
   set:{t:"Réglages", p:"Échange avec Excel, sécurité et confort.", l:[
     "Excel → appli : importe export_appli.xlsx. Appli → Excel : exporte le journal, puis lance l'import dans le classeur.",
     "Sauvegarde légère (.json) : tes données, sans photos ni fichiers. Sauvegarde complète avec fichiers (.zip) : tout, y compris pièces d'identité, contrats et photos des locataires ; à faire avant de changer de téléphone, et à restaurer en important le .zip tel quel.",
@@ -1637,11 +1638,65 @@ function bilanPdf(y, m){
   if (!B.L.length) d.text(M, d.y, "Aucune opération ce mois-ci.", {size:10, color:"#5C6B66"});
   return d.finish("Bilan " + MOIS[m].toLowerCase() + " " + y);
 }
+/* ---------- Bilan d'une année : données, Excel, PDF ---------- */
+function yearBilan(y){
+  const ids = bienIds(), L = J().filter(j => yr(j) === y).sort((a, b) => a.date.localeCompare(b.date)), S0 = (y - 1) + "-12-31", S1 = y + "-12-31";
+  const sm = (l, t, pt) => r2(sum(l.filter(j => (t === "R" ? j.type === "Recette" : j.type === "Dépense") && (!pt || j.pointe === "x")).map(j => j.montant)));
+  const per = ids.map(id => { const l = L.filter(j => j.bien === id), rec = sm(l, "R"), dep = sm(l, "D"); return {id, rec, dep, res:r2(rec - dep), recP:sm(l, "R", 1), depP:sm(l, "D", 1), debut:soldeAt(id, S0), fin:soldeAt(id, S1)}; });
+  const mois = MOIS.map((nom, m) => { const l = L.filter(j => mo(j) === m); return {nom, par:ids.map(id => { const x = l.filter(j => j.bien === id), r = sm(x, "R"), d = sm(x, "D"); return {rec:r, dep:d, res:r2(r - d)}; }), rec:sm(l, "R"), dep:sm(l, "D"), res:r2(sm(l, "R") - sm(l, "D"))}; });
+  const cats = []; for (const id of ids) for (const t of ["Recette", "Dépense"]){ const g = {}; L.filter(j => j.bien === id && j.type === t).forEach(j => { const c = j.cat || "Sans catégorie"; (g[c] = g[c] || {t:0, n:0}); g[c].t += j.montant; g[c].n++; });
+    Object.keys(g).sort((a, b) => g[b].t - g[a].t).forEach(c => cats.push([bienName(id), t, c, r2(g[c].t), g[c].n])); }
+  const tot = {rec:r2(sum(per.map(p => p.rec))), dep:r2(sum(per.map(p => p.dep)))};
+  return {y, L, ids, per, mois, cats, tot, bailleur:(S.cfg && S.cfg.bailleur) || "", badr:(S.cfg && S.cfg.bailleurAdr) || ""};
+}
+function bilanAnXlsx(y){
+  const B = yearBilan(y), wb = XLSX.utils.book_new(), dt = iso => isoToSerial(iso), money = "#,##0.00 \"€\"";
+  const add = (name, aoa, widths, fmt) => { const ws = XLSX.utils.aoa_to_sheet(aoa); ws["!cols"] = widths.map(w => ({wch:w}));
+    for (const k of Object.keys(ws)){ if (k[0] === "!") continue; const c = ws[k]; if (c.t === "n" && fmt && fmt(k, c)) c.z = fmt(k, c); } XLSX.utils.book_append_sheet(wb, ws, name); };
+  add("Bilan annuel", [["Bilan de l'année " + y], [B.bailleur ? "Bailleur : " + B.bailleur + (B.badr ? " · " + B.badr : "") : ""], ["Bien", "Recettes prévues", "Dépenses prévues", "Résultat", "Recettes encaissées", "Dépenses payées", "Solde début d'année", "Solde fin d'année"]]
+    .concat(B.per.map(p => [bienName(p.id), p.rec, p.dep, p.res, p.recP, p.depP, p.debut, p.fin])).concat([["Total", B.tot.rec, B.tot.dep, r2(B.tot.rec - B.tot.dep), r2(sum(B.per.map(p => p.recP))), r2(sum(B.per.map(p => p.depP))), r2(sum(B.per.map(p => p.debut))), r2(sum(B.per.map(p => p.fin)))]]),
+    [22, 16, 16, 14, 18, 16, 18, 18], (k, c) => /^[B-H]/.test(k) && +k.slice(1) > 3 ? money : null);
+  const head = ["Mois"]; B.ids.forEach(id => head.push(bienName(id) + " recettes", bienName(id) + " dépenses", bienName(id) + " résultat")); head.push("Total recettes", "Total dépenses", "Total résultat");
+  add("Mois par mois", [["Mois par mois en " + y], [], head].concat(B.mois.map(m => { const r = [m.nom]; m.par.forEach(p => r.push(p.rec, p.dep, p.res)); r.push(m.rec, m.dep, m.res); return r; }))
+    .concat([["Total année"].concat(...B.per.map(p => [p.rec, p.dep, p.res]), [B.tot.rec, B.tot.dep, r2(B.tot.rec - B.tot.dep)])]), head.map((_, i) => i ? 16 : 14), (k, c) => k[0] !== "A" && +k.slice(1) > 3 ? money : null);
+  add("Par catégorie", [["Totaux par bien et par catégorie en " + y], [], ["Bien", "Type", "Catégorie", "Total", "Nombre de lignes"]].concat(B.cats), [22, 12, 30, 16, 16], (k, c) => k[0] === "D" && +k.slice(1) > 3 ? money : null);
+  add("Opérations", [["Date", "Bien", "Type", "Catégorie", "Libellé", "Montant", "Compte", "Pointé", "Saisi compta", "Fournisseur / n° facture", "Note"]].concat(B.L.map(j => [dt(j.date), bienName(j.bien), j.type, j.cat, j.lib, j.montant, j.compte || "Bien", j.pointe === "x" ? "x" : "", j.compta ? "x" : "", j.fourn, j.note])),
+    [12, 16, 11, 26, 34, 14, 10, 8, 12, 24, 30], (k, c) => k[0] === "A" && +k.slice(1) > 1 ? "dd/mm/yyyy" : (k[0] === "F" && +k.slice(1) > 1 ? money : null));
+  return XLSX.write(wb, {type:"array", bookType:"xlsx", compression:true});
+}
+function bilanAnPdf(y){
+  const B = yearBilan(y), d = new PdfDoc("Bilan"), M = d.M, R = d.W - M, X = [285, 365, 445, R];
+  d.text(M, d.y, "Bilan de l'année " + y, {size:20, bold:true}); d.y -= 26;
+  d.text(M, d.y, "Du 01/01/" + y + " au 31/12/" + y, {size:10, color:"#5C6B66"}); d.y -= 13;
+  if (B.bailleur) d.para("Bailleur : " + B.bailleur + (B.badr ? " - " + B.badr : ""), 10, 13);
+  d.h("Par bien");
+  ["Bien", "Recettes", "Dépenses", "Résultat", "Solde fin d'année"].forEach((t, i) => d.text(i ? X[i - 1] : M, d.y, t, {size:9, bold:true, right:i > 0, color:"#5C6B66"})); d.y -= 6; d.line(M, d.y, R, d.y); d.y -= 15;
+  for (const p of B.per){ d.pill(M, d.y, bienName(p.id), BIEN_COL[p.id] || "#0E6B5C"); [p.rec, p.dep, p.res, p.fin].forEach((v, i) => d.text(X[i], d.y, eur(v), {size:10, right:true, bold:i === 2})); d.y -= 20; }
+  d.line(M, d.y + 8, R, d.y + 8); d.text(M, d.y - 4, "Total", {size:10, bold:true}); [B.tot.rec, B.tot.dep, r2(B.tot.rec - B.tot.dep), r2(sum(B.per.map(p => p.fin)))].forEach((v, i) => d.text(X[i], d.y - 4, eur(v), {size:10, right:true, bold:true})); d.y -= 22;
+  d.para("Les montants comptent les lignes prévues et pointées de l'année (crédit compris) ; le solde ne compte que ce qui est passé sur le compte.", 8.5, 12);
+  d.h("Mois par mois");
+  ["Mois", "Recettes", "Dépenses", "Résultat"].forEach((t, i) => d.text(i ? X[i - 1] : M, d.y, t, {size:9, bold:true, right:i > 0, color:"#5C6B66"})); d.y -= 6; d.line(M, d.y, R, d.y); d.y -= 15;
+  for (const m of B.mois){ d.need(16); d.text(M, d.y, m.nom, {size:10}); [m.rec, m.dep, m.res].forEach((v, i) => d.text(X[i], d.y, eur(v), {size:10, right:true, bold:i === 2})); d.y -= 15; }
+  d.line(M, d.y + 8, R, d.y + 8); d.text(M, d.y - 4, "Année", {size:10, bold:true}); [B.tot.rec, B.tot.dep, r2(B.tot.rec - B.tot.dep)].forEach((v, i) => d.text(X[i], d.y - 4, eur(v), {size:10, right:true, bold:true})); d.y -= 22;
+  d.h("Par catégorie");
+  let last = ""; for (const c of B.cats){ const k = c[0] + c[1]; if (k !== last){ d.need(34); d.y -= 4; d.pill(M, d.y, c[0].slice(0, 18), BIEN_COL[B.ids.find(i => bienName(i) === c[0])] || "#0E6B5C"); d.text(M + 120, d.y, c[1] === "Recette" ? "Recettes" : "Dépenses", {size:9.5, bold:true, color:"#5C6B66"}); d.y -= 16; last = k; }
+    d.need(15); d.text(M + 8, d.y, (c[2] || "").slice(0, 50) + (c[4] > 1 ? " (" + c[4] + ")" : ""), {size:9.5}); d.text(R, d.y, eur(c[3]), {size:9.5, right:true}); d.y -= 14; }
+  d.h("Opérations (" + B.L.length + ")");
+  const head = () => { ["Date", "Bien", "Catégorie · libellé"].forEach((t, i) => d.text([M, M + 58, M + 118][i], d.y, t, {size:9, bold:true, color:"#5C6B66"})); d.text(R - 40, d.y, "Montant", {size:9, bold:true, right:true, color:"#5C6B66"}); d.text(R, d.y, "Pointé", {size:9, bold:true, right:true, color:"#5C6B66"}); d.y -= 5; d.line(M, d.y, R, d.y); d.y -= 14; };
+  head();
+  for (const j of B.L){ if (d.y < 78){ d.newPage(); head(); }
+    d.text(M, d.y, frDate(j.date), {size:9}); d.pill(M + 58, d.y, String(j.bien).slice(0, 7), BIEN_COL[j.bien] || "#0E6B5C");
+    const lib = ((j.cat || "") + (j.lib && j.lib !== j.cat ? " · " + j.lib : "")).slice(0, 46); d.text(M + 118, d.y, lib, {size:9});
+    d.text(R - 40, d.y, (isIn(j) ? "+ " : "- ") + eur(j.montant), {size:9, right:true, color:isIn(j) ? "#1E7F4F" : "#1B2430"}); d.text(R, d.y, j.pointe === "x" ? "oui" : "", {size:9, right:true, color:"#5C6B66"}); d.y -= 15; }
+  if (!B.L.length) d.text(M, d.y, "Aucune opération cette année.", {size:10, color:"#5C6B66"});
+  return d.finish("Bilan " + y);
+}
 function sheetExport(){
   const set = new Set(J().map(j => j.date.slice(0, 7))); set.add(V.y + "-" + pad(V.m + 1)); const sel = V.y + "-" + pad(V.m + 1);
   const list = [...set].sort().reverse().slice(0, 48);
-  openSheet(`<h2>Exporter le bilan d'un mois</h2><label class="f">Mois<select id="ex-m">${list.map(k => `<option value="${k}" ${k === sel ? "selected" : ""}>${MOIS[+k.slice(5) - 1]} ${k.slice(0, 4)}</option>`).join("")}</select></label>
-    <div class="small muted">Excel : 3 feuilles (Bilan, Fixes, Opérations). PDF : un vrai fichier de plusieurs pages. Ensuite, choisis « Enregistrer dans Fichiers ».</div>
+  const yrs = [...new Set(J().map(j => j.date.slice(0, 4)).concat([String(V.y)]))].sort().reverse();
+  openSheet(`<h2>Exporter un bilan</h2><label class="f">Période<select id="ex-m"><optgroup label="Année complète">${yrs.map(y => `<option value="A${y}">Année ${y}</option>`).join("")}</optgroup><optgroup label="Un mois">${list.map(k => `<option value="${k}" ${k === sel ? "selected" : ""}>${MOIS[+k.slice(5) - 1]} ${k.slice(0, 4)}</option>`).join("")}</optgroup></select></label>
+    <div class="small muted"><b>Un mois</b> : Excel en 3 feuilles (Bilan, Fixes, Opérations) ; PDF de plusieurs pages.<br><b>Année complète</b> : Excel en 4 feuilles (Bilan annuel, Mois par mois, Par catégorie, Opérations) ; PDF avec le bilan par bien, les 12 mois, les totaux par catégorie et toutes les opérations. Pratique pour la compta de fin d'année.<br>Ensuite, choisis « Enregistrer dans Fichiers ».</div>
     <div class="btns"><button class="btn" data-act="ex-xlsx" style="flex:1">Excel (.xlsx)</button><button class="btn" data-act="ex-pdf" style="flex:1">PDF</button></div><div class="btns"><button class="btn ghost" data-act="sheetclose">Fermer</button></div>`);
 }
 
@@ -1733,7 +1788,9 @@ document.addEventListener("click", ev => {
     case "clot-do": clotureDo(); break;
     case "clot-undo": { const c = (S.clotures || []).find(x => x.id === id); if (!c) break; const t = Date.now(); S.journal.forEach(j => { if (c.ids.includes(j.id)){ j.del = true; j.upd = t; } }); S.clotures = S.clotures.filter(x => x.id !== id); persist(); closeSheet(); toast("Clôture annulée"); render(); break; }
     case "export-open": sheetExport(); break;
-    case "ex-xlsx": case "ex-pdf": { const k = $("#ex-m").value, y = +k.slice(0, 4), m = +k.slice(5) - 1, nm = "bilan-" + k;
+    case "ex-xlsx": case "ex-pdf": { const k = $("#ex-m").value;
+      if (k[0] === "A"){ const y = +k.slice(1), nm = "bilan-annee-" + y; if (a === "ex-xlsx") saveFile(nm + ".xlsx", bilanAnXlsx(y), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"); else saveFile(nm + ".pdf", bilanAnPdf(y), "application/pdf"); break; }
+      const y = +k.slice(0, 4), m = +k.slice(5) - 1, nm = "bilan-" + k;
       if (a === "ex-xlsx") saveFile(nm + ".xlsx", bilanXlsx(y, m), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       else saveFile(nm + ".pdf", bilanPdf(y, m), "application/pdf"); break; }
     case "quit": sheetQuittance(id); break;

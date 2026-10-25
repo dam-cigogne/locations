@@ -1109,8 +1109,10 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.9.1";
+const APP_VERSION = "2.9.2";
 const CHANGELOG = [
+  {v:"2.9.2", date:"2026-10-25", titre:"Inventaire par pièce", items:[
+    "L'inventaire du mobilier est regroupé par pièce (Chambre, Séjour, Cuisine…) : touche une pièce pour déplier ses articles, avec le nombre d'articles renseignés. Un bouton « Tout déplier / Tout replier » est en haut."]},
   {v:"2.9.1", date:"2026-10-25", titre:"PDF de l'annonce avec photos", items:[
     "Onglet Location › Annonce : ajoute jusqu'à 12 photos (la première sert de couverture) et crée un PDF d'annonce propre, prêt à envoyer par Mail ou Messages.",
     "Le PDF contient le prix, la surface, la disponibilité, le DPE en couleur, la description, les conditions, comment candidater et la galerie de photos. Les photos restent sur ton téléphone, hors sauvegarde JSON."]},
@@ -2313,11 +2315,14 @@ function viewEdl(e){
 }
 function viewInv(e){
   const sortie = e.type === "sortie", groups = [...new Set(e.items.map(i => i.grp || "Autres"))];
-  const body = groups.map(g => `<div class="card" style="padding:12px 16px"><h2>${esc(g)}</h2>${e.items.filter(i => (i.grp || "Autres") === g).map(it => `<div style="padding:8px 0;border-top:1px solid var(--line)">
+  const open = V.doc.open = V.doc.open || {}; if (groups.length && !Object.keys(open).some(k => k.startsWith("g:"))) open["g:" + groups[0]] = 1; const nOpen = groups.filter(g => open["g:" + g]).length;
+  const body = `<div class="btns" style="margin:0 0 8px"><button class="btn sm ghost" data-act="dx-all" data-v="${nOpen === groups.length ? "0" : "1"}">${nOpen === groups.length ? "Tout replier" : "Tout déplier"}</button></div>` + groups.map(g => { const its = e.items.filter(i => (i.grp || "Autres") === g), done = its.filter(i => i.etat).length, isOpen = !!open["g:" + g];
+    const rows = !isOpen ? "" : its.map(it => `<div style="padding:8px 0;border-top:1px solid var(--line)">
       <div class="top"><b style="font-size:14px">${esc(it.nom)}</b><button class="mini" data-act="inv-delitem" data-i="${it.id}" aria-label="Supprimer">×</button></div>
       ${sortie && (it.e0 || it.q0) ? `<div class="small muted">À l'entrée : ${esc(it.q0 || "1")} · ${esc(it.e0 || "état non noté")}${it.c0 ? " · " + esc(it.c0) : ""}</div>` : ""}
       <div class="dxi" style="display:grid;grid-template-columns:70px 1fr;gap:8px"><input data-dx="qte" data-i="${it.id}" inputmode="numeric" value="${esc(it.qte || "")}" aria-label="Quantité">${etatSel(it.etat, `data-dx="etat" data-i="${it.id}"`)}</div>
-      <div class="dxi" style="margin-top:6px"><input data-dx="com" data-i="${it.id}" placeholder="Observation" value="${esc(it.com || "")}"></div></div>`).join("")}</div>`).join("");
+      <div class="dxi" style="margin-top:6px"><input data-dx="com" data-i="${it.id}" placeholder="Observation" value="${esc(it.com || "")}"></div></div>`).join("");
+    return `<div class="card" style="padding:12px 16px"><button class="rowbtn" data-act="dx-room" data-p="${esc("g:" + g)}" style="width:100%"><div class="top"><div><div class="t" style="font-weight:600">${esc(g)}</div><div class="s">${done}/${its.length} renseignés</div></div><span class="muted">${isOpen ? "▾" : "▸"}</span></div></button>${rows}</div>`; }).join("");
   return topbar("Inventaire") + dxTop(e, "Inventaire du mobilier") + fileLink(e) + `<div class="small muted">Liste minimale d'un meublé (décret n° 2015-981) : complète-la avec le mobilier réellement présent.</div></div>
   ${body}
   <div class="card"><h2>Ajouter un article</h2><div class="dxi"><input id="ni-nom" placeholder="Ex. Télévision, bureau"></div>
@@ -2362,7 +2367,7 @@ function dxMake(kind, type, date, loc, ref, tpl){
     else if (tpl) doc.items = tpl.items.map(i => ({id:uid(), grp:i.grp, nom:i.nom, qte:i.qte || "1", etat:"", com:""}));
     else INV_DEF.forEach(([g, L]) => L.forEach(n => doc.items.push({id:uid(), grp:g, nom:n, qte:"1", etat:"", com:""})));
   }
-  docList(kind).push(doc); persist(); closeSheet(); V.doc = {kind, id:doc.id, open:{}}; if (kind === "edl" && doc.pieces[0]) V.doc.open[doc.pieces[0].id] = 1; render();
+  docList(kind).push(doc); persist(); closeSheet(); V.doc = {kind, id:doc.id, open:{}}; if (kind === "edl" && doc.pieces[0]) V.doc.open[doc.pieces[0].id] = 1; if (kind === "inv" && doc.items[0]) V.doc.open["g:" + (doc.items[0].grp || "Autres")] = 1; render();
 }
 const dxItem = (e, p, i) => V.doc.kind === "edl" ? ((e.pieces.find(x => x.id === p) || {items:[]}).items.find(x => x.id === i)) : e.items.find(x => x.id === i);
 function sheetDelDoc(){ openSheet(`<h2>Supprimer ce document ?</h2><p style="margin:0">Il sera retiré de la liste. Les PDF déjà envoyés ne sont pas touchés.</p><div class="btns"><button class="btn danger" data-act="dx-del-ok">Supprimer</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`); }
@@ -2375,13 +2380,14 @@ document.addEventListener("click", async ev => {
     case "dx-create": dxCreate(v, b.dataset.t); break;
     case "dx-open": V.doc = {kind:v, id, open:{}}; render(); break;
     case "dx-back": V.doc = null; render(); break;
+    case "dx-all": if (e && V.doc.kind === "inv"){ V.doc.open = V.doc.open || {}; for (const g of new Set(e.items.map(i => i.grp || "Autres"))) V.doc.open["g:" + g] = v === "1"; render(); } break;
     case "dx-room": if (e){ V.doc.open[b.dataset.p] = !V.doc.open[b.dataset.p]; render(); } break;
     case "edl-addroom": { const n = dxV("np-nom"); if (!e || !n) return toast("Donne un nom à la pièce"); const p = mkPiece(n, ["Sol", "Murs", "Plafond"]); e.pieces.push(p); dxTouch(e); V.doc.open[p.id] = 1; persist(); render(); break; }
     case "edl-delroom": if (e){ e.pieces = e.pieces.filter(p => p.id !== b.dataset.p); dxTouch(e); persist(); render(); } break;
     case "edl-additem": { const n = dxV("ni-" + b.dataset.p); const p = e && e.pieces.find(x => x.id === b.dataset.p); if (!p || !n) return toast("Écris le nom de l'élément"); p.items.push(mkItem(n)); dxTouch(e); persist(); render(); break; }
     case "edl-delitem": { const p = e && e.pieces.find(x => x.id === b.dataset.p); if (p){ const it = p.items.find(x => x.id === b.dataset.i); (it && it.ph || []).forEach(phDel); p.items = p.items.filter(x => x.id !== b.dataset.i); dxTouch(e); persist(); render(); } break; }
     case "ph-del": { const it = e && dxItem(e, b.dataset.p, b.dataset.i); if (it){ it.ph = (it.ph || []).filter(x => x !== id); phDel(id); dxTouch(e); persist(); render(); } break; }
-    case "inv-additem": { const n = dxV("ni-nom"); if (!e || !n) return toast("Écris le nom de l'article"); e.items.push({id:uid(), grp:dxV("ni-grp") || "Autres", nom:n, qte:"1", etat:"", com:""}); dxTouch(e); persist(); render(); break; }
+    case "inv-additem": { const n = dxV("ni-nom"); if (!e || !n) return toast("Écris le nom de l'article"); e.items.push({id:uid(), grp:dxV("ni-grp") || "Autres", nom:n, qte:"1", etat:"", com:""}); V.doc.open = V.doc.open || {}; V.doc.open["g:" + (dxV("ni-grp") || "Autres")] = true; dxTouch(e); persist(); render(); break; }
     case "inv-delitem": if (e){ e.items = e.items.filter(x => x.id !== b.dataset.i); dxTouch(e); persist(); render(); } break;
     case "dx-pdf": { if (!e) break; toast("Création du PDF…"); try { const bytes = V.doc.kind === "edl" ? await edlPdf(e) : invPdf(e);
         saveFile((V.doc.kind === "edl" ? "etat-des-lieux-" : "inventaire-") + e.type + "-" + e.bien + "-" + e.date + ".pdf", bytes, "application/pdf"); } catch(err){ toast("PDF impossible : " + err.message); } break; }

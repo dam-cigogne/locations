@@ -1109,8 +1109,12 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.9.3";
+const APP_VERSION = "2.9.4";
 const CHANGELOG = [
+  {v:"2.9.4", date:"2026-10-25", titre:"Formulaire de candidature en ligne", items:[
+    "Location › Candidats : un lien de formulaire à envoyer aux personnes intéressées. Le candidat remplit ses informations (et peut joindre ses pièces), puis son téléphone prépare un e-mail adressé à toi. Rien n'est stocké sur un serveur.",
+    "« Coller une candidature reçue » : tu copies le texte de l'e-mail reçu, l'appli remplit la fiche candidat toute seule (coordonnées, situation, revenus, garant, message). Un doublon est détecté.",
+    "Le courrier « Réponse à une demande » contient maintenant le lien du formulaire."]},
   {v:"2.9.3", date:"2026-10-25", titre:"Ton propre texte d'annonce", items:[
     "Location › Annonce › Modifier : un onglet « Mon texte » pour écrire ou coller ton annonce. S'il n'est pas vide, il remplace le texte généré : copié, partagé et placé dans le PDF tel que tu l'as écrit. Un bouton insère le texte généré comme point de départ."]},
   {v:"2.9.2", date:"2026-10-25", titre:"Inventaire par pièce", items:[
@@ -1291,7 +1295,8 @@ const HELP = {
     "« Dont charges » sert à séparer loyer et charges sur la quittance."]},
   "rent":{t:"Location", p:"Trouver un locataire sans serveur : tout passe par ton e-mail.", l:[
     "Annonce : remplis les infos du bien, ajoute tes photos, crée le PDF à envoyer par Mail ou Messages, ou copie le texte pour un site d'annonces.",
-    "Candidats : crée une fiche à chaque demande reçue, réponds avec les courriers prêts à l'emploi, note la visite, coche les pièces reçues.",
+    "Candidats : envoie le lien du formulaire à chaque personne intéressée ; quand son e-mail arrive, copie le texte et colle-le avec « Coller une candidature reçue » : la fiche se remplit. Tu peux aussi créer une fiche à la main.",
+    "Réponds avec les courriers prêts à l'emploi, note la visite, coche les pièces reçues (tu peux les joindre sur ton téléphone).",
     "La note compare les revenus au loyer charges comprises (3 fois = vert). Elle est indicative : ne refuse jamais pour un motif discriminatoire.",
     "Retenir : crée le locataire du bien et prépare l'arrivée (bail, inventaire, état des lieux).",
     "Les fiches et pièces jointes restent sur cet appareil. Efface les dossiers des candidats non retenus."]},
@@ -3105,6 +3110,7 @@ function viewCands(bien){
   const refus = all.filter(c => c.statut === "ref").length;
   return `<div class="card"><div class="top"><h2>Candidats · ${esc(bienName(bien))}</h2><button class="btn sm" data-act="cd-new">+ Candidat</button></div>
     <div class="small muted" style="margin-bottom:6px">Loyer charges comprises : ${loyerCC(bien) ? eur(loyerCC(bien)) : "à renseigner dans l'annonce"}. Règle courante : revenus d'au moins 3 fois ce montant, ou un garant. La note est indicative et ne remplace pas ton jugement.</div>${chips}</div>
+    ${candCard(bien)}
     ${next.length ? `<div class="card"><h2>Prochaines visites</h2><div class="rows">${next.map(c => `<div class="row"><div class="main"><div class="t">${fmtVisite(c.visite)} · ${esc(c.nom)}</div></div><button class="mini" data-act="cd-ics" data-id="${c.id}">Calendrier</button></div>`).join("")}</div></div>` : ""}
     <div class="card"><div class="rows">${list.length ? list.map(row).join("") : '<div class="empty">Aucun candidat. Quand une demande arrive par e-mail, ajoute-la avec « + Candidat ».</div>'}</div></div>
     <div class="card"><h2>Comment ça marche</h2><div class="small muted">1. Publie l'annonce avec ton e-mail.<br>2. Pour chaque demande, crée une fiche candidat et réponds avec les courriers prêts à l'emploi.<br>3. Planifie la visite, puis demande le dossier.<br>4. Coche les pièces reçues (tu peux les joindre sur cet appareil).<br>5. « Retenir » crée le locataire du bien et prépare l'arrivée.</div>
@@ -3173,7 +3179,7 @@ function candMail(k, c){
   const a = annOf(c.bien), b = S.biens.find(x => x.id === c.bien) || {}, me = (S.cfg && S.cfg.bailleur) || "", nom = c.nom || "", head = "Bonjour " + nom + ",\n\n", sign = "\n\nCordialement,\n" + me;
   const pieces = "- Une pièce d'identité en cours de validité\n- Un justificatif de domicile actuel\n- Un justificatif de votre situation professionnelle (contrat de travail, carte d'étudiant, extrait Kbis…)\n- Vos justificatifs de ressources (trois derniers bulletins de salaire, dernier avis d'imposition)\n- Si vous avez un garant : les mêmes pièces pour lui";
   const T = {
-    rep:{l:"Réponse à une demande", s:"Votre demande de location – " + (a.titre || bienName(c.bien)), b:head + "Merci de votre intérêt pour le logement" + (a.loc ? " situé à " + a.loc : "") + ". Il est toujours disponible" + (a.dispo ? " à partir du " + frDate(a.dispo) : "") + ".\n\nLoyer : " + eur(a.loyer) + (Number(a.charges) ? " + " + eur(a.charges) + " de charges" : "") + ". Dépôt de garantie : " + eur(a.depot) + ".\n\nPour étudier votre demande, pouvez-vous me préciser : votre numéro de téléphone, votre situation professionnelle, vos revenus mensuels, le nombre d'occupants, votre date d'emménagement souhaitée et, le cas échéant, votre garant ?\n\nJe vous proposerai ensuite une visite." + sign},
+    rep:{l:"Réponse à une demande", s:"Votre demande de location – " + (a.titre || bienName(c.bien)), b:head + "Merci de votre intérêt pour le logement" + (a.loc ? " situé à " + a.loc : "") + ". Il est toujours disponible" + (a.dispo ? " à partir du " + frDate(a.dispo) : "") + ".\n\nLoyer : " + eur(a.loyer) + (Number(a.charges) ? " + " + eur(a.charges) + " de charges" : "") + ". Dépôt de garantie : " + eur(a.depot) + ".\n\n" + (candLink(c.bien) ? "Pour étudier votre demande, merci de remplir ce court formulaire (il prépare un e-mail que vous m'envoyez) :\n" + candLink(c.bien) + "\n\n" : "Pour étudier votre demande, pouvez-vous me préciser : votre numéro de téléphone, votre situation professionnelle, vos revenus mensuels, le nombre d'occupants, votre date d'emménagement souhaitée et, le cas échéant, votre garant ?\n\n") + "Je vous proposerai ensuite une visite." + sign},
     vis:{l:"Invitation à la visite", s:"Visite du logement – " + (c.visite ? fmtVisite(c.visite) : "à confirmer"), b:head + "Je vous propose de visiter le logement " + (c.visite ? "le " + fmtVisite(c.visite) : "à la date convenue") + ", à l'adresse suivante : " + (b.adresse || "à préciser") + ".\n\nMerci de me confirmer votre présence par retour de message. En cas d'empêchement, prévenez-moi pour que nous trouvions un autre créneau." + sign},
     dos:{l:"Demande du dossier", s:"Votre dossier de location", b:head + "Suite à la visite, si le logement vous intéresse toujours, pouvez-vous m'envoyer votre dossier ? Voici les pièces nécessaires (je ne peux pas en demander d'autres) :\n\n" + pieces + "\n\nVos documents servent uniquement à étudier votre candidature et seront supprimés si elle n'est pas retenue." + sign},
     ret:{l:"Dossier retenu", s:"Votre candidature est retenue", b:head + "J'ai le plaisir de vous informer que votre dossier est retenu pour le logement" + (b.adresse ? " situé " + b.adresse : "") + ".\n\nLes prochaines étapes : signature du bail, état des lieux et inventaire du mobilier, versement du dépôt de garantie (" + eur(a.depot) + ") et remise d'une attestation d'assurance habitation.\n\nPouvons-nous convenir d'un rendez-vous pour la signature" + (c.entree ? " autour du " + frDate(c.entree) : "") + " ?" + sign},
@@ -3225,6 +3231,14 @@ document.addEventListener("click", async ev => {
     case "an-ph-first": { const cur = annOf(V.lsel); cur.photos = [b.dataset.pid].concat((cur.photos || []).filter(x => x !== b.dataset.pid)); cur.upd = Date.now(); S.annonces = S.annonces || {}; S.annonces[V.lsel] = cur; persist(); render(); break; }
     case "an-ph-del": { const cur = annOf(V.lsel); cur.photos = (cur.photos || []).filter(x => x !== b.dataset.pid); phDel(b.dataset.pid); cur.upd = Date.now(); S.annonces = S.annonces || {}; S.annonces[V.lsel] = cur; persist(); render(); break; }
     case "an-state": { S.annonces = S.annonces || {}; const cur = annOf(V.lsel); cur.statut = v; cur.upd = Date.now(); S.annonces[V.lsel] = cur; persist(); render(); break; }
+    case "cd-link-copy": { const l = $("#cd-link").value; (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.reject()).then(() => toast("Lien copié")).catch(() => { $("#cd-link").select(); toast("Sélectionné : copie-le"); }); break; }
+    case "cd-link-share": { const l = $("#cd-link").value; try { if (navigator.share) await navigator.share({title:"Candidature de location", text:"Voici le formulaire de candidature :", url:l}); else toast("Utilise « Copier le lien »"); } catch(e){} break; }
+    case "cd-paste": sheetPaste(); break;
+    case "cd-paste-read": { try { const t = await navigator.clipboard.readText(); $("#cp-txt").value = t; } catch(e){ toast("Colle le texte à la main dans la zone"); } break; }
+    case "cd-paste-ok": { const o = parseCandText($("#cp-txt").value); if (!o) return toast("Texte non reconnu : il doit contenir « Nom : … »");
+      const c = candFromParsed(o), dup = candList().find(x => !x.del && x.bien === c.bien && ((c.email && x.email && x.email.toLowerCase() === c.email.toLowerCase()) || x.nom.toLowerCase() === c.nom.toLowerCase()));
+      if (dup){ toast("Ce candidat est déjà dans la liste"); sheetCand(dup.id); break; }
+      candList().push(c); persist(); V.lsel = c.bien; V.lsub = "cand"; render(); sheetCand(c.id); toast("Fiche créée : vérifie les informations"); break; }
     case "cd-new": sheetCand(""); break;
     case "cd-open": sheetCand(id); break;
     case "cd-save": { const c = cdSave(id); if (!c) break; closeSheet(); render(); toast("Candidat enregistré"); break; }
@@ -3301,6 +3315,46 @@ async function annoncePdf(bien){
       if (col === 1){ d.y -= rowH + gap; col = 0; rowH = 0; } else col = 1; }
   }
   return d.finish("Annonce");
+}
+
+/* ---------- Formulaire de candidature en ligne (page statique) et réception dans l'appli ---------- */
+function candLink(bien){
+  const a = annOf(bien); if (!a.mail) return "";
+  const u = new URL("candidature.html", location.href); u.search = ""; u.hash = "";
+  u.searchParams.set("m", a.mail); u.searchParams.set("r", bien); u.searchParams.set("t", a.titre || (a.type + (a.surf ? " " + a.surf + " m²" : "") + (a.loc ? " – " + a.loc : "")));
+  const cc = loyerCC(bien); if (cc) u.searchParams.set("l", String(Math.round(cc))); return u.toString();
+}
+function parseCandText(t){
+  const nrm = x => x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+  const map = {nom:"nom", telephone:"tel", tel:"tel", "e-mail":"email", email:"email", mail:"email", situation:"contrat", "revenus mensuels nets":"rev", revenus:"rev", occupants:"occ", "emmenagement souhaite":"entree", garant:"garant", "revenus du garant":"grev", "pieces jointes":"pj", message:"message", "ref.":"ref", ref:"ref"};
+  const o = {}; let cur = "";
+  for (const ln of String(t || "").replace(/\r/g, "").split("\n")){
+    const m = /^\s*([^:]{2,40}?)\s*:\s*(.*)$/.exec(ln), k = m && map[nrm(m[1])];
+    if (k){ cur = k; o[k] = m[2].trim(); } else if (cur === "message" && ln.trim()) o.message += "\n" + ln.trim(); }
+  return o.nom ? o : null;
+}
+function candFromParsed(o){
+  const garant = /visale/i.test(o.garant || "") ? "visale" : /proche|parent/i.test(o.garant || "") ? "proche" : /autre/i.test(o.garant || "") ? "autre" : "";
+  const ct = CAND_CONTRAT.find(x => x && x.toLowerCase() === (o.contrat || "").toLowerCase()) || (o.contrat ? "Autre" : "");
+  let ent = (o.entree || "").trim(); const fr = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(ent); if (fr) ent = fr[3] + "-" + fr[2].padStart(2, "0") + "-" + fr[1].padStart(2, "0"); if (!/^\d{4}-\d{2}-\d{2}$/.test(ent)) ent = "";
+  const ids = bienIds(), ref = ids.find(i => i.toLowerCase() === (o.ref || "").toLowerCase()) || V.lsel, num = x => { const v = parseNum(x || ""); return v == null ? "" : v; };
+  const pj = o.pj && !/^aucune/i.test(o.pj) ? "Pièces annoncées : " + o.pj : "";
+  return {id:uid(), bien:ref, nom:o.nom, tel:o.tel || "", email:o.email || "", statut:"dem", dateDem:todayIso(), contrat:ct, rev:num(o.rev), occ:(o.occ || "").replace(/\D/g, ""), entree:ent, garant, grev:num(o.grev), visite:"", note:[(o.message || "").trim(), pj, ct === "Autre" && o.contrat && o.contrat !== "Autre" ? "Situation indiquée : " + o.contrat : ""].filter(Boolean).join("\n"), pieces:{}, fichiers:[], src:"formulaire", upd:Date.now()};
+}
+function sheetPaste(){
+  openSheet(`<h2>Coller une candidature reçue</h2><div class="info">Le formulaire envoie un e-mail à ton adresse. Ouvre-le, copie le texte (de « CANDIDATURE » jusqu'au message) et colle-le ici : la fiche est remplie toute seule.</div>
+    <label class="f">Texte reçu<textarea id="cp-txt" style="min-height:220px" placeholder="CANDIDATURE – …&#10;Nom : …"></textarea></label>
+    <div class="btns"><button class="btn ghost sm" data-act="cd-paste-read">Coller depuis le presse-papiers</button></div>
+    <div class="btns"><button class="btn" style="flex:1" data-act="cd-paste-ok">Créer la fiche</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
+}
+
+function candCard(bien){
+  const link = candLink(bien);
+  return `<div class="card"><h2>Formulaire de candidature</h2>
+    <div class="small muted">Quand quelqu'un te contacte, envoie-lui ce lien : il remplit ses informations et son e-mail t'arrive tout préparé. Tu colles ensuite le texte reçu ici et la fiche se remplit toute seule.</div>
+    ${link ? `<label class="f">Lien à envoyer<input id="cd-link" readonly value="${esc(link)}"></label>
+    <div class="btns"><button class="btn sm" data-act="cd-link-copy">Copier le lien</button><button class="btn sm ghost" data-act="cd-link-share">Partager le lien</button></div>` : '<div class="info" style="background:var(--warn-soft)">Indique d\'abord ton e-mail dans « Annonce › Modifier » : le formulaire envoie les candidatures à cette adresse.</div>'}
+    <div class="btns"><button class="btn sm ghost" data-act="cd-paste">Coller une candidature reçue</button></div></div>`;
 }
 
 /* ============ Démarrage ============ */

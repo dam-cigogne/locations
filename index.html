@@ -416,7 +416,7 @@ function tenantFor(bien, iso){
 }
 function allCats(type){ const set = new Set(CATS[type] || []); for (const j of J()) if (j.type === type && j.cat) set.add(j.cat); return [...set]; }
 
-function demoData(){
+function demoData(rich){
   const d = emptyData(); d.demo = true;
   d.biens = [{id:"STUDIO",nom:"Studio",solde0:2000,date0:"2021-12-31",loyer:500,credit:240,regime:"LMNP",notes:"",upd:0},{id:"T2",nom:"Appartement T2",solde0:1500,date0:"2021-12-31",loyer:650,credit:410,regime:"LMNP",notes:"",upd:0}];
   const y = new Date().getFullYear(), tm = new Date().getMonth();
@@ -428,7 +428,19 @@ function demoData(){
     d.journal.push(mk(b.id,m,"Dépense","Assurance PNO","Assurance PNO",20,pt));
   }
   d.factures = [{id:uid(),fourn:"Magasin exemple",num:"F-001",date:y+"-02-10",cat:"TRAVAUX",desc:"Peinture (exemple)",prix:180,jdmm:"",scan:"x",upd:0}];
-  d.locataires = [{id:uid(),bien:"T2",nom:"Locataire Exemple",tel:"0600000000",email:"",debut:(y-1)+"-09-01",fin:"",loyer:650,depot:650,note:"Donnée d'exemple",upd:0}];
+  d.locataires = [{id:uid(),bien:"T2",nom:"Locataire Exemple",tel:"0600000000",email:"",debut:(y-1)+"-09-01",fin:"",loyer:650,depot:650,note:"Donnée d'exemple",upd:0},
+    ];
+  if (!rich) return d;
+  d.locataires[0].nom = "Julien Exemple"; d.locataires.push({id:uid(),bien:"STUDIO",nom:"Camille Essai",tel:"0600000001",email:"",debut:(y-1)+"-03-01",fin:"",loyer:500,depot:500,note:"Donnée d'exemple",upd:0});
+  d.biens[0].adresse = "1 rue de l'Exemple, 00000 Ville-Test"; d.biens[1].adresse = "2 avenue d'Essai, 00000 Ville-Test";
+  d.biens[0].desc = {type:"Studio", surface:"22", etage:"2e étage", pieces:"1", copro:"Oui", dpe:"D", chauffage:"Électrique individuel", eauch:"Ballon électrique", annexes:"Aucune"};
+  d.biens[1].desc = {type:"Appartement T2", surface:"38", etage:"1er étage", pieces:"2", copro:"Oui", dpe:"C", chauffage:"Électrique individuel", eauch:"Ballon électrique", annexes:"Cave"};
+  const dE = (y-1)+"-09-01", it = (nom,etat,com) => ({id:uid(),nom,etat,com:com||"",ph:[]});
+  d.edl.push({id:uid(),bien:"T2",type:"entree",date:dE,loc:"Julien Exemple",elec:"12450",eau:"310",gaz:"",cles:"3",fumee:"Présent et testé",rem:"État des lieux d'exemple.",ref:"",upd:0,
+    pieces:[{id:uid(),nom:"Entrée",items:[it("Sol","Bon"),it("Murs","Bon"),it("Porte d'entrée","Neuf")]},{id:uid(),nom:"Séjour",items:[it("Sol","Moyen","Rayures légères"),it("Murs","Bon"),it("Fenêtres","Bon")]},{id:uid(),nom:"Cuisine",items:[it("Plan de travail","Bon"),it("Évier","Bon"),it("Plaques de cuisson","Neuf")]}]});
+  const iv = (grp,nom,qte,etat) => ({id:uid(),grp,nom,qte,etat,com:""});
+  d.inv.push({id:uid(),bien:"T2",type:"entree",date:dE,loc:"Julien Exemple",rem:"",ref:"",upd:0,
+    items:[iv("Chambre","Lit (couchage 140 cm)","1","Bon"),iv("Chambre","Couette","1","Bon"),iv("Séjour","Table","1","Bon"),iv("Séjour","Chaises","4","Moyen"),iv("Cuisine","Réfrigérateur","1","Bon"),iv("Cuisine","Assiettes","6","Bon"),iv("Entretien","Aspirateur","1","Neuf")]});
   return d;
 }
 
@@ -494,9 +506,9 @@ function buildEchange(){
   sheet("Reglages_appli", ["Cle","Valeur"], [["Version", 1], ["DateExport", Date.now()], ["Bailleur", (S.cfg && S.cfg.bailleur) || ""], ["BailleurAdresse", (S.cfg && S.cfg.bailleurAdr) || ""]], []);
   return XLSX.write(wb,{type:"array",bookType:"xlsx",compression:true});
 }
-async function saveFile(name, data, mime){
+async function saveFile(name, data, mime, note){
   try { const file = new File([data], name, {type:mime});
-    if (navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:name}); toast("Fichier partagé : " + name); return; } }
+    if (navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share(note ? {files:[file], title:name, text:note} : {files:[file], title:name}); toast("Fichier partagé : " + name); return; } }
   catch(e){ if (e && e.name === "AbortError") return; }
   const url = URL.createObjectURL(new Blob([data],{type:mime})); const a = document.createElement("a");
   a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
@@ -710,14 +722,14 @@ function tenantCard(id){
     : '<div class="small muted">Aucun locataire enregistré pour ce bien.</div>'}</div>`;
 }
 function viewBiens(){
-  const subs = [["vue","Vue"],["loyers","Loyers"],["dep","Dépenses"],["travaux","Travaux"],["loc","Locataires"],["docs","Documents"],["tarifs","Tarifs"],["rapp","Rapprochement"]], ids = bienIds();
+  const subs = [["vue","Vue"],["loyers","Loyers"],["dep","Dépenses"],["travaux","Travaux"],["loc","Locataires"],["mvt","Arrivée/Départ"],["docs","Documents"],["tarifs","Tarifs"],["rapp","Rapprochement"]], ids = bienIds();
   if (!subs.some(x => x[0] === V.bsub)) V.bsub = "vue";
   const sub = V.bsub; if (!V.bsel || !ids.includes(V.bsel)) V.bsel = ids[0] || "";
   const seg = `<div class="seg">${subs.map(([k,l]) => `<button class="${sub===k?"on":""}" data-act="bsub" data-v="${k}">${l}</button>`).join("")}</div>`;
   const nav = sub === "vue" || sub === "loyers" || sub === "dep" ? yearNav() : "";
-  const sel = ["vue","loyers","dep","loc","docs"].includes(sub) ? bienSeg("bsel", V.bsel, false) + tenantCard(V.bsel) : "";
+  const sel = ["vue","loyers","dep","loc","mvt","docs"].includes(sub) ? bienSeg("bsel", V.bsel, false) + tenantCard(V.bsel) : "";
   let body = "";
-  if (sub === "vue") body = viewBienVue(); else if (sub === "loyers") body = viewBienLoyers(); else if (sub === "dep") body = viewBienDep(); else if (sub === "travaux") body = viewTravaux(); else if (sub === "tarifs") body = viewTarifs(); else if (sub === "rapp") body = viewRapp(); else if (sub === "docs") body = viewDocs(); else body = viewLoc();
+  if (sub === "vue") body = viewBienVue(); else if (sub === "loyers") body = viewBienLoyers(); else if (sub === "dep") body = viewBienDep(); else if (sub === "travaux") body = viewTravaux(); else if (sub === "tarifs") body = viewTarifs(); else if (sub === "rapp") body = viewRapp(); else if (sub === "docs") body = viewDocs(); else if (sub === "mvt") body = viewMvt(); else body = viewLoc();
   return topbar("Biens", nav) + seg + sel + body;
 }
 function catBars(rows, max, restKey){
@@ -923,7 +935,7 @@ function viewSet(){
     <label class="f">Importer un fichier (export_appli.xlsx ou sauvegarde .json)<input id="file" type="file" accept=".xlsx,.xlsm,.json,.xls"></label>
     <div class="btns"><button class="btn" data-act="exp-journal">Exporter le journal (.xlsx)</button><button class="btn ghost" data-act="exp-json">Sauvegarde complète (.json)</button></div>
     <div class="small muted">La sauvegarde .json n'est pas chiffrée : à garder hors de tout dossier partagé.</div></div>
-  ${biensCard()}${bourseCardSet()}${secCard()}${themeCard()}${confortCard()}${modelesCard()}${archCard()}${aideCard()}${histCard()}
+  ${biensCard()}${bourseCardSet()}${secCard()}${themeCard()}${confortCard()}${modelesCard()}${archCard()}${demoCard()}${aideCard()}${histCard()}
   <div class="card"><h2>Données</h2><div class="small muted">${live(S.biens).length} bien(s) · ${live(S.journal).length} opération(s) · ${live(S.factures).length} facture(s) · ${live(S.locataires).length} locataire(s)</div>
     ${V.wipe ? `<div class="small">Cette action efface tout ce qui est stocké sur cet appareil.</div><div class="btns"><button class="btn danger" data-act="wipe-yes">Oui, tout effacer</button><button class="btn ghost" data-act="wipe-no">Annuler</button></div>`
              : `<div class="btns"><button class="btn ghost" data-act="wipe">Tout effacer</button></div>`}</div>
@@ -1092,8 +1104,17 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.5.0";
+const APP_VERSION = "2.7.0";
 const CHANGELOG = [
+  {v:"2.7.0", date:"2026-10-25", titre:"Arrivée / Départ et relecture", items:[
+    "Nouvel onglet Biens › Arrivée/Départ : la démarche pas à pas pour l'arrivée et pour le départ d'un locataire, avec les points clés, des cases à cocher datées et des boutons directs vers le bail, l'inventaire, l'état des lieux et les lettres.",
+    "PDF de relecture (bail, état des lieux, inventaire) : le document complet, marqué « projet à relire », sans signature, avec des cases pour confirmer avec le locataire avant de signer.",
+    "Préparer à l'avance : à la création d'un état des lieux ou d'un inventaire, tu peux reprendre la liste d'un document existant (autre logement, ancien locataire ou document importé). Un état des lieux importé depuis Excel ou CSV est lui aussi lu et repris.",
+    "Réglages › Version d'essai : de faux biens, adresses, locataires, état des lieux et inventaire pour tout tester. « Retrouver mes données » remet tes vraies données."]},
+  {v:"2.6.0", date:"2026-10-25", titre:"Signature à l'écran et dossier rangé", items:[
+    "Bail, état des lieux et inventaire : « Faire signer sur l'écran ». Le bailleur puis le locataire signent au doigt ; la date et l'heure sont inscrites sous chaque signature, avec une page de preuve et une empreinte numérique.",
+    "Le PDF signé s'envoie par e-mail ou se range dans Fichiers depuis la fenêtre de partage. Modifier un document signé efface les signatures.",
+    "Biens › Documents : dossier ZIP déjà rangé en sous-dossiers (Bail, États des lieux, Inventaires, Autres documents) à enregistrer dans iCloud Drive ou OneDrive."]},
   {v:"2.5.0", date:"2026-10-25", titre:"Importer tes documents existants", items:[
     "Biens › Documents : importe le bail signé, un état des lieux ou un inventaire déjà faits (PDF, photo, Word, Excel).",
     "Un inventaire Excel ou CSV est lu et repris dans l'appli. Un état des lieux importé crée l'état d'entrée : tu peux ensuite faire celui de sortie.",
@@ -1238,12 +1259,20 @@ const HELP = {
     "Les fiches restent sur ton téléphone (chiffrées si le code est activé) et dans le classeur Excel.",
     "Le nom, l'adresse du bien et le loyer sont repris dans les relances, les quittances et les bilans (Excel et PDF).",
     "« Dont charges » sert à séparer loyer et charges sur la quittance."]},
+  "bld-mvt":{t:"Biens › Arrivée/Départ", p:"La démarche complète, étape par étape.", l:[
+    "Deux listes : le départ (en haut) et l'arrivée. Coche chaque étape quand elle est faite : la date s'inscrit.",
+    "Les boutons ouvrent directement le bon document. À la sortie, l'inventaire et l'état des lieux reprennent ceux de l'entrée.",
+    "Ce sont des repères généraux : vérifie les délais et les règles sur service-public.fr avant chaque location."]},
   "bld-docs":{t:"Biens › Documents", p:"Tout ce qu'il faut pour un locataire, sans autre site.", l:[
+    "Avant de signer, « PDF de relecture » sort le document sans signature pour le relire avec le locataire.",
+    "À la création d'un état des lieux ou d'un inventaire, tu peux reprendre la liste d'un autre document pour le préparer à l'avance.",
     "Le solde montre ce qui a été reçu par rapport à ce qui est dû depuis le début du bail. « Relancer » prépare le message.",
     "État des lieux : choisis les pièces, ouvre-en une, note l'état de chaque élément (Neuf, Bon, Moyen, Mauvais), ajoute des observations et des photos. Les compteurs et les clés se notent en haut.",
     "À la sortie, crée l'état de sortie : il reprend l'entrée. Ce qui est plus dégradé apparaît en rouge dans le PDF.",
     "Inventaire du mobilier : la liste minimale légale d'un meublé est préremplie. Ajoute ou retire des articles.",
     "Importer un document déjà fait : bail signé, état des lieux ou inventaire. Un inventaire Excel ou CSV est lu ; les autres formats sont gardés tels quels. L'état des lieux importé devient l'état d'entrée, prêt pour la sortie.",
+    "Faire signer : le bailleur puis le locataire signent au doigt, sur ce téléphone. La date et l'heure sont ajoutées, avec une page de preuve. C'est une signature électronique simple, valable mais moins forte qu'un service certifié.",
+    "Ranger : « Dossier de ce bien (ZIP) » crée les sous-dossiers ; dans la fenêtre de partage, choisis Enregistrer dans Fichiers puis iCloud Drive ou OneDrive.",
     "Les photos et les documents importés restent sur le téléphone : ils ne vont ni dans la sauvegarde ni dans Excel, mais les photos sont jointes au PDF.",
     "Bail et lettres : relis chaque champ. Le dépôt de garantie ne peut pas dépasser 2 mois de loyer hors charges. Ces modèles ne remplacent pas un conseil juridique."]},
   "bld-tarifs":{t:"Biens › Tarifs", p:"Les montants qui changent en cours d'année.", l:[
@@ -1572,8 +1601,10 @@ document.addEventListener("click", ev => {
     case "tour-next": sheetTour(V.tourI + 1); break; case "tour-prev": sheetTour(V.tourI - 1); break;
     case "tour-end": lsSet("loc-tour", "1"); closeSheet(); break;
     case "hist-all": V.histAll = true; render(); break;
-    case "demo": openSheet(`<h2>Mode démo</h2><p style="margin:0">Cela remplace les données de cet appareil par des données d'exemple. Pense à exporter une sauvegarde avant. Tu pourras réimporter ton fichier Excel ensuite.</p><div class="btns"><button class="btn danger" data-act="demo-ok">Charger les données d'exemple</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`); break;
-    case "demo-ok": S = demoData(); persist(); closeSheet(); V.tab = "home"; toast("Données d'exemple chargées"); render(); break;
+    case "demo": openSheet(`<h2>Version d'essai</h2><p style="margin:0">Cela remplace les données affichées par de faux biens, adresses, locataires, un état des lieux et un inventaire d'exemple. ${SEC.on || S.demo ? "" : "Tes données sont mises de côté sur cet appareil : le bouton « Retrouver mes données » (Réglages) les remet. "}Exporte quand même une sauvegarde avant.</p><div class="btns"><button class="btn danger" data-act="demo-ok">Charger les données d'exemple</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`); break;
+    case "demo-back": { let sv = null; try { sv = JSON.parse(localStorage.getItem("gl-avant-essai")); } catch(e){} if (!sv) return toast("Aucune sauvegarde de côté");
+      S = Object.assign(emptyData(), sv); S.demo = false; persist(); try { localStorage.removeItem("gl-avant-essai"); } catch(e){} V.tab = "home"; toast("Tes données sont revenues"); render(); break; }
+    case "demo-ok": if (!SEC.on && !S.demo){ try { localStorage.setItem("gl-avant-essai", JSON.stringify(S)); } catch(e){} } S = demoData(true); persist(); closeSheet(); V.tab = "home"; toast("Données d'exemple chargées"); render(); break;
     case "pal": lsSet("loc-pal", v); applyTheme(); render(); break;
     case "tmode": lsSet("loc-theme", v); applyTheme(); render(); break;
     case "set-start": lsSet("loc-start", v); render(); break;
@@ -2214,7 +2245,9 @@ function viewDocs(){
     <div class="rows">${fileDocs(id, "bail").map(fileRow).join("")}</div></div>
   <div class="card"><h2>Autres documents</h2><div class="small muted">Diagnostics, assurance, courriers… gardés avec le dossier du bien, sur ce téléphone.</div>
     <div class="btns"><button class="btn sm ghost" data-act="im-open" data-v="autre">Importer un document</button></div>
-    <div class="rows">${fileDocs(id, "autre").map(fileRow).join("") || '<div class="empty">Aucun document.</div>'}</div></div>`;
+    <div class="rows">${fileDocs(id, "autre").map(fileRow).join("") || '<div class="empty">Aucun document.</div>'}</div></div>
+  <div class="card"><h2>Ranger dans iCloud Drive ou OneDrive</h2><div class="small muted">Crée un dossier ZIP déjà rangé (Bail, États des lieux, Inventaires, Autres documents, un dossier par bien). Dans la fenêtre de partage, choisis « Enregistrer dans Fichiers » puis ton dossier iCloud Drive ou OneDrive.</div>
+    <div class="btns"><button class="btn sm" data-act="zip-bien">Dossier de ce bien (ZIP)</button><button class="btn sm ghost" data-act="zip-all">Tous les biens (ZIP)</button></div></div>`;
 }
 function dxTop(e, titre){
   return `<div class="btns"><button class="btn ghost sm" data-act="dx-back">‹ Documents</button></div>
@@ -2241,7 +2274,7 @@ function viewEdl(e){
   ${rooms}
   <div class="card"><h2>Ajouter une pièce</h2><div class="grid2 dxi"><input id="np-nom" placeholder="Ex. Balcon, cave"><button class="btn sm ghost" data-act="edl-addroom">Ajouter</button></div></div>
   <div class="card"><label class="f">Remarques générales<textarea data-dxh="rem">${esc(e.rem || "")}</textarea></label>
-    <div class="btns"><button class="btn" style="flex:1" data-act="dx-pdf">Créer le PDF</button><button class="btn danger" data-act="dx-del">Supprimer</button></div>
+    ${sigBanner(e)}<div class="btns"><button class="btn" style="flex:1" data-act="dx-pdf">${e.sig ? "PDF signé : enregistrer ou envoyer" : "Créer le PDF"}</button><button class="btn danger" data-act="dx-del">Supprimer</button></div>
     <div class="small muted">Les photos restent sur ce téléphone (pas dans la sauvegarde ni dans Excel). Elles sont jointes au PDF.</div></div>`;
 }
 function viewInv(e){
@@ -2257,26 +2290,34 @@ function viewInv(e){
     <label class="f">Rangé dans<select id="ni-grp">${[...new Set(["Chambre", "Séjour", "Cuisine", "Entretien", "Autres"].concat(groups))].map(g => `<option>${esc(g)}</option>`).join("")}</select></label>
     <div class="btns"><button class="btn sm ghost" data-act="inv-additem">Ajouter</button></div></div>
   <div class="card"><label class="f">Remarques générales<textarea data-dxh="rem">${esc(e.rem || "")}</textarea></label>
-    <div class="btns"><button class="btn" style="flex:1" data-act="dx-pdf">Créer le PDF</button><button class="btn danger" data-act="dx-del">Supprimer</button></div></div>`;
+    ${sigBanner(e)}<div class="btns"><button class="btn" style="flex:1" data-act="dx-pdf">${e.sig ? "PDF signé : enregistrer ou envoyer" : "Créer le PDF"}</button><button class="btn danger" data-act="dx-del">Supprimer</button></div></div>`;
+}
+function tplPick(kind){
+  const L = docList(kind).filter(x => !x.del).sort((a, b) => b.date.localeCompare(a.date)).map(x => [x.id, bienName(x.bien) + " · " + (x.type === "sortie" ? "sortie" : "entrée") + " · " + frDate(x.date) + (x.fichier ? " (importé)" : "")]);
+  return L.length ? dxS("dx-tpl", "Préremplir avec la liste d'un document existant (à l'avance, sans les états)", [["", "Liste type"], ...L], "") : "";
 }
 function sheetNewDoc(kind, type){
   const id = V.bsel, t = tenantFor(id, todayIso()), prev = docList(kind).filter(x => x.bien === id && !x.del && x.type === "entree").sort((a, b) => b.date.localeCompare(a.date) || (b.upd || 0) - (a.upd || 0));
   openSheet(`<h2>${kind === "edl" ? "État des lieux" : "Inventaire du mobilier"} ${type === "entree" ? "d'entrée" : "de sortie"}</h2>
     ${dxF("dx-date", "Date", todayIso(), 'type="date"')}${dxF("dx-loc", "Locataire", t ? t.nom : "")}
     ${type === "sortie" ? (prev.length ? dxS("dx-ref", "Comparer avec l'entrée du", prev.map(e => [e.id, frDate(e.date) + " · " + (e.loc || "")]), prev[0].id) : '<div class="info">Aucun document d\'entrée pour ce bien : celui de sortie sera vierge.</div>') : ""}
+    ${!(type === "sortie" && prev.length) ? tplPick(kind) : ""}
     ${type === "entree" && kind === "edl" ? '<div class="small muted">Pièces à inclure</div>' + EDL_PIECES.map((p, i) => `<label style="display:flex;gap:8px;align-items:center;padding:4px 0"><input type="checkbox" id="dx-pc-${i}" checked> ${esc(p[0])}</label>`).join("") : ""}
     <div class="btns"><button class="btn" style="flex:1" data-act="dx-create" data-v="${kind}" data-t="${type}">Créer</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
 }
 function dxCreate(kind, type){
   const id = V.bsel, date = dxV("dx-date") || todayIso(), loc = dxV("dx-loc"), refId = $("#dx-ref") ? $("#dx-ref").value : "", ref = refId ? docGet(kind, refId) : null, base = {id:uid(), bien:id, type, date, loc, rem:"", ref:ref ? ref.id : "", upd:Date.now()};
+  const tplId = !ref && $("#dx-tpl") ? $("#dx-tpl").value : "", tpl = tplId ? docGet(kind, tplId) : null;
   let doc;
   if (kind === "edl"){
     doc = Object.assign(base, {elec:"", eau:"", gaz:"", cles:"", fumee:"", pieces:[]});
     if (ref) doc.pieces = ref.pieces.map(p => ({id:uid(), nom:p.nom, items:p.items.map(i => ({id:uid(), nom:i.nom, etat:"", com:"", ph:[], e0:i.etat || "", c0:i.com || ""}))}));
+    else if (tpl) doc.pieces = tpl.pieces.map(p => ({id:uid(), nom:p.nom, items:p.items.map(i => ({id:uid(), nom:i.nom, etat:"", com:"", ph:[]}))}));
     else doc.pieces = EDL_PIECES.filter((p, i) => !$("#dx-pc-" + i) || $("#dx-pc-" + i).checked).map(p => mkPiece(p[0], p[1]));
   } else {
     doc = Object.assign(base, {items:[]});
     if (ref) doc.items = ref.items.map(i => ({id:uid(), grp:i.grp, nom:i.nom, qte:i.qte || "1", etat:"", com:"", q0:i.qte || "1", e0:i.etat || "", c0:i.com || ""}));
+    else if (tpl) doc.items = tpl.items.map(i => ({id:uid(), grp:i.grp, nom:i.nom, qte:i.qte || "1", etat:"", com:""}));
     else INV_DEF.forEach(([g, L]) => L.forEach(n => doc.items.push({id:uid(), grp:g, nom:n, qte:"1", etat:"", com:""})));
   }
   docList(kind).push(doc); persist(); closeSheet(); V.doc = {kind, id:doc.id, open:{}}; if (kind === "edl" && doc.pieces[0]) V.doc.open[doc.pieces[0].id] = 1; render();
@@ -2293,39 +2334,34 @@ document.addEventListener("click", async ev => {
     case "dx-open": V.doc = {kind:v, id, open:{}}; render(); break;
     case "dx-back": V.doc = null; render(); break;
     case "dx-room": if (e){ V.doc.open[b.dataset.p] = !V.doc.open[b.dataset.p]; render(); } break;
-    case "edl-addroom": { const n = dxV("np-nom"); if (!e || !n) return toast("Donne un nom à la pièce"); const p = mkPiece(n, ["Sol", "Murs", "Plafond"]); e.pieces.push(p); e.upd = Date.now(); V.doc.open[p.id] = 1; persist(); render(); break; }
-    case "edl-delroom": if (e){ e.pieces = e.pieces.filter(p => p.id !== b.dataset.p); e.upd = Date.now(); persist(); render(); } break;
-    case "edl-additem": { const n = dxV("ni-" + b.dataset.p); const p = e && e.pieces.find(x => x.id === b.dataset.p); if (!p || !n) return toast("Écris le nom de l'élément"); p.items.push(mkItem(n)); e.upd = Date.now(); persist(); render(); break; }
-    case "edl-delitem": { const p = e && e.pieces.find(x => x.id === b.dataset.p); if (p){ const it = p.items.find(x => x.id === b.dataset.i); (it && it.ph || []).forEach(phDel); p.items = p.items.filter(x => x.id !== b.dataset.i); e.upd = Date.now(); persist(); render(); } break; }
-    case "ph-del": { const it = e && dxItem(e, b.dataset.p, b.dataset.i); if (it){ it.ph = (it.ph || []).filter(x => x !== id); phDel(id); e.upd = Date.now(); persist(); render(); } break; }
-    case "inv-additem": { const n = dxV("ni-nom"); if (!e || !n) return toast("Écris le nom de l'article"); e.items.push({id:uid(), grp:dxV("ni-grp") || "Autres", nom:n, qte:"1", etat:"", com:""}); e.upd = Date.now(); persist(); render(); break; }
-    case "inv-delitem": if (e){ e.items = e.items.filter(x => x.id !== b.dataset.i); e.upd = Date.now(); persist(); render(); } break;
+    case "edl-addroom": { const n = dxV("np-nom"); if (!e || !n) return toast("Donne un nom à la pièce"); const p = mkPiece(n, ["Sol", "Murs", "Plafond"]); e.pieces.push(p); dxTouch(e); V.doc.open[p.id] = 1; persist(); render(); break; }
+    case "edl-delroom": if (e){ e.pieces = e.pieces.filter(p => p.id !== b.dataset.p); dxTouch(e); persist(); render(); } break;
+    case "edl-additem": { const n = dxV("ni-" + b.dataset.p); const p = e && e.pieces.find(x => x.id === b.dataset.p); if (!p || !n) return toast("Écris le nom de l'élément"); p.items.push(mkItem(n)); dxTouch(e); persist(); render(); break; }
+    case "edl-delitem": { const p = e && e.pieces.find(x => x.id === b.dataset.p); if (p){ const it = p.items.find(x => x.id === b.dataset.i); (it && it.ph || []).forEach(phDel); p.items = p.items.filter(x => x.id !== b.dataset.i); dxTouch(e); persist(); render(); } break; }
+    case "ph-del": { const it = e && dxItem(e, b.dataset.p, b.dataset.i); if (it){ it.ph = (it.ph || []).filter(x => x !== id); phDel(id); dxTouch(e); persist(); render(); } break; }
+    case "inv-additem": { const n = dxV("ni-nom"); if (!e || !n) return toast("Écris le nom de l'article"); e.items.push({id:uid(), grp:dxV("ni-grp") || "Autres", nom:n, qte:"1", etat:"", com:""}); dxTouch(e); persist(); render(); break; }
+    case "inv-delitem": if (e){ e.items = e.items.filter(x => x.id !== b.dataset.i); dxTouch(e); persist(); render(); } break;
     case "dx-pdf": { if (!e) break; toast("Création du PDF…"); try { const bytes = V.doc.kind === "edl" ? await edlPdf(e) : invPdf(e);
         saveFile((V.doc.kind === "edl" ? "etat-des-lieux-" : "inventaire-") + e.type + "-" + e.bien + "-" + e.date + ".pdf", bytes, "application/pdf"); } catch(err){ toast("PDF impossible : " + err.message); } break; }
     case "dx-del": sheetDelDoc(); break;
-    case "dx-del-ok": if (e){ e.del = true; e.upd = Date.now(); persist(); } closeSheet(); V.doc = null; render(); break;
+    case "dx-del-ok": if (e){ e.del = true; dxTouch(e); persist(); } closeSheet(); V.doc = null; render(); break;
   }
 });
 document.addEventListener("change", async ev => {
   const t = ev.target; if (!t || !t.dataset) return; const e = V.doc ? docCur() : null; if (!e) return;
-  if (t.dataset.dxh){ e[t.dataset.dxh] = t.value; e.upd = Date.now(); persist(); return; }
-  if (t.dataset.dx){ const it = dxItem(e, t.dataset.p, t.dataset.i); if (!it) return; it[t.dataset.dx] = t.value; e.upd = Date.now(); persist();
+  if (t.dataset.dxh){ e[t.dataset.dxh] = t.value; dxTouch(e); persist(); return; }
+  if (t.dataset.dx){ const it = dxItem(e, t.dataset.p, t.dataset.i); if (!it) return; it[t.dataset.dx] = t.value; dxTouch(e); persist();
     if (t.dataset.dx === "etat" && V.doc.kind === "edl") render(); return; }
   if (t.hasAttribute("data-edl-ph")){ const it = dxItem(e, t.dataset.p, t.dataset.i); if (!it) return; const files = [...t.files]; t.value = ""; let n = 0;
     for (const f of files){ try { const o = await phCompress(f), pid = uid(); await phPut(pid, o); (it.ph = it.ph || []).push(pid); n++; } catch(err){ toast("Photo illisible"); } }
-    if (n){ e.upd = Date.now(); persist(); render(); toast(n + " photo(s) ajoutée(s)"); } }
+    if (n){ dxTouch(e); persist(); render(); toast(n + " photo(s) ajoutée(s)"); } }
 });
 
 /* ============ Documents : PDF (état des lieux, inventaire), bail meublé, lettres ============ */
 const bailleurInfo = () => ({nom:(S.cfg && S.cfg.bailleur) || "", adr:(S.cfg && S.cfg.bailleurAdr) || ""});
 const MENT_EDL = "État des lieux établi contradictoirement et signé des deux parties, remis à chacune. Le locataire dispose de 10 jours à compter de sa réalisation pour demander au bailleur de compléter l'état des lieux d'entrée, et, pour les éléments de chauffage, durant le premier mois de la période de chauffe (article 3-2 de la loi n° 89-462 du 6 juillet 1989). Si l'état des lieux de sortie ne peut être établi contradictoirement, il l'est par commissaire de justice, à frais partagés.";
-function sigBlock(d, ville, date){
-  d.need(120); d.y -= 10; d.text(d.M, d.y, "Fait" + (ville ? " à " + ville : "") + ", le " + frDate(date || todayIso()) + ", en deux exemplaires.", {size:10.5}); d.y -= 34;
-  d.text(d.M, d.y, "Le bailleur (ou son mandataire)", {size:10, bold:true}); d.text(d.W - d.M, d.y, "Le locataire", {size:10, bold:true, right:true}); d.y -= 14;
-  d.text(d.W - d.M, d.y, "(mention « lu et approuvé »)", {size:8.5, right:true, color:"#5C6B66"}); d.y -= 56;
-  d.line(d.M, d.y, d.M + 190, d.y, "#9AA8A3"); d.line(d.W - d.M - 190, d.y, d.W - d.M, d.y, "#9AA8A3");
-}
-function titleBlock(d, titre, sous){ d.text(d.W / 2, d.y, titre, {size:19, bold:true, center:true, color:"#0E6B5C"}); d.y -= 22; if (sous){ d.text(d.W / 2, d.y, sous, {size:10, center:true, color:"#5C6B66"}); d.y -= 22; } }
+let RELECT = false;
+function titleBlock(d, titre, sous){ if (RELECT){ d.text(d.W / 2, d.y, "PROJET À RELIRE : NON SIGNÉ, SANS VALEUR CONTRACTUELLE", {size:9.5, bold:true, center:true, color:"#B3261E"}); d.y -= 28; } d.text(d.W / 2, d.y, titre, {size:19, bold:true, center:true, color:"#0E6B5C"}); d.y -= 22; if (sous){ d.text(d.W / 2, d.y, sous, {size:10, center:true, color:"#5C6B66"}); d.y -= 22; } }
 function partiesBlock(d, e){
   const bi = bailleurInfo(), M = d.M;
   const bloc = (t, l) => { d.need(50); d.text(M, d.y, t, {size:9.5, bold:true, color:"#5C6B66"}); d.y -= 14; l.filter(Boolean).forEach(x => { d.text(M, d.y, x, {size:10.5}); d.y -= 14; }); d.y -= 6; };
@@ -2350,7 +2386,7 @@ async function edlPdf(e){
     else d.para("Aucune dégradation constatée par rapport à l'état d'entrée.", 10, 14);
     d.para("Les éventuelles retenues sur le dépôt de garantie doivent être justifiées (devis, factures) et tenir compte de la vétusté.", 9, 12); }
   if (e.rem){ d.h("Remarques générales", 12); d.para(e.rem, 10, 14); }
-  d.y -= 6; d.para(MENT_EDL, 8.5, 11.5); sigBlock(d, (S.cfg && S.cfg.ville) || "", e.date);
+  d.y -= 6; d.para(MENT_EDL, 8.5, 11.5); sigBlock(d, (S.cfg && S.cfg.ville) || "", e.date, e.sig); if (e.sig) proofPage(d, e.sig, (sortie ? "État des lieux de sortie" : "État des lieux d'entrée") + " · " + bienName(e.bien) + " · " + frDate(e.date));
   return d.finish(sortie ? "État des lieux de sortie" : "État des lieux d'entrée");
 }
 function invPdf(e){
@@ -2364,7 +2400,7 @@ function invPdf(e){
   }
   if (e.rem){ d.h("Remarques générales", 12); d.para(e.rem, 10, 14); }
   d.y -= 6; d.para("Inventaire et état du mobilier établis contradictoirement et signés des deux parties (article 25-5 de la loi du 6 juillet 1989). Une copie est remise à chacune, en annexe du contrat de location.", 8.5, 11.5);
-  sigBlock(d, (S.cfg && S.cfg.ville) || "", e.date); return d.finish("Inventaire du mobilier");
+  sigBlock(d, (S.cfg && S.cfg.ville) || "", e.date, e.sig); if (e.sig) proofPage(d, e.sig, (sortie ? "Inventaire du mobilier de sortie" : "Inventaire du mobilier d'entrée") + " · " + bienName(e.bien) + " · " + frDate(e.date)); return d.finish("Inventaire du mobilier");
 }
 
 /* ---------- Bail meublé ---------- */
@@ -2386,11 +2422,11 @@ function sheetBail(){
     <div class="grid2">${dxS("bl-enc", "Loyers encadrés", [["Non", "Non"], ["Oui", "Oui"]], "Non")}${dxS("bl-tendue", "Zone tendue", [["Non", "Non"], ["Oui", "Oui"]], "Non")}</div>
     ${dxF("bl-encinfo", "Si encadré ou zone tendue : loyer de référence, majoré, complément, loyer du précédent locataire", "", 'placeholder="À reprendre sur le site officiel de ta ville"')}
     ${dxF("bl-ville", "Fait à", (S.cfg && S.cfg.ville) || "")}
-    <div class="btns"><button class="btn" style="flex:1" data-act="bail-pdf">Créer le bail (PDF)</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
+    <div class="btns"><button class="btn ghost" style="flex:1" data-act="bail-rel">PDF de relecture</button></div><div class="btns"><button class="btn" style="flex:1" data-act="bail-pdf">Créer le bail (PDF)</button><button class="btn" style="flex:1" data-act="bail-sign">Faire signer à l'écran</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
 }
 function bailRead(){ const o = {}; for (const k of ["bail", "badr", "loc", "adr", "type", "surf", "etage", "pieces", "copro", "dpe", "chauf", "eau", "annex", "duree", "debut", "regchg", "jour", "irl", "enc", "tendue", "encinfo", "ville"]) o[k] = dxV("bl-" + k);
   o.lhc = parseNum(dxV("bl-lhc")) || 0; o.chg = parseNum(dxV("bl-chg")) || 0; o.dep = parseNum(dxV("bl-dep")) || 0; return o; }
-function bailPdf(o){
+function bailPdf(o, sig){
   const d = new PdfDoc("Bail meublé"), M = d.M, P = (s, sz) => d.para(s, sz || 10, 13.5), Hh = s => d.h(s, 11.5), mois = +o.duree, fin = endBail(o.debut, mois), tot = r2(o.lhc + o.chg);
   titleBlock(d, "CONTRAT DE LOCATION MEUBLÉE", "Résidence principale du locataire · titre Ier bis de la loi n° 89-462 du 6 juillet 1989");
   d.para("Contrat établi d'après le contrat type annexé au décret n° 2015-587 du 29 mai 2015. À relire avant signature ; ce document ne remplace pas un conseil juridique.", 8.5, 11.5); d.y -= 4;
@@ -2422,7 +2458,7 @@ function bailPdf(o){
   P("[   ] Dossier de diagnostic technique (DPE, et selon le cas : plomb, amiante, électricité, gaz, risques)");
   P("[   ] Notice d'information relative aux droits et obligations des locataires et des bailleurs (arrêté du 29 mai 2015)");
   P("[   ] Extraits du règlement de copropriété (destination, jouissance et usage des parties privatives et communes)");
-  sigBlock(d, o.ville, o.debut); return d.finish("Contrat de location meublée");
+  sigBlock(d, o.ville, o.debut, sig); if (sig) proofPage(d, sig, "Contrat de location meublée · " + (o.adr || "") + " · prise d'effet le " + frDate(o.debut)); return d.finish("Contrat de location meublée");
 }
 
 /* ---------- Lettres et attestations ---------- */
@@ -2512,7 +2548,7 @@ function fileLink(e){
 }
 function sheetImport(kind){
   const id = V.bsel, t = tenantFor(id, todayIso()), rooms = kind === "edl" ? '<div class="small muted">Pièces de l\'état des lieux (pour pouvoir faire celui de sortie)</div>' + EDL_PIECES.map((p, i) => `<label style="display:flex;gap:8px;align-items:center;padding:4px 0"><input type="checkbox" id="im-pc-${i}" checked> ${esc(p[0])}</label>`).join("") : "";
-  const help = {bail:"Le bail signé est conservé tel quel (PDF ou photo). Il n'est pas lu par l'appli.", edl:"Le document est conservé. L'appli crée aussi un état des lieux d'entrée à compléter avec les pièces cochées : tu pourras ensuite créer celui de sortie.",
+  const help = {bail:"Le bail signé est conservé tel quel (PDF ou photo). Il n'est pas lu par l'appli.", edl:"Excel ou CSV (colonnes pièce, élément, état, observation) : les pièces et éléments sont repris tels quels. PDF, Word ou photo : le document est conservé et l'appli crée un état d'entrée avec les pièces cochées, à compléter. Dans les deux cas tu peux ensuite créer celui de sortie.",
     inv:"Excel ou CSV : la liste est lue et reprise dans l'appli (désignation, quantité, état, observation). PDF, Word ou photo : le document est conservé et une liste type est créée à compléter.", autre:"Le document est simplement conservé dans le dossier du bien."}[kind];
   openSheet(`<h2>Importer · ${esc(FKIND[kind])}</h2><div class="info">${help}</div>
     <label class="f">Fichier<input id="im-file" type="file" accept=".pdf,.xlsx,.xls,.csv,.doc,.docx,.txt,image/*"></label>
@@ -2551,8 +2587,10 @@ document.addEventListener("click", async ev => {
         await flPut(fid, {name:f.name, type, buf});
         docList("docs").push({id:fid, bien:V.bsel, kind:v, nom:dxV("im-nom") || f.name, fname:f.name, date, type, size:f.size, upd:Date.now()});
         let msg = "Document importé";
-        if (v === "edl"){ docList("edl").push({id:uid(), bien:V.bsel, type:"entree", date, loc, elec:"", eau:"", gaz:"", cles:"", fumee:"", rem:"", ref:"", fichier:fid, upd:Date.now(),
-            pieces:EDL_PIECES.filter((p, i) => !$("#im-pc-" + i) || $("#im-pc-" + i).checked).map(p => mkPiece(p[0], p[1]))}); msg = "Importé : état d'entrée créé, prêt pour la sortie"; }
+        if (v === "edl"){ let pieces = null;
+          if (/\.(xlsx|xls|csv)$/i.test(f.name)){ const it = invFromSheet(buf, f.name); if (it && it.length){ const map = {}; pieces = []; it.forEach(x => { const p = map[x.grp] || (map[x.grp] = {id:uid(), nom:x.grp, items:[]}); if (!map[x.grp].added){ map[x.grp].added = 1; pieces.push(p); } p.items.push({id:uid(), nom:x.nom, etat:x.etat, com:x.com, ph:[]}); }); pieces.forEach(p => delete p.added); } }
+          docList("edl").push({id:uid(), bien:V.bsel, type:"entree", date, loc, elec:"", eau:"", gaz:"", cles:"", fumee:"", rem:"", ref:"", fichier:fid, upd:Date.now(),
+            pieces:pieces || EDL_PIECES.filter((p, i) => !$("#im-pc-" + i) || $("#im-pc-" + i).checked).map(p => mkPiece(p[0], p[1]))}); msg = pieces ? "État lu : " + pieces.length + " pièce(s) reprise(s), prêt pour la sortie" : "Importé : état d'entrée créé, prêt pour la sortie"; }
         if (v === "inv"){ let items = /\.(xlsx|xls|csv)$/i.test(f.name) ? invFromSheet(buf, f.name) : null; const lu = items && items.length;
           if (!lu){ items = []; INV_DEF.forEach(([g, L]) => L.forEach(n => items.push({id:uid(), grp:g, nom:n, qte:"1", etat:"", com:""}))); }
           docList("inv").push({id:uid(), bien:V.bsel, type:"entree", date, loc, rem:"", ref:"", fichier:fid, items, upd:Date.now()}); msg = lu ? "Inventaire lu : " + items.length + " article(s) repris" : "Document gardé, liste type créée à compléter"; }
@@ -2566,6 +2604,191 @@ document.addEventListener("click", async ev => {
     case "fl-del-ok": { const d = docList("docs").find(x => x.id === id); if (d){ d.del = true; d.upd = Date.now(); flDel(id); for (const k of ["edl", "inv"]) docList(k).forEach(e => { if (e.fichier === id) e.fichier = ""; }); persist(); } closeSheet(); render(); break; }
   }
 });
+
+/* ============ Signature à l'écran, preuve, et export du dossier en ZIP ============ */
+function dxTouch(e){ e.upd = Date.now(); if (e.sig){ e.sig = null; toast("Signatures effacées : le document a été modifié"); } }
+const hhmm = iso => { const d = new Date(iso); return pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + "/" + d.getFullYear() + " à " + pad(d.getHours()) + ":" + pad(d.getMinutes()); };
+async function sha256Hex(s){ try { const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(h)].map(x => x.toString(16).padStart(2, "0")).join(""); } catch(e){ return ""; } }
+
+/* ---------- Écran de signature ---------- */
+const SG = {drawing:false, dirty:false};
+function sgSetup(){
+  const cv = $("#sg-cv"); if (!cv) return; const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); const c = cv.getContext("2d"); c.scale(dpr, dpr); c.lineWidth = 2.6; c.lineCap = "round"; c.lineJoin = "round"; c.strokeStyle = "#111"; c.fillStyle = "#fff"; c.fillRect(0, 0, r.width, r.height); SG.dirty = false;
+  const pos = e => { const b = cv.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; };
+  cv.onpointerdown = e => { try { cv.setPointerCapture(e.pointerId); } catch(x){} SG.drawing = true; const [x, y] = pos(e); c.beginPath(); c.moveTo(x, y); c.lineTo(x + 0.1, y + 0.1); c.stroke(); c.beginPath(); c.moveTo(x, y); SG.dirty = true; e.preventDefault(); };
+  cv.onpointermove = e => { if (!SG.drawing) return; const [x, y] = pos(e); c.lineTo(x, y); c.stroke(); c.beginPath(); c.moveTo(x, y); e.preventDefault(); };
+  cv.onpointerup = cv.onpointercancel = () => { SG.drawing = false; };
+}
+function sgExport(){ const cv = $("#sg-cv"), W = 420, H = Math.round(W * cv.height / cv.width), t = document.createElement("canvas"); t.width = W; t.height = H;
+  const c = t.getContext("2d"); c.fillStyle = "#fff"; c.fillRect(0, 0, W, H); c.drawImage(cv, 0, 0, W, H); return {d:t.toDataURL("image/jpeg", 0.85), w:W, h:H}; }
+function signFlow(parties, done, what, fp){ V.sg = {parties, i:0, res:{}, done, what, fingerprint:fp}; sgStep(); }
+function sgStep(){
+  const sg = V.sg, p = sg.parties[sg.i];
+  openSheet(`<h2>Signature · ${esc(p.label)}</h2><div class="small muted">${sg.i + 1} sur ${sg.parties.length}${sg.i > 0 ? " · passe le téléphone à " + esc(p.name || p.label) : ""}</div>
+    <div class="info"><b>${esc(p.name || p.label)}</b> : « Lu et approuvé. J'accepte de signer électroniquement ${esc(sg.what || "ce document")}. »</div>
+    <canvas id="sg-cv" style="width:100%;height:170px;border:2px dashed var(--muted);border-radius:12px;background:#fff;touch-action:none;display:block"></canvas>
+    <div class="small muted">Signe avec le doigt dans le cadre.</div>
+    <div class="btns"><button class="btn" style="flex:1" data-act="sg-ok">Je signe</button><button class="btn ghost" data-act="sg-clear">Effacer</button><button class="btn ghost" data-act="sg-cancel">Annuler</button></div>`);
+  setTimeout(sgSetup, 30);
+}
+async function sgFinish(){
+  const sg = V.sg, ts = new Date().toISOString(); sg.res.ts = ts; sg.res.hash = await sha256Hex(JSON.stringify({ctx:sg.fingerprint || "", ts, sig:sg.parties.map(p => [p.key, p.name, sg.res[p.key] && sg.res[p.key].ts, sg.res[p.key] && sg.res[p.key].d])}));
+  closeSheet(); const f = sg.done; V.sg = null; await f(sg.res);
+}
+function sigBlock(d, ville, date, sig){
+  if (RELECT){ d.need(110); d.y -= 14; d.line(d.M, d.y + 8, d.W - d.M, d.y + 8, "#B3261E"); d.para("Projet destiné à la relecture. Aucune signature n'est portée. Une fois les points vérifiés avec le locataire, crée le document définitif pour le signer.", 10, 14); d.y -= 14;
+    d.text(d.M, d.y, "Relu et confirmé par le locataire le ____ / ____ / ________      Initiales : ________", {size:10.5}); d.y -= 22; d.text(d.M, d.y, "Relu par le bailleur le ____ / ____ / ________      Initiales : ________", {size:10.5}); d.y -= 20; return; }
+  d.need(sig ? 190 : 120); d.y -= 10; d.text(d.M, d.y, "Fait" + (ville ? " à " + ville : "") + ", le " + frDate(sig ? sig.ts.slice(0, 10) : (date || todayIso())) + ", en deux exemplaires.", {size:10.5}); d.y -= 34;
+  d.text(d.M, d.y, "Le bailleur (ou son mandataire)", {size:10, bold:true}); d.text(d.W - d.M, d.y, "Le locataire", {size:10, bold:true, right:true}); d.y -= 14;
+  d.text(d.W - d.M, d.y, sig ? "(« lu et approuvé », signature électronique)" : "(mention « lu et approuvé »)", {size:8.5, right:true, color:"#5C6B66"}); d.y -= 62;
+  d.line(d.M, d.y, d.M + 190, d.y, "#9AA8A3"); d.line(d.W - d.M - 190, d.y, d.W - d.M, d.y, "#9AA8A3");
+  if (sig) for (const [k, x, right] of [["bailleur", d.M, false], ["locataire", d.W - d.M - 190, true]]){ const s = sig[k]; if (!s) continue; const h = Math.min(56, 160 * s.h / s.w), w = h === 56 ? 56 * s.w / s.h : 160;
+    d.image(x + 4, d.y + 3, w, h, s); d.text(x, d.y - 11, "Signé le " + hhmm(s.ts), {size:8, color:"#5C6B66"}); }
+}
+function proofPage(d, sig, titre){
+  d.newPage(); d.text(d.M, d.y, "PREUVE DE SIGNATURE ÉLECTRONIQUE", {size:15, bold:true, color:"#0E6B5C"}); d.y -= 26; d.para("Document : " + titre, 10.5, 15); d.y -= 6;
+  dTable(d, [{h:"Rôle", w:110}, {h:"Nom", w:230}, {h:"Date et heure de signature", w:171}], [["Bailleur", sig.bailleur.nom || "", hhmm(sig.bailleur.ts)], ["Locataire", sig.locataire.nom || "", hhmm(sig.locataire.ts)]]);
+  d.para("Empreinte numérique (SHA-256) du contenu et des signatures :", 10, 14); const hx = sig.hash || "indisponible"; d.para(hx.slice(0, 32), 10, 14); d.para(hx.slice(32), 10, 14); d.y -= 8;
+  d.para("Signatures électroniques simples (articles 1366 et 1367 du Code civil ; règlement européen n° 910/2014 « eIDAS »), tracées à l'écran de l'appareil du bailleur, en présence des signataires, après leur mention « lu et approuvé ». L'identité des signataires n'est pas vérifiée par un tiers de confiance : cette preuve est moins forte qu'une signature électronique avancée ou qualifiée. Conserve ce PDF : le document et l'empreinte ci-dessus en font foi.", 9.5, 13.5);
+}
+function sigBanner(e){
+  return `<div class="btns"><button class="btn sm ghost" data-act="dx-rel">PDF de relecture (à relire avant de signer)</button></div>` + (e.sig ? `<div class="info">Signé par ${esc(e.sig.bailleur.nom || "le bailleur")} le ${hhmm(e.sig.bailleur.ts)} et par ${esc(e.sig.locataire.nom || "le locataire")} le ${hhmm(e.sig.locataire.ts)}. Modifier le document efface les signatures.</div><div class="btns"><button class="btn sm ghost" data-act="dx-sign">Refaire les signatures</button></div>`
+    : `<div class="btns"><button class="btn sm ghost" data-act="dx-sign">Faire signer sur l'écran</button></div>`);
+}
+
+/* ---------- ZIP (sans compression) : dossier d'un bien rangé en sous-dossiers ---------- */
+const CRC_T = (() => { const t = []; for (let n = 0; n < 256; n++){ let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = u => { let c = -1; for (let i = 0; i < u.length; i++) c = CRC_T[(c ^ u[i]) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0; };
+function zipStore(files){
+  const enc = new TextEncoder(), now = new Date(), tm = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1), dd = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate(), chunks = [], cen = []; let off = 0;
+  for (const f of files){ const nm = enc.encode(f.name), crc = crc32(f.data), h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true); h.setUint16(10, tm, true); h.setUint16(12, dd, true); h.setUint32(14, crc, true); h.setUint32(18, f.data.length, true); h.setUint32(22, f.data.length, true); h.setUint16(26, nm.length, true); h.setUint16(28, 0, true);
+    chunks.push(new Uint8Array(h.buffer), nm, f.data);
+    const c = new DataView(new ArrayBuffer(46)); c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true); c.setUint16(12, tm, true); c.setUint16(14, dd, true); c.setUint32(16, crc, true); c.setUint32(20, f.data.length, true); c.setUint32(24, f.data.length, true); c.setUint16(28, nm.length, true); c.setUint32(42, off, true);
+    cen.push(new Uint8Array(c.buffer), nm); off += 30 + nm.length + f.data.length; }
+  const cs = cen.reduce((a, x) => a + x.length, 0), e = new DataView(new ArrayBuffer(22)); e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cs, true); e.setUint32(16, off, true);
+  const all = chunks.concat(cen, [new Uint8Array(e.buffer)]), out = new Uint8Array(off + cs + 22); let p = 0; for (const x of all){ out.set(x, p); p += x.length; } return out;
+}
+const cleanName = s => String(s || "").replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim() || "Sans nom";
+async function dossierFiles(id){
+  const root = cleanName(bienName(id)), out = [], used = new Set();
+  const add = (dir, name, data) => { let n = `${root}/${dir}/${cleanName(name)}`; if (used.has(n)){ const k = n.lastIndexOf("."); let i = 2; while (used.has(k < 0 ? n + " (" + i + ")" : n.slice(0, k) + " (" + i + ")" + n.slice(k))) i++; n = k < 0 ? n + " (" + i + ")" : n.slice(0, k) + " (" + i + ")" + n.slice(k); } used.add(n); out.push({name:n, data}); };
+  const addFiles = async (kind, dir) => { for (const d of fileDocs(id, kind)){ const r = await flGet(d.id); if (r) add(dir, d.date + " - " + (d.fname || d.nom), new Uint8Array(r.buf)); } };
+  await addFiles("bail", "01 Bail");
+  for (const e of docList("edl").filter(x => x.bien === id && !x.del)){ if (e.fichier && !e.pieces.some(p => p.items.some(i => i.etat || i.com || (i.ph || []).length))) continue;
+    add("02 États des lieux", e.date + " - État des lieux " + (e.type === "sortie" ? "sortie" : "entrée") + (e.sig ? " (signé)" : "") + ".pdf", await edlPdf(e)); }
+  await addFiles("edl", "02 États des lieux");
+  for (const e of docList("inv").filter(x => x.bien === id && !x.del)){ if (e.fichier && !e.items.some(i => i.etat || i.com)) continue;
+    add("03 Inventaires", e.date + " - Inventaire " + (e.type === "sortie" ? "sortie" : "entrée") + (e.sig ? " (signé)" : "") + ".pdf", invPdf(e)); }
+  await addFiles("inv", "03 Inventaires"); await addFiles("autre", "04 Autres documents");
+  return out;
+}
+async function exportDossier(ids, nom){
+  toast("Préparation du dossier…"); let files = []; for (const id of ids) files = files.concat(await dossierFiles(id));
+  if (!files.length) return toast("Rien à ranger pour l'instant");
+  await saveFile(nom + "-" + todayIso() + ".zip", zipStore(files), "application/zip"); }
+
+document.addEventListener("click", async ev => {
+  const b = ev.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act, e = V.doc ? docCur() : null;
+  switch (a){
+    case "sg-clear": sgSetup(); break;
+    case "sg-cancel": V.sg = null; closeSheet(); break;
+    case "sg-ok": { if (!SG.dirty) return toast("Signe d'abord dans le cadre"); const sg = V.sg, p = sg.parties[sg.i]; sg.res[p.key] = Object.assign(sgExport(), {ts:new Date().toISOString(), nom:p.name || p.label}); sg.i++;
+      if (sg.i < sg.parties.length) sgStep(); else await sgFinish(); break; }
+    case "dx-sign": { if (!e) break; const bn = bailleurInfo().nom || "Bailleur", what = (V.doc.kind === "edl" ? "cet état des lieux" : "cet inventaire");
+      signFlow([{key:"bailleur", label:"Bailleur", name:bn}, {key:"locataire", label:"Locataire", name:e.loc || "Locataire"}], async res => {
+        e.sig = res; e.upd = Date.now(); persist(); render(); toast("Signé le " + hhmm(res.ts)); }, what, JSON.stringify(Object.assign({}, e, {sig:null}))); break; }
+    case "bail-sign": { const o = bailRead(); if (!o.loc || !o.debut) return toast("Indique au moins le locataire et la date de prise d'effet"); if (o.lhc <= 0) return toast("Indique le loyer hors charges");
+      if (o.dep > r2(o.lhc * 2) + 0.005) return toast("Le dépôt ne peut pas dépasser 2 mois de loyer hors charges (" + eur(o.lhc * 2) + ")");
+      S.cfg = S.cfg || {bailleur:"", adr:{}}; S.cfg.bailleur = o.bail; S.cfg.bailleurAdr = o.badr; S.cfg.ville = o.ville;
+      const bn = S.biens.find(x => x.id === V.bsel); if (bn){ if (o.adr) bn.adresse = o.adr; bn.desc = {type:o.type, surface:o.surf, etage:o.etage, pieces:o.pieces, copro:o.copro, dpe:o.dpe, chauffage:o.chauf, eauch:o.eau, annexes:o.annex}; } persist();
+      const bien = V.bsel; signFlow([{key:"bailleur", label:"Bailleur", name:o.bail || "Bailleur"}, {key:"locataire", label:"Locataire", name:o.loc}], async res => {
+        const pdf = bailPdf(o, res), fid = uid(), name = "Bail signé " + o.debut + ".pdf";
+        await flPut(fid, {name, type:"application/pdf", buf:pdf.buffer}); docList("docs").push({id:fid, bien, kind:"bail", nom:"Bail signé le " + frDate(res.ts.slice(0, 10)), fname:name, date:res.ts.slice(0, 10), type:"application/pdf", size:pdf.length, upd:Date.now()});
+        persist(); render(); await saveFile(name, pdf, "application/pdf", "Contrat de location meublée signé électroniquement le " + hhmm(res.ts) + "."); }, "ce contrat de location", JSON.stringify(o)); break; }
+    case "zip-bien": exportDossier([V.bsel], "Dossier " + cleanName(bienName(V.bsel))); break;
+    case "zip-all": exportDossier(bienIds(), "Mes locations"); break;
+  }
+});
+
+/* ============ Arrivée / Départ du locataire : démarche pas à pas, avec accès direct aux documents ============ */
+const MVT = {
+  arr: {titre:"Arrivée d'un locataire", etapes:[
+    ["dos", "Dossier du candidat vérifié", "Pièce d'identité, justificatifs de revenus, garant éventuel. Ne demande que les pièces autorisées par le décret n° 2015-1437 (liste limitative).", null],
+    ["diag", "Diagnostics à jour", "DPE (le logement classé G ne peut plus être loué en résidence principale), risques (ERP), plomb avant 1949, électricité et gaz si installation de plus de 15 ans, amiante selon l'âge de l'immeuble. Garde-les dans les documents du bien.", ["docs", "Voir les documents du bien"]],
+    ["bail", "Bail préparé et relu", "Remplis le bail, puis crée le PDF de relecture et relis-le avec le locataire avant de signer.", ["bail", "Préparer le bail"]],
+    ["inv", "Inventaire du mobilier d'entrée", "Obligatoire en meublé (liste minimale du décret n° 2015-981). Tu peux le préparer avant la visite en reprenant la liste d'un autre logement.", ["inv-e", "Inventaire d'entrée"]],
+    ["edl", "État des lieux d'entrée", "Pièce par pièce, avec photos. Le locataire peut le compléter sous 10 jours (chauffage : premier mois).", ["edl-e", "État des lieux d'entrée"]],
+    ["sig", "Signatures", "Bail, état des lieux et inventaire signés par les deux parties, un exemplaire chacun (signature à l'écran possible).", ["docs", "Aller aux documents"]],
+    ["dep", "Dépôt de garantie reçu", "Maximum 2 mois de loyer hors charges en meublé. Il se note dans l'appli et dans Excel.", null],
+    ["cle", "Clés remises et compteurs relevés", "Note les index d'électricité, d'eau et de gaz dans l'état des lieux.", null],
+    ["ass", "Attestation d'assurance habitation reçue", "Le locataire doit l'avoir à l'entrée puis chaque année.", null],
+    ["loc", "Locataire enregistré dans l'appli et dans Excel", "Dates de début, loyer, charges, dépôt.", ["loc", "Fiche locataire"]]
+  ]},
+  dep: {titre:"Départ d'un locataire", etapes:[
+    ["con", "Congé reçu et vérifié", "Locataire en meublé : préavis d'un mois. Bailleur : au moins 3 mois avant la fin du bail, pour motif légal. Forme : lettre recommandée, acte de commissaire de justice ou remise en main propre contre récépissé.", null],
+    ["dat", "Date de départ fixée avec le locataire", "Prévois un rendez-vous commun pour l'état des lieux de sortie.", null],
+    ["inv", "Inventaire du mobilier de sortie", "Repris de l'inventaire d'entrée : tu notes l'état de chaque article à la sortie et les remarques.", ["inv-s", "Inventaire de sortie"]],
+    ["edl", "État des lieux de sortie", "Repris de l'état d'entrée : les éléments plus dégradés ressortent en rouge dans le PDF.", ["edl-s", "État des lieux de sortie"]],
+    ["sig", "Signatures", "Document signé par les deux parties, un exemplaire chacun.", ["docs", "Aller aux documents"]],
+    ["cle", "Clés rendues, compteurs relevés, adresse de renvoi notée", "Garde la nouvelle adresse du locataire pour lui envoyer le décompte.", null],
+    ["sol", "Loyers et charges à jour", "Vérifie le solde du locataire ; une lettre de loyer impayé est prête si besoin.", ["impaye", "Lettre d'impayé"]],
+    ["ret", "Retenues justifiées", "Devis ou factures, en tenant compte de la vétusté. Rien sans justificatif.", null],
+    ["res", "Dépôt de garantie restitué", "Sous 1 mois si l'état de sortie est conforme à l'entrée, sous 2 mois sinon (à vérifier sur le texte en vigueur).", ["depot", "Lettre de restitution"]],
+    ["qui", "Dernière quittance et solde de tout compte", "À remettre une fois tout réglé.", null],
+    ["clo", "Locataire clos dans l'appli et dans Excel", "Renseigne la date de fin du bail. Prépare les diagnostics et le bien pour la prochaine location.", ["loc", "Fiche locataire"]]
+  ]}
+};
+function mvtRec(bien, mv){
+  let r = docList("docs").find(x => x.kind === "chk" && x.bien === bien && x.mv === mv && !x.del);
+  if (!r){ r = {id:uid(), kind:"chk", bien, mv, done:{}, upd:Date.now()}; docList("docs").push(r); }
+  return r;
+}
+function mvtHas(bien, k, type){ return docList(k).some(x => x.bien === bien && !x.del && x.type === type); }
+function viewMvt(){
+  const id = V.bsel, t = tenantFor(id, todayIso());
+  const card = mv => { const M = MVT[mv], r = docList("docs").find(x => x.kind === "chk" && x.bien === id && x.mv === mv && !x.del) || {done:{}}, n = M.etapes.filter(e => r.done[e[0]]).length;
+    const type = mv === "arr" ? "entree" : "sortie";
+    const rows = M.etapes.map(([k, ti, hint, act]) => { const ok = !!r.done[k];
+      const btn = act ? `<button class="mini" data-act="mv-go" data-v="${act[0]}">${act[1]}</button>` : "";
+      const chip = (k === "inv" && mvtHas(id, "inv", type)) || (k === "edl" && mvtHas(id, "edl", type)) ? ' <span class="chip ok">créé</span>' : "";
+      return `<div style="padding:10px 0;border-top:1px solid var(--line)"><label style="display:flex;gap:10px;align-items:flex-start"><input type="checkbox" data-mv="${mv}" data-k="${k}" ${ok ? "checked" : ""} style="margin-top:3px"><span><b style="font-size:14px">${esc(ti)}</b>${chip}${ok ? ` <span class="small muted">· ${frDate(r.done[k])}</span>` : ""}</span></label>
+        <div class="small muted" style="margin:4px 0 6px 28px">${esc(hint)}</div>${btn ? `<div style="margin-left:28px">${btn}</div>` : ""}</div>`; }).join("");
+    return `<div class="card"><div class="top"><h2>${M.titre}</h2><span class="chip ${n === M.etapes.length ? "ok" : "warn"}">${n}/${M.etapes.length}</span></div>${rows}</div>`; };
+  return `<div class="info">${t ? "Locataire actuel : " + esc(t.nom) + (t.debut ? " · depuis le " + frDate(t.debut) : "") : "Aucun locataire en cours pour ce bien : tu es dans la phase d'arrivée."} Coche les étapes au fur et à mesure ; les boutons ouvrent directement le bon document.</div>
+    ${card("dep")}${card("arr")}<div class="small muted" style="padding:0 4px 12px">Repères généraux, à vérifier sur service-public.fr avant chaque location : la réglementation change.</div>`;
+}
+/* ---------- PDF de relecture : même document, sans signature, marqué « projet » ---------- */
+async function pdfRelect(fn, e){
+  const was = RELECT, s = e && e.sig; RELECT = true; if (e) e.sig = null;
+  try { return await fn(); } finally { RELECT = was; if (e) e.sig = s; }
+}
+document.addEventListener("click", async ev => {
+  const b = ev.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act, v = b.dataset.v, e = V.doc ? docCur() : null;
+  switch (a){
+    case "mv-go": {
+      if (v === "docs" || v === "loc"){ V.bsub = v; render(); break; }
+      if (v === "bail"){ V.bsub = "docs"; render(); sheetBail(); break; }
+      if (v === "impaye" || v === "depot"){ V.bsub = "docs"; render(); sheetLettre(v); break; }
+      const m = /^(edl|inv)-(e|s)$/.exec(v); if (m){ V.bsub = "docs"; render(); sheetNewDoc(m[1], m[2] === "e" ? "entree" : "sortie"); }
+      break; }
+    case "dx-rel": { if (!e) break; toast("Création du PDF de relecture…"); try { const bytes = await pdfRelect(() => V.doc.kind === "edl" ? edlPdf(e) : invPdf(e), e);
+        saveFile("RELECTURE-" + (V.doc.kind === "edl" ? "etat-des-lieux-" : "inventaire-") + e.type + "-" + e.bien + "-" + e.date + ".pdf", bytes, "application/pdf"); } catch(err){ toast("PDF impossible : " + err.message); } break; }
+    case "bail-rel": { const o = bailRead(); if (!o.loc || !o.debut) return toast("Indique au moins le locataire et la date de prise d'effet"); if (o.lhc <= 0) return toast("Indique le loyer hors charges");
+      const bytes = await pdfRelect(async () => bailPdf(o)); saveFile("RELECTURE-bail-meuble-" + V.bsel + "-" + o.debut + ".pdf", bytes, "application/pdf"); break; }
+  }
+});
+document.addEventListener("change", ev => {
+  const t = ev.target; if (!t || !t.dataset || !t.dataset.mv) return;
+  const r = mvtRec(V.bsel, t.dataset.mv); if (t.checked) r.done[t.dataset.k] = todayIso(); else delete r.done[t.dataset.k]; r.upd = Date.now(); persist(); render();
+});
+/* ---------- Version d'essai (faux biens, adresses, locataires) ---------- */
+function demoCard(){
+  const back = (() => { try { return !!localStorage.getItem("gl-avant-essai"); } catch(e){ return false; } })();
+  return `<div class="card"><h2>Version d'essai</h2><div class="small muted">Charge de faux biens, adresses, locataires, états des lieux et inventaires pour tester toutes les fonctions sans toucher à tes vraies données.</div>
+    <div class="btns"><button class="btn sm" data-act="demo">Charger la version d'essai</button>${S.demo && back ? '<button class="btn sm ghost" data-act="demo-back">Retrouver mes données</button>' : ""}</div></div>`;
+}
 
 /* ============ Démarrage ============ */
 const migrate = () => { if (!S.cfg || typeof S.cfg !== "object") S.cfg = {bailleur:"", adr:{}}; if (!Array.isArray(S.modeles)) S.modeles = []; if (!Array.isArray(S.clotures)) S.clotures = []; if (!S.rapp || typeof S.rapp !== "object") S.rapp = {}; for (const k of ["biens","tarifs","journal","factures","locataires","seen","partages","edl","inv","docs"]) if (!Array.isArray(S[k])) S[k] = []; };

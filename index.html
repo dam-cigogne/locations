@@ -1123,8 +1123,9 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.9.7";
+const APP_VERSION = "2.9.8";
 const CHANGELOG = [
+  {v:"2.9.8", date:"2026-10-25", titre:"Lien du dossier dans la fiche candidat", items:["Dans la fiche d'un candidat : boutons « Copier le lien du dossier » et « Partager » pour envoyer le 2e formulaire (une case par pièce).","Formulaires : le champ date ne dépasse plus de l'écran sur iPhone."]},
   {v:"2.9.7", date:"2026-10-25", titre:"Tablette et grand écran", items:["L'appli s'adapte à la taille de l'écran : plus large sur tablette, Accueil et Bilan en deux colonnes en grand écran, fenêtres centrées."]},
   {v:"2.9.6", date:"2026-10-25", titre:"Formulaire « dossier complet »", items:["Après la visite, le courrier « Demande du dossier » contient un 2e lien : une case par pièce (identité, domicile, contrat de travail, 3 bulletins, avis d'imposition, ressources, pièces du garant).","Dans « Coller une candidature ou un dossier reçu », choisis dossier.txt et les pièces : elles se rangent dans les bonnes cases de la fiche, qui passe en « Dossier à vérifier ».","Formulaire de candidature : le message « lien incomplet » est visible en haut et le bouton reste actif."]},
   {v:"2.9.5", date:"2026-10-25", titre:"Pièces jointes des candidatures", items:[
@@ -3174,6 +3175,7 @@ function sheetCand(id){
     ${dxF("cd-vis", "Visite (date et heure)", c.visite, 'type="datetime-local"')}
     <label class="f">Notes<textarea id="cd-note" style="min-height:80px">${esc(c.note)}</textarea></label>
     <div class="small muted" style="margin-top:8px">Pièces reçues (liste limitative du décret n° 2015-1437 : ne demande rien d'autre)</div>${pcs}
+    ${id && dosLink(c) ? `<div class="small muted" style="margin-top:8px">2e formulaire : le candidat y dépose chaque pièce (identité, domicile, contrat, bulletins, avis d'imposition, garant)</div><div class="btns"><button class="btn sm" data-act="cd-dl-copy" data-id="${id}">Copier le lien du dossier</button><button class="btn sm ghost" data-act="cd-dl-share" data-id="${id}">Partager</button></div>` : ""}
     ${id ? `<div class="small muted" style="margin-top:8px">Pièces jointes (restent sur cet appareil, non incluses dans la sauvegarde)</div><div class="rows">${files}</div>
       <label class="f">Joindre une photo ou un PDF<input id="cd-file" type="file" accept="image/*,.pdf" multiple></label>` : '<div class="small muted">Enregistre la fiche pour pouvoir joindre des pièces.</div>'}
     <div class="btns"><button class="btn" style="flex:1" data-act="cd-save" data-id="${id || ""}">Enregistrer</button><button class="btn ghost" data-act="sheetclose">Fermer</button></div>
@@ -3252,6 +3254,8 @@ document.addEventListener("click", async ev => {
     case "an-state": { S.annonces = S.annonces || {}; const cur = annOf(V.lsel); cur.statut = v; cur.upd = Date.now(); S.annonces[V.lsel] = cur; persist(); render(); break; }
     case "cd-link-copy": { const l = $("#cd-link").value; (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.reject()).then(() => toast("Lien copié")).catch(() => { $("#cd-link").select(); toast("Sélectionné : copie-le"); }); break; }
     case "cd-link-share": { const l = $("#cd-link").value; try { if (navigator.share) await navigator.share({title:"Candidature de location", text:"Voici le formulaire de candidature :", url:l}); else toast("Utilise « Copier le lien »"); } catch(e){} break; }
+    case "cd-dl-copy": { const c = candGet(id), l = c && dosLink(c); if (!l) return toast("Indique d'abord ton e-mail dans Annonce › Modifier"); (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.reject()).then(() => toast("Lien du dossier copié")).catch(() => toast("Copie impossible : utilise Partager")); break; }
+    case "cd-dl-share": { const c = candGet(id), l = c && dosLink(c); if (!l) return toast("Indique d'abord ton e-mail dans Annonce › Modifier"); try { if (navigator.share) await navigator.share({title:"Dossier de location", text:"Voici le formulaire pour déposer ton dossier :", url:l}); else toast("Utilise « Copier le lien du dossier »"); } catch(e){} break; }
     case "cd-paste": sheetPaste(); break;
     case "cd-paste-read": { try { const t = await navigator.clipboard.readText(); $("#cp-txt").value = t; } catch(e){ toast("Colle le texte à la main dans la zone"); } break; }
     case "cd-paste-ok": { const fl = [...($("#cp-files") ? $("#cp-files").files : [])], tf = fl.find(f => /\.txt$/i.test(f.name) || f.type === "text/plain"), others = fl.filter(f => f !== tf);

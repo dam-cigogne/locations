@@ -926,7 +926,7 @@ function sheetPin(mode){
 function viewSet(){
   const p = V.pending;
   const pend = p ? `<div class="card" style="border-color:var(--accent)"><h2>Fichier lu : ${esc(p.name)}</h2>
-    <div class="small">${p.kind === "json" ? "Sauvegarde complète de l'appli." : `${p.d.biens ? p.d.biens.length + " bien(s), " : ""}${p.d.tarifs ? p.d.tarifs.length + " tarif(s), " : ""}${p.d.journal.length} opération(s), ${p.d.factures.length} facture(s), ${p.d.locataires.length} locataire(s).`}</div>
+    <div class="small">${p.kind === "json" ? bkSummary(p.data) : `${p.d.biens ? p.d.biens.length + " bien(s), " : ""}${p.d.tarifs ? p.d.tarifs.length + " tarif(s), " : ""}${p.d.journal.length} opération(s), ${p.d.factures.length} facture(s), ${p.d.locataires.length} locataire(s).`}</div>
     <div class="btns"><button class="btn" data-act="imp-merge">${p.kind === "json" ? "Restaurer" : "Fusionner (recommandé)"}</button>
     ${p.kind === "json" ? "" : `<button class="btn ghost" data-act="imp-replace">Remplacer mes données</button>`}<button class="btn ghost" data-act="imp-cancel">Annuler</button></div></div>` : "";
   return `<div class="top"><div class="app">Réglages</div><button class="q" data-act="help" aria-label="Aide">?</button></div>${V.msg ? `<div class="info">${esc(V.msg)}</div>` : ""}${pend}
@@ -963,7 +963,7 @@ async function onFile(file){
   try {
     if (/\.json$/i.test(file.name)){
       const obj = JSON.parse(await file.text()); if (!obj || !Array.isArray(obj.journal)) throw new Error("Sauvegarde non reconnue.");
-      V.pending = {kind:"json", name:file.name, data:obj, d:{journal:obj.journal, factures:[], locataires:[]}};
+      V.pending = {kind:"json", name:file.name, data:obj, d:{journal:obj.journal, biens:obj.biens || [], factures:[], locataires:obj.locataires || []}};
     } else {
       const wb = XLSX.read(await file.arrayBuffer(), {type:"array", sheets:["Biens_appli","Tarifs_appli","Journal_appli","Factures_appli","Locataires_appli","Reglages_appli","FraisPartages_appli"]});
       const d = parseEchange(wb); if (!d) throw new Error("feuilles « …_appli » introuvables (utilise le bouton d'export de la macro Excel).");
@@ -972,9 +972,13 @@ async function onFile(file){
     V.msg = ""; render();
   } catch(e){ V.pending = null; V.msg = "Lecture impossible : " + e.message; render(); }
 }
+function bkSummary(o){
+  const nb = (o.biens || []).filter(b => !b.del).length, nl = (o.locataires || []).filter(x => !x.del).length, no = (o.journal || []).filter(x => !x.del).length;
+  return "Sauvegarde complète : " + nb + " bien(s), " + nl + " locataire(s), " + no + " opération(s), bailleur : " + ((o.cfg && o.cfg.bailleur) || "non renseigné") + "." + (o.demo ? " ⚠ Ce sont des données d'exemple (version d'essai), pas tes vraies données." : "") + (!nb ? " ⚠ Aucun bien dans ce fichier." : "");
+}
 function commitImport(replace){
   const p = V.pending; if (!p) return;
-  if (p.kind === "json"){ S = Object.assign(emptyData(), p.data); S.demo = false; V.msg = "Sauvegarde restaurée."; }
+  if (p.kind === "json"){ S = Object.assign(emptyData(), p.data); S.demo = false; V.msg = "Sauvegarde restaurée : " + (S.biens || []).filter(b => !b.del).length + " bien(s), " + (S.locataires || []).filter(x => !x.del).length + " locataire(s), bailleur : " + ((S.cfg && S.cfg.bailleur) || "non renseigné") + "."; }
   else {
     const d = p.d, fromExcel = !!d.biens;
     if (replace || S.demo){ const base = emptyData(); S = base; }
@@ -1079,7 +1083,7 @@ document.addEventListener("click", ev => {
     case "face-on": faceRegister().then(async cred => { SEC.cfg.cred = cred; await idbPut("dk", SEC.dk); SEC.cfg.face = true; secCfgSave(); toast("Face ID activé"); render(); }).catch(() => toast("Face ID non activé")); break;
     case "face-off": SEC.cfg.face = false; SEC.cfg.cred = ""; secCfgSave(); idbDel("dk"); render(); break;
     case "exp-journal": saveFile("journal_appli.xlsx", buildEchange(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"); break;
-    case "exp-json": saveFile("mes-locations-sauvegarde.json", JSON.stringify(S,null,1), "application/json"); break;
+    case "exp-json": if (S.demo) toast("Attention : ce sont des données d'exemple"); saveFile("mes-locations-sauvegarde.json", JSON.stringify(S,null,1), "application/json"); break;
     case "imp-replace": commitImport(true); break; case "imp-merge": commitImport(false); break;
     case "imp-cancel": V.pending = null; render(); break;
     case "wipe": V.wipe = true; render(); break; case "wipe-no": V.wipe = false; render(); break;
@@ -1104,8 +1108,18 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.7.0";
+const APP_VERSION = "2.8.1";
 const CHANGELOG = [
+  {v:"2.8.1", date:"2026-10-25", titre:"Reprendre un ancien inventaire PDF", items:[
+    "Importer un inventaire ou un état des lieux en PDF : l'appli lit le texte du PDF et te le montre ligne par ligne ; tu corriges puis tu valides. La liste devient l'entrée, et l'inventaire de sortie la reprend.",
+    "Coller une liste : dans un inventaire ou un état des lieux, « Coller une liste » découpe ton texte en articles (« 4 chaises », « Lit ; 1 ; Bon »).",
+    "Nouvelle sortie (inventaire ou état des lieux) : tu peux choisir directement ton exemplaire d'entrée (Excel, CSV ou PDF avec du texte). L'appli le lit et crée la version de sortie dans la foulée, avec une colonne « à l'entrée » pour chaque article. Un PDF scanné (image) ne peut pas être lu : l'appli te le dit et te laisse coller la liste.",
+    "Restaurer une sauvegarde .json : avant de valider, l'appli indique le nombre de biens, de locataires, d'opérations et le bailleur contenus dans le fichier, et prévient si ce sont des données d'exemple."]},
+  {v:"2.8.0", date:"2026-10-25", titre:"Bail 2026 et pièces à joindre", items:[
+    "Bail : pour un bail à partir du 1er octobre 2026, la clause résolutoire suit le décret n° 2026-596 (effet six semaines après un commandement de payer). Clauses facultatives (assurance, troubles de voisinage, servitude de résidence principale) et mobiles facultatifs.",
+    "Documents › Pièces à joindre au bail : diagnostics, notice d'information, règlement de copropriété, listes de charges et de réparations, acte de caution, assurance, attestation CAF. Importe-les une fois ; elles sont cochées dans l'annexe du bail.",
+    "Nouvelle lettre « Rappel avant état de sortie » et rappel dans la démarche de départ.",
+    "Arrivée/Départ › Vérifier la réglementation : liens officiels et date de dernier contrôle."]},
   {v:"2.7.0", date:"2026-10-25", titre:"Arrivée / Départ et relecture", items:[
     "Nouvel onglet Biens › Arrivée/Départ : la démarche pas à pas pour l'arrivée et pour le départ d'un locataire, avec les points clés, des cases à cocher datées et des boutons directs vers le bail, l'inventaire, l'état des lieux et les lettres.",
     "PDF de relecture (bail, état des lieux, inventaire) : le document complet, marqué « projet à relire », sans signature, avec des cases pour confirmer avec le locataire avant de signer.",
@@ -1679,7 +1693,7 @@ function readLoc(bien){
 }
 function viewWelcome(){
   const w = V.wz = V.wz || {step:0}, st = w.step, dots = `<div class="small muted" style="text-align:center">Étape ${Math.min(st, 4)} sur 4</div>`;
-  const p = V.pending ? `<div class="card" style="border-color:var(--accent)"><h2>Fichier lu : ${esc(V.pending.name)}</h2><div class="small">${V.pending.d.biens ? V.pending.d.biens.length + " bien(s), " : ""}${V.pending.d.journal.length} opération(s), ${V.pending.d.locataires.length} locataire(s).</div>
+  const p = V.pending ? `<div class="card" style="border-color:var(--accent)"><h2>Fichier lu : ${esc(V.pending.name)}</h2><div class="small">${V.pending.kind === "json" ? bkSummary(V.pending.data) : (V.pending.d.biens ? V.pending.d.biens.length + " bien(s), " : "") + V.pending.d.journal.length + " opération(s), " + V.pending.d.locataires.length + " locataire(s)."}</div>
     <div class="btns"><button class="btn" data-act="imp-merge" style="flex:1">Importer</button><button class="btn ghost" data-act="imp-cancel">Annuler</button></div></div>` : "";
   if (st === 0) return `<div class="top"><div class="app">Mes locations</div><button class="q" data-act="help" aria-label="Aide">?</button></div>
     <div class="card hero"><div class="lbl">Bienvenue</div><div class="big" style="font-size:30px">Tes locations, au clair</div><div class="sub">Loyers, charges, soldes de tes appartements, et un échange avec ton classeur Excel.</div></div>
@@ -2240,9 +2254,11 @@ function viewDocs(){
     <div class="rows">${I.map(e => row("inv", e)).join("") || '<div class="empty">Aucun inventaire pour ce bien.</div>'}${fileDocs(id, "inv").filter(d => !I.some(e => e.fichier === d.id)).map(fileRow).join("")}</div></div>
   <div class="card"><h2>Bail et lettres</h2><div class="small muted">Les PDF se remplissent avec les données du bien et du locataire.</div>
     <div class="btns"><button class="btn sm" data-act="bail-open">Bail meublé (PDF)</button></div>
-    <div class="btns"><button class="btn sm ghost" data-act="let-open" data-v="impaye">Lettre de loyer impayé</button><button class="btn sm ghost" data-act="let-open" data-v="attest">Attestation de loyer</button><button class="btn sm ghost" data-act="let-open" data-v="depot">Restitution du dépôt</button></div>
+    <div class="btns"><button class="btn sm ghost" data-act="let-open" data-v="impaye">Lettre de loyer impayé</button><button class="btn sm ghost" data-act="let-open" data-v="attest">Attestation de loyer</button><button class="btn sm ghost" data-act="let-open" data-v="depot">Restitution du dépôt</button><button class="btn sm ghost" data-act="let-open" data-v="rappel">Rappel avant état de sortie</button></div>
     <div class="btns"><button class="btn sm ghost" data-act="im-open" data-v="bail">Importer le bail signé</button></div>
     <div class="rows">${fileDocs(id, "bail").map(fileRow).join("")}</div></div>
+  <div class="card"><h2>Pièces à joindre au bail</h2><div class="small muted">Importe chaque pièce une fois ; elle est cochée ici et dans l'annexe du bail. Ce sont les documents que Horiz propose.</div>
+    <div class="rows">${ANNEXES.map(a => `<div class="row"><div class="main"><div class="t">${esc(a[1])}</div></div>${annexHas(id, a[0]) ? '<span class="chip ok">Au dossier</span>' : `<button class="mini" data-act="im-open" data-v="autre" data-s="${a[0]}">Importer</button>`}</div>`).join("")}</div></div>
   <div class="card"><h2>Autres documents</h2><div class="small muted">Diagnostics, assurance, courriers… gardés avec le dossier du bien, sur ce téléphone.</div>
     <div class="btns"><button class="btn sm ghost" data-act="im-open" data-v="autre">Importer un document</button></div>
     <div class="rows">${fileDocs(id, "autre").map(fileRow).join("") || '<div class="empty">Aucun document.</div>'}</div></div>
@@ -2272,7 +2288,7 @@ function viewEdl(e){
     <div class="grid2 dxi"><label class="f">Gaz<input data-dxh="gaz" inputmode="decimal" value="${esc(e.gaz || "")}"></label><label class="f">Clés remises<input data-dxh="cles" inputmode="numeric" value="${esc(e.cles || "")}"></label></div>
     <label class="f">Détecteur de fumée<select data-dxh="fumee"><option value="">—</option>${["Présent et testé", "Présent", "Absent"].map(x => `<option ${x === e.fumee ? "selected" : ""}>${x}</option>`).join("")}</select></label></div>
   ${rooms}
-  <div class="card"><h2>Ajouter une pièce</h2><div class="grid2 dxi"><input id="np-nom" placeholder="Ex. Balcon, cave"><button class="btn sm ghost" data-act="edl-addroom">Ajouter</button></div></div>
+  <div class="card"><h2>Ajouter une pièce</h2><div class="btns"><button class="btn sm ghost" data-act="bulk-open">Coller une liste de pièces et éléments</button></div><div class="grid2 dxi"><input id="np-nom" placeholder="Ex. Balcon, cave"><button class="btn sm ghost" data-act="edl-addroom">Ajouter</button></div></div>
   <div class="card"><label class="f">Remarques générales<textarea data-dxh="rem">${esc(e.rem || "")}</textarea></label>
     ${sigBanner(e)}<div class="btns"><button class="btn" style="flex:1" data-act="dx-pdf">${e.sig ? "PDF signé : enregistrer ou envoyer" : "Créer le PDF"}</button><button class="btn danger" data-act="dx-del">Supprimer</button></div>
     <div class="small muted">Les photos restent sur ce téléphone (pas dans la sauvegarde ni dans Excel). Elles sont jointes au PDF.</div></div>`;
@@ -2289,6 +2305,7 @@ function viewInv(e){
   <div class="card"><h2>Ajouter un article</h2><div class="dxi"><input id="ni-nom" placeholder="Ex. Télévision, bureau"></div>
     <label class="f">Rangé dans<select id="ni-grp">${[...new Set(["Chambre", "Séjour", "Cuisine", "Entretien", "Autres"].concat(groups))].map(g => `<option>${esc(g)}</option>`).join("")}</select></label>
     <div class="btns"><button class="btn sm ghost" data-act="inv-additem">Ajouter</button></div></div>
+  <div class="card"><h2>Ajouter plusieurs lignes</h2><div class="small muted">Colle une liste (copiée d'un PDF, d'un mail, de tes notes) : l'appli la découpe en articles.</div><div class="btns"><button class="btn sm ghost" data-act="bulk-open">Coller une liste</button></div></div>
   <div class="card"><label class="f">Remarques générales<textarea data-dxh="rem">${esc(e.rem || "")}</textarea></label>
     ${sigBanner(e)}<div class="btns"><button class="btn" style="flex:1" data-act="dx-pdf">${e.sig ? "PDF signé : enregistrer ou envoyer" : "Créer le PDF"}</button><button class="btn danger" data-act="dx-del">Supprimer</button></div></div>`;
 }
@@ -2300,14 +2317,21 @@ function sheetNewDoc(kind, type){
   const id = V.bsel, t = tenantFor(id, todayIso()), prev = docList(kind).filter(x => x.bien === id && !x.del && x.type === "entree").sort((a, b) => b.date.localeCompare(a.date) || (b.upd || 0) - (a.upd || 0));
   openSheet(`<h2>${kind === "edl" ? "État des lieux" : "Inventaire du mobilier"} ${type === "entree" ? "d'entrée" : "de sortie"}</h2>
     ${dxF("dx-date", "Date", todayIso(), 'type="date"')}${dxF("dx-loc", "Locataire", t ? t.nom : "")}
-    ${type === "sortie" ? (prev.length ? dxS("dx-ref", "Comparer avec l'entrée du", prev.map(e => [e.id, frDate(e.date) + " · " + (e.loc || "")]), prev[0].id) : '<div class="info">Aucun document d\'entrée pour ce bien : celui de sortie sera vierge.</div>') : ""}
+    ${type === "sortie" && prev.length ? dxS("dx-ref", "Comparer avec l'entrée du", prev.map(e => [e.id, frDate(e.date) + " · " + (e.loc || "") + " · " + (kind === "inv" ? e.items.length + " article(s)" : e.pieces.length + " pièce(s)")]), prev[0].id) : ""}
+    ${type === "sortie" ? `<div class="info" style="margin-top:8px"><b>As-tu l'exemplaire d'entrée en fichier ?</b> (PDF, Excel ou CSV). Choisis-le ici : l'appli le reprend et crée directement la version de sortie.</div>
+      <label class="f">Fichier d'entrée (facultatif)<input id="dx-impf" type="file" accept=".pdf,.xlsx,.xls,.csv,.txt"></label>${dxF("dx-edate", "Date de l'entrée (sur le document)", (tenantFor(id, todayIso()) || {}).debut || "", 'type="date"')}` : ""}
     ${!(type === "sortie" && prev.length) ? tplPick(kind) : ""}
     ${type === "entree" && kind === "edl" ? '<div class="small muted">Pièces à inclure</div>' + EDL_PIECES.map((p, i) => `<label style="display:flex;gap:8px;align-items:center;padding:4px 0"><input type="checkbox" id="dx-pc-${i}" checked> ${esc(p[0])}</label>`).join("") : ""}
     <div class="btns"><button class="btn" style="flex:1" data-act="dx-create" data-v="${kind}" data-t="${type}">Créer</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
 }
 function dxCreate(kind, type){
-  const id = V.bsel, date = dxV("dx-date") || todayIso(), loc = dxV("dx-loc"), refId = $("#dx-ref") ? $("#dx-ref").value : "", ref = refId ? docGet(kind, refId) : null, base = {id:uid(), bien:id, type, date, loc, rem:"", ref:ref ? ref.id : "", upd:Date.now()};
+  const f = $("#dx-impf") && $("#dx-impf").files[0]; if (type === "sortie" && f) return dxCreateFromFile(kind, f);
+  const date = dxV("dx-date") || todayIso(), loc = dxV("dx-loc"), refId = $("#dx-ref") ? $("#dx-ref").value : "", ref = refId ? docGet(kind, refId) : null;
   const tplId = !ref && $("#dx-tpl") ? $("#dx-tpl").value : "", tpl = tplId ? docGet(kind, tplId) : null;
+  dxMake(kind, type, date, loc, ref, tpl);
+}
+function dxMake(kind, type, date, loc, ref, tpl){
+  const id = V.bsel, base = {id:uid(), bien:id, type, date, loc, rem:"", ref:ref ? ref.id : "", upd:Date.now()};
   let doc;
   if (kind === "edl"){
     doc = Object.assign(base, {elec:"", eau:"", gaz:"", cles:"", fumee:"", pieces:[]});
@@ -2421,18 +2445,22 @@ function sheetBail(){
     ${dxF("bl-irl", "Indice IRL de référence (trimestre et valeur)", "", 'placeholder="Ex. 2e trimestre 2026 : 146,68"')}
     <div class="grid2">${dxS("bl-enc", "Loyers encadrés", [["Non", "Non"], ["Oui", "Oui"]], "Non")}${dxS("bl-tendue", "Zone tendue", [["Non", "Non"], ["Oui", "Oui"]], "Non")}</div>
     ${dxF("bl-encinfo", "Si encadré ou zone tendue : loyer de référence, majoré, complément, loyer du précédent locataire", "", 'placeholder="À reprendre sur le site officiel de ta ville"')}
+    <div class="grid2">${dxF("bl-bmob", "Mobile bailleur (facultatif)", "", 'inputmode="tel"')}${dxF("bl-lmob", "Mobile locataire (facultatif)", t.tel || "", 'inputmode="tel"')}</div>
+    <div class="small muted">Baux signés à partir du 1er octobre 2026 : nouvelle clause résolutoire (décret n° 2026-596). Clauses facultatives :</div>
+    <div class="grid2">${dxS("bl-assclause", "Défaut d'assurance", [["Non", "Non"], ["Oui", "Oui"]], "Non")}${dxS("bl-trouble", "Troubles de voisinage", [["Non", "Non"], ["Oui", "Oui"]], "Non")}</div>
+    ${dxS("bl-servit", "Servitude de résidence principale (secteur du PLU)", [["Non", "Non"], ["Oui", "Oui"]], "Non")}
     ${dxF("bl-ville", "Fait à", (S.cfg && S.cfg.ville) || "")}
     <div class="btns"><button class="btn ghost" style="flex:1" data-act="bail-rel">PDF de relecture</button></div><div class="btns"><button class="btn" style="flex:1" data-act="bail-pdf">Créer le bail (PDF)</button><button class="btn" style="flex:1" data-act="bail-sign">Faire signer à l'écran</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
 }
-function bailRead(){ const o = {}; for (const k of ["bail", "badr", "loc", "adr", "type", "surf", "etage", "pieces", "copro", "dpe", "chauf", "eau", "annex", "duree", "debut", "regchg", "jour", "irl", "enc", "tendue", "encinfo", "ville"]) o[k] = dxV("bl-" + k);
+function bailRead(){ const o = {}; for (const k of ["bail", "badr", "loc", "adr", "type", "surf", "etage", "pieces", "copro", "dpe", "chauf", "eau", "annex", "duree", "debut", "regchg", "jour", "irl", "enc", "tendue", "encinfo", "ville", "bmob", "lmob", "assclause", "trouble", "servit"]) o[k] = dxV("bl-" + k);
   o.lhc = parseNum(dxV("bl-lhc")) || 0; o.chg = parseNum(dxV("bl-chg")) || 0; o.dep = parseNum(dxV("bl-dep")) || 0; return o; }
 function bailPdf(o, sig){
   const d = new PdfDoc("Bail meublé"), M = d.M, P = (s, sz) => d.para(s, sz || 10, 13.5), Hh = s => d.h(s, 11.5), mois = +o.duree, fin = endBail(o.debut, mois), tot = r2(o.lhc + o.chg);
   titleBlock(d, "CONTRAT DE LOCATION MEUBLÉE", "Résidence principale du locataire · titre Ier bis de la loi n° 89-462 du 6 juillet 1989");
-  d.para("Contrat établi d'après le contrat type annexé au décret n° 2015-587 du 29 mai 2015. À relire avant signature ; ce document ne remplace pas un conseil juridique.", 8.5, 11.5); d.y -= 4;
+  d.para("Contrat établi d'après le contrat type annexé au décret n° 2015-587 du 29 mai 2015" + (o.debut >= "2026-10-01" ? ", modifié par le décret n° 2026-596 du 6 juillet 2026 (baux conclus ou renouvelés à compter du 1er octobre 2026)" : "") + ". À relire avant signature ; ce document ne remplace pas un conseil juridique.", 8.5, 11.5); d.y -= 4;
   Hh("1. Désignation des parties");
-  P("Le bailleur : " + (o.bail || "………") + ", demeurant " + (o.badr || "………") + ", désigné « le bailleur ».");
-  P("Le locataire : " + (o.loc || "………") + ", désigné « le locataire ». S'ils sont plusieurs, les locataires sont tenus solidairement et indivisiblement.");
+  P("Le bailleur : " + (o.bail || "………") + ", demeurant " + (o.badr || "………") + (o.bmob ? ", mobile " + o.bmob : "") + ", désigné « le bailleur ».");
+  P("Le locataire : " + (o.loc || "………") + (o.lmob ? ", mobile " + o.lmob : "") + ", désigné « le locataire ». S'ils sont plusieurs, les locataires sont tenus solidairement et indivisiblement.");
   Hh("2. Objet du contrat");
   P("Le bailleur loue au locataire le logement suivant, situé " + (o.adr || "………") + " : " + (o.type || "logement") + (o.etage ? ", " + o.etage : "") + ", d'une surface habitable de " + (o.surf || "…") + " m², comprenant " + (o.pieces || "…") + " pièce(s) principale(s). Immeuble en copropriété : " + o.copro.toLowerCase() + ". Dépendances et annexes : " + (o.annex || "aucune") + ".");
   P("Équipements : chauffage " + (o.chauf || "………") + " ; eau chaude " + (o.eau || "………") + ". Le logement est loué meublé : le mobilier est décrit dans l'inventaire et l'état du mobilier annexés au présent contrat.");
@@ -2450,30 +2478,38 @@ function bailPdf(o, sig){
   P("Le bailleur remet un logement décent et en bon état d'usage, assure au locataire la jouissance paisible du logement, entretient les locaux en état de servir à l'usage prévu et effectue les réparations autres que locatives.");
   P("Le locataire paie le loyer et les charges aux termes convenus, use paisiblement du logement, répond des dégradations et pertes survenues pendant le contrat, prend en charge l'entretien courant et les menues réparations, et ne transforme pas les lieux sans accord écrit du bailleur. Il ne sous-loue pas sans l'accord écrit du bailleur. Il s'assure contre les risques locatifs et en remet l'attestation à la remise des clés, puis chaque année à la demande du bailleur.");
   Hh("6. Clause résolutoire");
-  P("Le contrat est résilié de plein droit, dans les conditions et délais prévus à l'article 24 de la loi du 6 juillet 1989, en cas de défaut de paiement du loyer ou des charges aux termes convenus, de non-versement du dépôt de garantie ou de défaut d'assurance, après un commandement demeuré infructueux.");
+  if (o.debut >= "2026-10-01"){
+    P("Le contrat est résilié de plein droit en cas de défaut de paiement du loyer ou des charges aux termes convenus, ou de non-versement du dépôt de garantie. Cet effet n'intervient que six semaines après un commandement de payer demeuré infructueux, délivré par commissaire de justice dans les conditions de l'article 24 de la loi du 6 juillet 1989. Le commandement reproduit les mentions exigées par la loi, notamment la possibilité de saisir le fonds de solidarité pour le logement et de demander des délais de paiement. L'expulsion reste subordonnée à une décision de justice.");
+    if (o.assclause === "Oui") P("Clause facultative : à défaut de justification d'une assurance des risques locatifs, le contrat est résilié de plein droit un mois après un commandement demeuré infructueux.");
+    if (o.trouble === "Oui") P("Clause facultative : le contrat est résilié de plein droit en cas de troubles de voisinage constatés par une décision de justice passée en force de chose jugée.");
+    if (o.servit === "Oui") P("Servitude de résidence principale : le logement est situé dans un secteur délimité par le plan local d'urbanisme où il est affecté à l'usage exclusif de résidence principale. Le non-respect de cette obligation, constaté après mise en demeure du maire, peut entraîner la résiliation du contrat.");
+  } else P("Le contrat est résilié de plein droit, dans les conditions et délais prévus à l'article 24 de la loi du 6 juillet 1989, en cas de défaut de paiement du loyer ou des charges aux termes convenus, de non-versement du dépôt de garantie ou de défaut d'assurance, après un commandement demeuré infructueux.");
   Hh("7. Honoraires");
   P("Location conclue directement entre les parties : aucun honoraire de location n'est dû.");
   Hh("8. Annexes remises au locataire");
-  P("[   ] Inventaire et état du mobilier        [   ] État des lieux d'entrée");
-  P("[   ] Dossier de diagnostic technique (DPE, et selon le cas : plomb, amiante, électricité, gaz, risques)");
-  P("[   ] Notice d'information relative aux droits et obligations des locataires et des bailleurs (arrêté du 29 mai 2015)");
-  P("[   ] Extraits du règlement de copropriété (destination, jouissance et usage des parties privatives et communes)");
+  const bx = ok => ok ? "[ X ]" : "[    ]", bn = V.bsel, has = k => docList(k).some(x => x.bien === bn && !x.del && x.type === "entree");
+  P(bx(has("inv")) + " Inventaire et état du mobilier        " + bx(has("edl")) + " État des lieux d'entrée");
+  P(bx(annexHas(bn, "diag")) + " Dossier de diagnostic technique (DPE, et selon le cas : plomb, amiante, électricité, gaz, risques)");
+  P(bx(annexHas(bn, "notice")) + " Notice d'information relative aux droits et obligations des locataires et des bailleurs");
+  P(bx(annexHas(bn, "copro")) + " Extraits du règlement de copropriété (destination, jouissance et usage des parties privatives et communes)");
+  ["charges", "repar", "caution", "assur"].filter(k => annexHas(bn, k)).forEach(k => P(bx(true) + " " + annexLabel(k)));
   sigBlock(d, o.ville, o.debut, sig); if (sig) proofPage(d, sig, "Contrat de location meublée · " + (o.adr || "") + " · prise d'effet le " + frDate(o.debut)); return d.finish("Contrat de location meublée");
 }
 
 /* ---------- Lettres et attestations ---------- */
 function sheetLettre(kind){
-  const id = V.bsel, s = soldeLoc(id), t = s.t || {}, c = bailleurInfo(), titre = {impaye:"Lettre de loyer impayé", attest:"Attestation de loyer", depot:"Restitution du dépôt de garantie"}[kind];
+  const id = V.bsel, s = soldeLoc(id), t = s.t || {}, c = bailleurInfo(), titre = {impaye:"Lettre de loyer impayé", attest:"Attestation de loyer", depot:"Restitution du dépôt de garantie", rappel:"Rappel avant l'état des lieux de sortie"}[kind];
   const common = dxF("lt-bail", "Bailleur", c.nom) + dxF("lt-badr", "Adresse du bailleur", c.adr) + dxF("lt-loc", "Locataire", t.nom || "") + dxF("lt-adr", "Adresse du logement", bienAdr(id)) + dxF("lt-ville", "Fait à", (S.cfg && S.cfg.ville) || "");
   let spec = "";
   if (kind === "impaye"){ const du = r2(sum(s.retard.map(j => j.montant)));
     spec = dxF("lt-mont", "Montant dû (€)", fmtNum(du), 'inputmode="decimal"') + `<div class="small muted">${s.retard.length ? s.retard.map(j => MOIS[mo(j)].toLowerCase() + " " + yr(j) + " : " + eur(j.montant)).join(" · ") : "Aucun loyer non reçu dans l'appli : précise le montant."}</div>` + dxF("lt-delai", "Délai accordé (jours)", "8", 'inputmode="numeric"'); }
   if (kind === "attest") spec = `<div class="grid2">${dxF("lt-lhc", "Loyer hors charges (€)", fmtNum(t.loyer ? r2(N(t.loyer) - N(t.charges)) : ""), 'inputmode="decimal"')}${dxF("lt-chg", "Charges (€)", fmtNum(t.charges || ""), 'inputmode="decimal"')}</div>${dxF("lt-debut", "Occupe le logement depuis le", t.debut || "", 'type="date"')}${dxS("lt-jour", "Locataire à jour de ses loyers", [["Oui", "Oui"], ["Non", "Non"]], s.solde >= -0.005 ? "Oui" : "Non")}`;
   if (kind === "depot") spec = `<div class="grid2">${dxF("lt-dep", "Dépôt versé (€)", fmtNum(t.depot || ""), 'inputmode="decimal"')}${dxF("lt-sortie", "Date de sortie", t.fin || todayIso(), 'type="date"')}</div><label class="f">Retenues (une par ligne : libellé ; montant)<textarea id="lt-ret" placeholder="Réparation du volet ; 80"></textarea></label>${dxS("lt-conf", "État des lieux de sortie", [["conforme", "Conforme à l'entrée (1 mois)"], ["ecart", "Écarts constatés (2 mois)"]], "conforme")}`;
+  if (kind === "rappel") spec = dxF("lt-sortie", "Date de départ prévue", (s.t && s.t.fin) || "", 'type="date"');
   openSheet(`<h2>${titre}</h2>${common}${spec}<div class="btns"><button class="btn" style="flex:1" data-act="let-pdf" data-v="${kind}">Créer le PDF</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
 }
 function letterPdf(kind, o){
-  const d = new PdfDoc(kind === "impaye" ? "Loyer impayé" : kind === "attest" ? "Attestation de loyer" : "Dépôt de garantie"), M = d.M, R = d.W - M, P = (s, g) => { d.para(s, 10.5, g || 15); d.y -= 4; };
+  const d = new PdfDoc(kind === "impaye" ? "Loyer impayé" : kind === "attest" ? "Attestation de loyer" : kind === "rappel" ? "Rappel état des lieux de sortie" : "Dépôt de garantie"), M = d.M, R = d.W - M, P = (s, g) => { d.para(s, 10.5, g || 15); d.y -= 4; };
   d.text(M, d.y, o.bail || "(bailleur)", {size:10.5, bold:true}); d.text(R, d.y, o.loc || "(locataire)", {size:10.5, bold:true, right:true}); d.y -= 14;
   d.text(M, d.y, o.badr || "", {size:10}); d.text(R, d.y, o.adr || "", {size:10, right:true}); d.y -= 30;
   d.text(R, d.y, (o.ville ? o.ville + ", le " : "Le ") + frDate(todayIso()), {size:10.5, right:true}); d.y -= 30;
@@ -2492,6 +2528,17 @@ function letterPdf(kind, o){
     P("Le loyer mensuel est de " + eur(o.lhc) + " hors charges, auquel s'ajoutent " + eur(o.chg) + " de charges, soit " + eur(r2(o.lhc + o.chg)) + " charges comprises.", 17);
     P("À la date du " + frDate(todayIso()) + ", le locataire " + (o.jour === "Oui" ? "est à jour du paiement de son loyer et de ses charges." : "n'est pas à jour du paiement de son loyer et de ses charges."), 17);
     P("Attestation établie pour servir et valoir ce que de droit.", 17); d.y -= 30; d.text(R, d.y, "Signature du bailleur", {size:10.5, right:true});
+  } else if (kind === "rappel"){
+    d.text(M, d.y, "Objet : préparation de l'état des lieux de sortie · " + (o.adr || ""), {size:10.5, bold:true}); d.y -= 26; P("Madame, Monsieur,");
+    P("Nous avons bien noté votre départ du logement situé " + (o.adr || "………") + (o.sortie ? ", prévu le " + frDate(o.sortie) : "") + ". Un état des lieux de sortie sera réalisé en votre présence. Pour qu'il se déroule bien, voici les points à préparer :");
+    ["Logement propre et vidé de vos affaires, y compris la cave et les annexes ; cuisine, salle de bains, WC, hotte et joints nettoyés.",
+     "Percements rebouchés, aménagements ajoutés sans accord retirés, installations électriques provisoires supprimées.",
+     "Équipements en état de fonctionnement : robinetterie, siphons, sanitaires ; vitres et revêtements abîmés réparés.",
+     "Toutes les clés et badges remis le jour de l'état des lieux ; à défaut, leur remplacement pourra vous être facturé.",
+     "Justificatifs d'entretien (chaudière, climatisation, ramonage) et attestation d'assurance à jour, si le contrat les prévoit.",
+     "Relevés ou dernières factures d'électricité et de gaz, et votre nouvelle adresse pour l'envoi du décompte."].forEach(x => P("•  " + x, 14));
+    P("Merci de me proposer un rendez-vous au moins une semaine avant votre déménagement. Les dégradations constatées par rapport à l'état d'entrée, déduction faite de la vétusté, pourront être imputées sur le dépôt de garantie, justificatifs à l'appui.");
+    P("Je vous prie d'agréer, Madame, Monsieur, mes salutations distinguées."); d.y -= 20; d.text(R, d.y, o.bail || "", {size:10.5, right:true});
   } else {
     d.text(M, d.y, "Objet : restitution du dépôt de garantie · logement situé " + (o.adr || ""), {size:10.5, bold:true}); d.y -= 26; P("Madame, Monsieur,");
     P("Suite à votre départ du logement le " + frDate(o.sortie) + " et à l'état des lieux de sortie, voici le décompte de votre dépôt de garantie.");
@@ -2501,7 +2548,7 @@ function letterPdf(kind, o){
     P(o.net >= 0 ? "Le versement sera effectué par virement sur le compte que vous voudrez bien m'indiquer." : "Je vous remercie de bien vouloir régler ce solde dans les meilleurs délais.");
     P("Je vous prie d'agréer, Madame, Monsieur, mes salutations distinguées."); d.y -= 20; d.text(R, d.y, o.bail || "", {size:10.5, right:true});
   }
-  return d.finish(kind === "impaye" ? "Lettre de loyer impayé" : kind === "attest" ? "Attestation de loyer" : "Restitution du dépôt de garantie");
+  return d.finish(kind === "impaye" ? "Lettre de loyer impayé" : kind === "attest" ? "Attestation de loyer" : kind === "rappel" ? "Rappel avant état des lieux de sortie" : "Restitution du dépôt de garantie");
 }
 
 document.addEventListener("click", ev => {
@@ -2521,7 +2568,8 @@ document.addEventListener("click", ev => {
       if (v === "attest"){ o.lhc = parseNum(dxV("lt-lhc")) || 0; o.chg = parseNum(dxV("lt-chg")) || 0; o.debut = dxV("lt-debut"); o.jour = dxV("lt-jour"); if (!(o.lhc > 0)) return toast("Indique le loyer"); }
       if (v === "depot"){ o.dep = parseNum(dxV("lt-dep")) || 0; o.sortie = dxV("lt-sortie") || todayIso(); o.conf = dxV("lt-conf");
         o.ret = dxV("lt-ret").split("\n").map(l => { const k = l.lastIndexOf(";"); return k < 0 ? null : [l.slice(0, k).trim(), parseNum(l.slice(k + 1)) || 0]; }).filter(x => x && x[0] && x[1] > 0); o.net = r2(o.dep - sum(o.ret.map(r => r[1]))); if (!(o.dep > 0)) return toast("Indique le dépôt versé"); }
-      saveFile({impaye:"loyer-impaye-", attest:"attestation-loyer-", depot:"restitution-depot-"}[v] + V.bsel + "-" + todayIso() + ".pdf", letterPdf(v, o), "application/pdf"); break; }
+      if (v === "rappel") o.sortie = dxV("lt-sortie");
+      saveFile({impaye:"loyer-impaye-", attest:"attestation-loyer-", depot:"restitution-depot-", rappel:"rappel-etat-des-lieux-sortie-"}[v] + V.bsel + "-" + todayIso() + ".pdf", letterPdf(v, o), "application/pdf"); break; }
   }
 });
 
@@ -2533,13 +2581,16 @@ async function flGet(fid){ const db = PH.db || await phOpen(); if (!db) return n
   return new Promise(res => { try { const q = db.transaction("p").objectStore("p").get("f:" + fid); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); } catch(e){ res(null); } }); }
 async function flDel(fid){ const db = PH.db || await phOpen(); if (!db) return;
   return new Promise(res => { try { const tx = db.transaction("p", "readwrite"); tx.objectStore("p").delete("f:" + fid); tx.oncomplete = tx.onerror = tx.onabort = () => res(); } catch(e){ res(); } }); }
+const ANNEXES = [["diag", "Dossier de diagnostics (DPE, risques, plomb, électricité, gaz…)"], ["notice", "Notice d'information locataires / bailleurs"], ["copro", "Extraits du règlement de copropriété"], ["charges", "Liste des charges récupérables"], ["repar", "Liste des réparations locatives"], ["caution", "Acte de cautionnement solidaire"], ["assur", "Attestation d'assurance habitation"], ["caf", "Attestation de loyer (CAF)"]];
+const annexLabel = k => (ANNEXES.find(a => a[0] === k) || [0, ""])[1];
+const annexHas = (bien, k) => fileDocs(bien, "autre").some(d => d.sub === k);
 const FKIND = {bail:"Bail", edl:"État des lieux", inv:"Inventaire", autre:"Autre document"};
 const MIMES = {pdf:"application/pdf", jpg:"image/jpeg", jpeg:"image/jpeg", png:"image/png", heic:"image/heic", doc:"application/msword", docx:"application/vnd.openxmlformats-officedocument.wordprocessingml.document", xls:"application/vnd.ms-excel", xlsx:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", csv:"text/csv", txt:"text/plain"};
 const mimeOf = n => MIMES[(String(n).split(".").pop() || "").toLowerCase()] || "application/octet-stream";
 const sizeStr = n => n >= 1048576 ? (n / 1048576).toFixed(1).replace(".", ",") + " Mo" : Math.max(1, Math.round(n / 1024)) + " Ko";
 const fileDocs = (bien, kind) => docList("docs").filter(x => x.bien === bien && !x.del && (!kind || x.kind === kind));
 function fileRow(d){
-  return `<div class="row"><div class="main"><div class="t">${esc(d.nom)}</div><div class="s">${esc(FKIND[d.kind] || "Document")} · ${frDate(d.date)} · ${sizeStr(d.size || 0)}</div></div>
+  return `<div class="row"><div class="main"><div class="t">${esc(d.nom)}</div><div class="s">${esc(d.sub ? annexLabel(d.sub) : (FKIND[d.kind] || "Document"))} · ${frDate(d.date)} · ${sizeStr(d.size || 0)}</div></div>
     <button class="mini" data-act="fl-open" data-id="${d.id}">Ouvrir</button><button class="mini" data-act="fl-del" data-id="${d.id}" aria-label="Supprimer">×</button></div>`;
 }
 function fileLink(e){
@@ -2553,7 +2604,7 @@ function sheetImport(kind){
   openSheet(`<h2>Importer · ${esc(FKIND[kind])}</h2><div class="info">${help}</div>
     <label class="f">Fichier<input id="im-file" type="file" accept=".pdf,.xlsx,.xls,.csv,.doc,.docx,.txt,image/*"></label>
     ${dxF("im-date", "Date du document", todayIso(), 'type="date"')}${dxF("im-nom", "Nom (facultatif)", "", 'placeholder="Ex. Bail signé 2025"')}
-    ${kind === "edl" || kind === "inv" ? dxF("im-loc", "Locataire", t ? t.nom : "") : ""}${rooms}
+    ${kind === "autre" ? dxS("im-sub", "Type de pièce", [["", "Autre document"], ...ANNEXES.map(a => [a[0], a[1]])], V.imSub || "") : ""}${kind === "edl" || kind === "inv" ? dxF("im-loc", "Locataire", t ? t.nom : "") : ""}${rooms}
     <div class="btns"><button class="btn" style="flex:1" data-act="im-save" data-v="${kind}">Importer</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
 }
 function normEtat(s){ const t = String(s || "").toLowerCase(); if (!t.trim()) return ""; if (/neuf/.test(t)) return "Neuf"; if (/mauvais|\bhs\b|cass|d[ée]grad|abim/.test(t)) return "Mauvais"; if (/moyen|us[ée]|usag|passable|v[ée]tust/.test(t)) return "Moyen"; if (/bon|correct|satisf|\bok\b|propre/.test(t)) return "Bon"; return ""; }
@@ -2578,23 +2629,24 @@ function invFromSheet(buf, name){
 document.addEventListener("click", async ev => {
   const b = ev.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act, id = b.dataset.id, v = b.dataset.v;
   switch (a){
-    case "im-open": sheetImport(v); break;
+    case "im-open": V.imSub = b.dataset.s || ""; sheetImport(v); break;
     case "im-save": {
       const f = $("#im-file") && $("#im-file").files[0]; if (!f) return toast("Choisis un fichier");
       if (f.size > 25e6) return toast("Fichier trop gros (25 Mo maximum)");
       try {
         const buf = await f.arrayBuffer(), fid = uid(), type = f.type || mimeOf(f.name), date = dxV("im-date") || todayIso(), loc = dxV("im-loc");
         await flPut(fid, {name:f.name, type, buf});
-        docList("docs").push({id:fid, bien:V.bsel, kind:v, nom:dxV("im-nom") || f.name, fname:f.name, date, type, size:f.size, upd:Date.now()});
-        let msg = "Document importé";
+        docList("docs").push({id:fid, bien:V.bsel, kind:v, nom:dxV("im-nom") || f.name, sub:v === "autre" ? dxV("im-sub") : "", fname:f.name, date, type, size:f.size, upd:Date.now()});
+        let msg = "Document importé", bulkId = "";
         if (v === "edl"){ let pieces = null;
           if (/\.(xlsx|xls|csv)$/i.test(f.name)){ const it = invFromSheet(buf, f.name); if (it && it.length){ const map = {}; pieces = []; it.forEach(x => { const p = map[x.grp] || (map[x.grp] = {id:uid(), nom:x.grp, items:[]}); if (!map[x.grp].added){ map[x.grp].added = 1; pieces.push(p); } p.items.push({id:uid(), nom:x.nom, etat:x.etat, com:x.com, ph:[]}); }); pieces.forEach(p => delete p.added); } }
-          docList("edl").push({id:uid(), bien:V.bsel, type:"entree", date, loc, elec:"", eau:"", gaz:"", cles:"", fumee:"", rem:"", ref:"", fichier:fid, upd:Date.now(),
+          const eid = uid(); if (!pieces && /\.(pdf|txt)$/i.test(f.name)) bulkId = eid;
+          docList("edl").push({id:eid, bien:V.bsel, type:"entree", date, loc, elec:"", eau:"", gaz:"", cles:"", fumee:"", rem:"", ref:"", fichier:fid, upd:Date.now(),
             pieces:pieces || EDL_PIECES.filter((p, i) => !$("#im-pc-" + i) || $("#im-pc-" + i).checked).map(p => mkPiece(p[0], p[1]))}); msg = pieces ? "État lu : " + pieces.length + " pièce(s) reprise(s), prêt pour la sortie" : "Importé : état d'entrée créé, prêt pour la sortie"; }
         if (v === "inv"){ let items = /\.(xlsx|xls|csv)$/i.test(f.name) ? invFromSheet(buf, f.name) : null; const lu = items && items.length;
           if (!lu){ items = []; INV_DEF.forEach(([g, L]) => L.forEach(n => items.push({id:uid(), grp:g, nom:n, qte:"1", etat:"", com:""}))); }
-          docList("inv").push({id:uid(), bien:V.bsel, type:"entree", date, loc, rem:"", ref:"", fichier:fid, items, upd:Date.now()}); msg = lu ? "Inventaire lu : " + items.length + " article(s) repris" : "Document gardé, liste type créée à compléter"; }
-        persist(); closeSheet(); toast(msg); render();
+          const nid = uid(); docList("inv").push({id:nid, bien:V.bsel, type:"entree", date, loc, rem:"", ref:"", fichier:fid, items, upd:Date.now()}); msg = lu ? "Inventaire lu : " + items.length + " article(s) repris" : "Document gardé"; if (!lu) bulkId = nid; }
+        persist(); closeSheet(); toast(msg); render(); if (bulkId) bulkFromFile(v, bulkId, f, buf);
       } catch(err){ toast("Import impossible : " + err.message); }
       break; }
     case "fl-open": { const d = docList("docs").find(x => x.id === id); if (!d) break; const rec = await flGet(id); if (!rec) return toast("Fichier introuvable sur cet appareil");
@@ -2716,7 +2768,7 @@ document.addEventListener("click", async ev => {
 const MVT = {
   arr: {titre:"Arrivée d'un locataire", etapes:[
     ["dos", "Dossier du candidat vérifié", "Pièce d'identité, justificatifs de revenus, garant éventuel. Ne demande que les pièces autorisées par le décret n° 2015-1437 (liste limitative).", null],
-    ["diag", "Diagnostics à jour", "DPE (le logement classé G ne peut plus être loué en résidence principale), risques (ERP), plomb avant 1949, électricité et gaz si installation de plus de 15 ans, amiante selon l'âge de l'immeuble. Garde-les dans les documents du bien.", ["docs", "Voir les documents du bien"]],
+    ["diag", "Diagnostics à jour", "DPE (le logement classé G ne peut plus être loué en résidence principale), risques (ERP), plomb avant 1949, électricité et gaz si installation de plus de 15 ans, amiante selon l'âge de l'immeuble. Garde-les dans les documents du bien.", ["docs", "Pièces à joindre"]],
     ["bail", "Bail préparé et relu", "Remplis le bail, puis crée le PDF de relecture et relis-le avec le locataire avant de signer.", ["bail", "Préparer le bail"]],
     ["inv", "Inventaire du mobilier d'entrée", "Obligatoire en meublé (liste minimale du décret n° 2015-981). Tu peux le préparer avant la visite en reprenant la liste d'un autre logement.", ["inv-e", "Inventaire d'entrée"]],
     ["edl", "État des lieux d'entrée", "Pièce par pièce, avec photos. Le locataire peut le compléter sous 10 jours (chauffage : premier mois).", ["edl-e", "État des lieux d'entrée"]],
@@ -2728,7 +2780,7 @@ const MVT = {
   ]},
   dep: {titre:"Départ d'un locataire", etapes:[
     ["con", "Congé reçu et vérifié", "Locataire en meublé : préavis d'un mois. Bailleur : au moins 3 mois avant la fin du bail, pour motif légal. Forme : lettre recommandée, acte de commissaire de justice ou remise en main propre contre récépissé.", null],
-    ["dat", "Date de départ fixée avec le locataire", "Prévois un rendez-vous commun pour l'état des lieux de sortie.", null],
+    ["dat", "Date de départ fixée avec le locataire", "Le locataire prend rendez-vous au moins une semaine avant son déménagement. La lettre de rappel lui liste ce qu'il doit préparer (propreté, clés, justificatifs).", ["rappel", "Lettre de rappel"]],
     ["inv", "Inventaire du mobilier de sortie", "Repris de l'inventaire d'entrée : tu notes l'état de chaque article à la sortie et les remarques.", ["inv-s", "Inventaire de sortie"]],
     ["edl", "État des lieux de sortie", "Repris de l'état d'entrée : les éléments plus dégradés ressortent en rouge dans le PDF.", ["edl-s", "État des lieux de sortie"]],
     ["sig", "Signatures", "Document signé par les deux parties, un exemplaire chacun.", ["docs", "Aller aux documents"]],
@@ -2757,7 +2809,12 @@ function viewMvt(){
         <div class="small muted" style="margin:4px 0 6px 28px">${esc(hint)}</div>${btn ? `<div style="margin-left:28px">${btn}</div>` : ""}</div>`; }).join("");
     return `<div class="card"><div class="top"><h2>${M.titre}</h2><span class="chip ${n === M.etapes.length ? "ok" : "warn"}">${n}/${M.etapes.length}</span></div>${rows}</div>`; };
   return `<div class="info">${t ? "Locataire actuel : " + esc(t.nom) + (t.debut ? " · depuis le " + frDate(t.debut) : "") : "Aucun locataire en cours pour ce bien : tu es dans la phase d'arrivée."} Coche les étapes au fur et à mesure ; les boutons ouvrent directement le bon document.</div>
-    ${card("dep")}${card("arr")}<div class="small muted" style="padding:0 4px 12px">Repères généraux, à vérifier sur service-public.fr avant chaque location : la réglementation change.</div>`;
+    ${card("dep")}${card("arr")}<div class="small muted" style="padding:0 4px 12px">Repères généraux : la réglementation change.</div>
+    <div class="card"><h2>Vérifier la réglementation</h2><div class="small muted">L'appli ne peut pas se mettre à jour toute seule sur la loi. Avant chaque nouveau bail, contrôle ces sources officielles${S.cfg && S.cfg.regVerif ? " (dernier contrôle noté le " + frDate(S.cfg.regVerif) + ")" : ""}.</div>
+      <div class="rows"><div class="row"><div class="main"><div class="t">Contrat type de location</div><div class="s">Décret n° 2026-596 du 6 juillet 2026 : baux conclus ou renouvelés depuis le 1er octobre 2026 (clause résolutoire à six semaines).</div></div><a class="mini" target="_blank" rel="noopener" href="https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000054393114">Légifrance</a></div>
+      <div class="row"><div class="main"><div class="t">Fiches pratiques bailleur</div><div class="s">Dépôt, congé, révision du loyer, diagnostics.</div></div><a class="mini" target="_blank" rel="noopener" href="https://www.service-public.fr/particuliers/vosdroits/N31">service-public</a></div></div>
+      <div class="btns"><button class="btn sm ghost" data-act="reg-ok">J'ai vérifié aujourd'hui</button></div>
+      <div class="small muted">Tu peux aussi me demander dans Claude de contrôler les textes en vigueur avant un bail : je cherche les sources officielles et je te dis ce qui a changé.</div></div>`;
 }
 /* ---------- PDF de relecture : même document, sans signature, marqué « projet » ---------- */
 async function pdfRelect(fn, e){
@@ -2770,9 +2827,10 @@ document.addEventListener("click", async ev => {
     case "mv-go": {
       if (v === "docs" || v === "loc"){ V.bsub = v; render(); break; }
       if (v === "bail"){ V.bsub = "docs"; render(); sheetBail(); break; }
-      if (v === "impaye" || v === "depot"){ V.bsub = "docs"; render(); sheetLettre(v); break; }
+      if (v === "impaye" || v === "depot" || v === "rappel"){ V.bsub = "docs"; render(); sheetLettre(v); break; }
       const m = /^(edl|inv)-(e|s)$/.exec(v); if (m){ V.bsub = "docs"; render(); sheetNewDoc(m[1], m[2] === "e" ? "entree" : "sortie"); }
       break; }
+    case "reg-ok": S.cfg = S.cfg || {bailleur:"", adr:{}}; S.cfg.regVerif = todayIso(); persist(); render(); break;
     case "dx-rel": { if (!e) break; toast("Création du PDF de relecture…"); try { const bytes = await pdfRelect(() => V.doc.kind === "edl" ? edlPdf(e) : invPdf(e), e);
         saveFile("RELECTURE-" + (V.doc.kind === "edl" ? "etat-des-lieux-" : "inventaire-") + e.type + "-" + e.bien + "-" + e.date + ".pdf", bytes, "application/pdf"); } catch(err){ toast("PDF impossible : " + err.message); } break; }
     case "bail-rel": { const o = bailRead(); if (!o.loc || !o.debut) return toast("Indique au moins le locataire et la date de prise d'effet"); if (o.lhc <= 0) return toast("Indique le loyer hors charges");
@@ -2789,6 +2847,100 @@ function demoCard(){
   return `<div class="card"><h2>Version d'essai</h2><div class="small muted">Charge de faux biens, adresses, locataires, états des lieux et inventaires pour tester toutes les fonctions sans toucher à tes vraies données.</div>
     <div class="btns"><button class="btn sm" data-act="demo">Charger la version d'essai</button>${S.demo && back ? '<button class="btn sm ghost" data-act="demo-back">Retrouver mes données</button>' : ""}</div></div>`;
 }
+
+/* ============ Reprendre une liste depuis un PDF ou un texte collé (inventaire, état des lieux) ============ */
+const PDFJS_V = "3.11.174", PDFJS_URL = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/" + PDFJS_V + "/pdf.min.js", PDFJS_WK = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/" + PDFJS_V + "/pdf.worker.min.js";
+let PDFJS_P = null;
+function loadPdfJs(){
+  if (window.pdfjsLib && window.pdfjsLib.__ready) return Promise.resolve(window.pdfjsLib);
+  return PDFJS_P || (PDFJS_P = new Promise((res, rej) => {
+    const s = document.createElement("script"); s.src = PDFJS_URL;
+    s.onload = () => { try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WK; window.pdfjsLib.__ready = true; res(window.pdfjsLib); } catch(e){ PDFJS_P = null; rej(e); } };
+    s.onerror = () => { PDFJS_P = null; rej(new Error("lecteur PDF indisponible (connexion ?)")); }; document.head.appendChild(s); }));
+}
+async function pdfLines(buf){
+  const lib = await loadPdfJs(), doc = await lib.getDocument({data:new Uint8Array(buf.slice(0))}).promise, out = [];
+  for (let n = 1; n <= doc.numPages && n <= 40; n++){
+    const tc = await (await doc.getPage(n)).getTextContent(), rows = [];
+    for (const it of tc.items){ if (!it.str || !it.str.trim()) continue; const y = Math.round(it.transform[5] / 3); let r = rows.find(q => Math.abs(q.y - y) <= 1); if (!r) rows.push(r = {y, c:[]}); r.c.push({x:it.transform[4], w:it.width || 0, s:it.str.trim()}); }
+    rows.sort((a, b) => b.y - a.y).forEach(r => { r.c.sort((a, b) => a.x - b.x); let line = "", end = null; for (const c of r.c){ line += (end === null ? "" : (c.x - end > 18 ? " ; " : " ")) + c.s; end = c.x + c.w; } out.push(line); });
+  }
+  return out;
+}
+/* Lit un texte libre : « Lit ; 1 ; Bon ; rayure », « 4 chaises », « Cuisine : » (= titre de groupe). */
+const ETAT_W = /^(neuf|neuve|bon|bonne|moyen|moyenne|mauvais|mauvaise|usagée?|usé|usée|passable|parfait|parfaite|correct|ok|hs)$/i;
+function parseList(text){
+  const out = []; let grp = "Importé";
+  for (let raw of String(text || "").split(/\r?\n/)){
+    let line = raw.replace(/^[\s•\-–*·]+/, "").trim(); if (!line || /^page\s*\d+/i.test(line) || line.length > 160) continue;
+    if (/:$/.test(line)){ grp = line.replace(/:$/, "").trim() || grp; continue; }
+    if (/^[A-ZÉÈÊÀÂÎÔÛÇ' \/-]{3,28}$/.test(line) && !/\d/.test(line)){ grp = line.charAt(0) + line.slice(1).toLowerCase(); continue; }
+    const parts = line.split(/\s*;\s*|\t+/).map(x => x.trim()).filter(Boolean); let nom = "", qte = "", etat = "", com = [];
+    for (const p of parts){
+      const tk = p.split(/\s+/); let e2 = "", q2 = "";
+      if (tk.length > 1 || parts.length > 1){
+        if (tk.length && ETAT_W.test(tk[tk.length - 1])){ e2 = normEtat(tk.pop()) || "Bon"; }
+        if (tk.length && /^\d{1,3}$/.test(tk[tk.length - 1]) && (tk.length > 1 || parts.length > 1)){ q2 = tk.pop(); }
+      }
+      if (e2 && !etat) etat = e2; if (q2 && !qte) qte = q2;
+      const rest = tk.join(" ").trim(); if (!rest) continue;
+      if (!qte && /^\d{1,3}$/.test(rest)){ qte = rest; continue; }
+      if (!nom){ const m = /^(\d{1,3})\s*[x×]?\s+(.+)$/i.exec(rest); if (m && !qte){ qte = m[1]; nom = m[2]; } else nom = rest; } else com.push(rest);
+    }
+    if (!nom) continue; out.push({id:uid(), grp, nom, qte:qte || "1", etat, com:com.join(" · ")});
+    if (out.length >= 400) break;
+  }
+  return out;
+}
+/* Sortie créée directement depuis un fichier d'entrée choisi dans la fenêtre « Nouvelle sortie » */
+async function dxCreateFromFile(kind, f){
+  const date = dxV("dx-date") || todayIso(), loc = dxV("dx-loc"), edate = dxV("dx-edate") || date, bien = V.bsel;
+  if (f.size > 25e6) return toast("Fichier trop gros (25 Mo maximum)");
+  try {
+    const buf = await f.arrayBuffer(), fid = uid(), type = f.type || mimeOf(f.name);
+    await flPut(fid, {name:f.name, type, buf});
+    docList("docs").push({id:fid, bien, kind, nom:"Entrée · " + f.name, sub:"", fname:f.name, date:edate, type, size:f.size, upd:Date.now()});
+    let items = null, pieces = null;
+    if (/\.(xlsx|xls|csv)$/i.test(f.name)){ const it = invFromSheet(buf, f.name);
+      if (it && it.length){ if (kind === "inv") items = it; else { const map = {}; pieces = []; it.forEach(x => { let p = map[x.grp]; if (!p){ map[x.grp] = p = {id:uid(), nom:x.grp, items:[]}; pieces.push(p); } p.items.push({id:uid(), nom:x.nom, etat:x.etat, com:x.com, ph:[]}); }); } } }
+    const eid = uid(), base = {id:eid, bien, type:"entree", date:edate, loc, rem:"", ref:"", fichier:fid, upd:Date.now()};
+    const entree = kind === "inv" ? Object.assign(base, {items:items || INV_DEF.flatMap(([g, L]) => L.map(n => ({id:uid(), grp:g, nom:n, qte:"1", etat:"", com:""})))})
+      : Object.assign(base, {elec:"", eau:"", gaz:"", cles:"", fumee:"", pieces:pieces || EDL_PIECES.map(p => mkPiece(p[0], p[1]))});
+    docList(kind).push(entree); persist();
+    if (items || pieces){ closeSheet(); dxMake(kind, "sortie", date, loc, entree, null); toast("Entrée lue : version de sortie créée"); return; }
+    V.after = {kind, date, loc};
+    let lines = [], note = "";
+    try { if (/\.(pdf)$/i.test(f.name)) lines = await pdfLines(buf); else if (/\.txt$/i.test(f.name)) lines = new TextDecoder("utf-8").decode(new Uint8Array(buf)).split(/\r?\n/); } catch(e){ note = "Lecture du PDF impossible (" + e.message + ")."; }
+    if (!note) note = lines.length ? "Lignes lues dans ton exemplaire d'entrée : corrige puis valide, la version de sortie sera créée ensuite." : "Ce PDF est une image (document scanné) : l'appli ne sait pas lire le texte d'une image. Colle ici la liste, ou envoie le fichier à Claude pour obtenir un Excel/CSV à importer.";
+    sheetBulk(kind, eid, lines.join("\n"), true, note);
+  } catch(err){ toast("Import impossible : " + err.message); }
+}
+function sheetBulk(kind, id, text, replace, note){
+  V.bulk = {kind, id, replace:!!replace};
+  openSheet(`<h2>${kind === "inv" ? "Liste du mobilier" : "Pièces et éléments"} à reprendre</h2>
+    <div class="info">${esc(note || "Colle ou saisis une ligne par élément. Un titre de groupe se termine par « : ». Tu peux écrire « 4 chaises », ou « Lit ; 1 ; Bon ; remarque ».")}</div>
+    <label class="f">Texte<textarea id="bk-txt" rows="12" style="font-size:14px">${esc(text || "")}</textarea></label>
+    <div class="small muted" id="bk-n"></div>
+    <div class="btns"><button class="btn" style="flex:1" data-act="bulk-ok">${replace ? "Créer la liste" : "Ajouter à la liste"}</button><button class="btn ghost" data-act="sheetclose">${replace ? "Garder la liste type" : "Annuler"}</button></div>`);
+}
+async function bulkFromFile(kind, id, f, buf){
+  let lines = [], note = "";
+  try { if (/\.pdf$/i.test(f.name)) lines = await pdfLines(buf); else if (/\.(txt)$/i.test(f.name)) lines = new TextDecoder("utf-8").decode(new Uint8Array(buf)).split(/\r?\n/); } catch(e){ note = "Lecture du PDF impossible (" + e.message + "). Colle la liste à la main."; }
+  if (!note) note = lines.length ? "Lignes lues dans ton document : corrige, supprime ce qui ne sert pas, puis valide. Le document original reste joint." : "Aucun texte lisible (document scanné ou photo). Ouvre-le depuis la fiche et recopie ou colle la liste ici.";
+  sheetBulk(kind, id, lines.join("\n"), true, note);
+}
+document.addEventListener("click", ev => {
+  const b = ev.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act;
+  if (a === "bulk-open"){ V.after = null; if (V.doc) sheetBulk(V.doc.kind, V.doc.id, "", false); return; }
+  if (a === "bulk-ok"){
+    const bk = V.bulk, e = bk && docGet(bk.kind, bk.id); if (!e) return closeSheet();
+    const items = parseList(($("#bk-txt") || {}).value); if (!items.length) return toast("Aucune ligne reconnue");
+    if (bk.kind === "inv"){ e.items = bk.replace ? items : e.items.concat(items); }
+    else { const L = bk.replace ? [] : e.pieces; for (const it of items){ let p = L.find(x => x.nom === it.grp); if (!p) L.push(p = {id:uid(), nom:it.grp, items:[]}); p.items.push({id:uid(), nom:it.nom, etat:it.etat, com:it.com, ph:[]}); } e.pieces = L; }
+    dxTouch(e); persist(); closeSheet(); toast(items.length + " ligne(s) reprise(s)");
+    if (V.after && V.after.kind === bk.kind){ const a = V.after; V.after = null; V.bsub = "docs"; dxMake(bk.kind, "sortie", a.date, a.loc, e, null); } else render();
+  }
+});
 
 /* ============ Démarrage ============ */
 const migrate = () => { if (!S.cfg || typeof S.cfg !== "object") S.cfg = {bailleur:"", adr:{}}; if (!Array.isArray(S.modeles)) S.modeles = []; if (!Array.isArray(S.clotures)) S.clotures = []; if (!S.rapp || typeof S.rapp !== "object") S.rapp = {}; for (const k of ["biens","tarifs","journal","factures","locataires","seen","partages","edl","inv","docs"]) if (!Array.isArray(S[k])) S[k] = []; };

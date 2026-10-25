@@ -1148,8 +1148,9 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.9.19";
+const APP_VERSION = "2.9.20";
 const CHANGELOG = [
+  {v:"2.9.20", date:"2026-10-26", titre:"Annonce : mise en page du PDF", items:["Le texte de ton annonce tient maintenant sur la 1re page : la photo principale s'adapte à la place restante au lieu de pousser le texte sur une page presque vide.","Les autres photos sont rangées en grille régulière (cases de même taille, photo entière centrée), à la suite du texte, au lieu de tailles différentes sur une page à part.","Les champs vides (surface, DPE) ne s'affichent plus avec un tiret : seuls les renseignements remplis apparaissent. Pour les afficher, remplis-les dans Annonce › Modifier."]},
   {v:"2.9.19", date:"2026-10-25", titre:"Annonce : ton texte bien placé", items:["Quand tu écris ton propre texte d'annonce, le PDF le place tel quel sous la photo, comme corps de l'annonce. Les blocs automatiques « Conditions » et « Pour candidater » ne sont plus ajoutés (ton texte les contient déjà). Le bandeau prix et les infos clés (surface, DPE) restent en haut.","Annonce › Mon texte : nouveau champ pour importer ton texte depuis un fichier Word (.docx) ou texte (.txt), sans copier-coller.","Réglages : chaque bouton d'export est expliqué (journal Excel, sauvegarde légère, sauvegarde complète avec fichiers)."]},
   {v:"2.9.18", date:"2026-10-25", titre:"Restaurer plus facilement", items:["Réglages › Synchroniser › « Importer un fichier » accepte maintenant tout fichier : sauvegarde .zip ou .json, Excel, et aussi un dossier rangé (« ZIP rangé » d'un locataire).","Le fichier est reconnu à son contenu, pas seulement à son nom. Un message te dit si la lecture a échoué et pourquoi, et l'écran défile jusqu'au bouton de validation.","Dossier rangé importé : les fichiers retournent dans la fiche du locataire du même nom (documents, candidature, bail, états des lieux, inventaires, pièces du bail).","Où restaurer : Réglages › Synchroniser avec Excel › Importer un fichier.","Les cartes « Ranger dans iCloud Drive » (Biens › Documents) et « Exporter le dossier de ce locataire » sont retirées : la sauvegarde complète avec fichiers suffit pour tout garder et tout restaurer."]},
   {v:"2.9.17", date:"2026-10-25", titre:"Courriers signés et dossier complet", items:["Réglages : l'historique des mises à jour n'affiche que les 5 dernières ; « Voir les autres » déroule le reste (écran moins long).","Lettres (loyer impayé, attestation de loyer, restitution du dépôt, rappel de sortie) : bouton « Faire signer sur l'écran ». Le bailleur signe (le locataire aussi pour la restitution du dépôt). Le PDF signé avec sa preuve est rangé dans « Documents du locataire ».","Le bail, les états des lieux et les inventaires se signaient déjà à l'écran ; les documents importés (PDF reçus) ne peuvent pas être signés ici.","ZIP du locataire : ajout du dossier « 06 Pièces à joindre au bail et autres documents » (annexes, diagnostics…). Courriers signés dans « 05 Documents du locataire ».","Sauvegarde complète (.zip) : les fichiers gardent leur vrai nom (lisibles sur ordinateur) et un LISEZ-MOI explique comment tout remettre."]},
@@ -3431,12 +3432,15 @@ async function annoncePdf(bien){
   d.para(title, 21, 26); if (a.loc && a.titre){ d.text(M, d.y, a.loc, {size:11, color:"#5C6B66"}); d.y -= 18; } d.y -= 4;
   d.rect(M, d.y - 46, W, 46, "#E3F1EC"); d.text(M + 14, d.y - 30, eur(cc) + " / mois" + (Number(a.charges) ? " charges comprises" : ""), {size:19, bold:true, color:"#0E6B5C"});
   d.text(R - 12, d.y - 20, Number(a.charges) ? "dont " + eur(a.charges) + " de charges" : "hors charges", {size:9.5, right:true, color:"#3C4A45"}); d.text(R - 12, d.y - 34, "Dépôt de garantie : " + eur(a.depot), {size:9.5, right:true, color:"#3C4A45"}); d.y -= 62;
-  const facts = [["Type", a.type || ""], ["Surface", a.surf ? a.surf + " m²" : "—"], ["Disponible", a.dispo ? frDate(a.dispo) : "Immédiatement"], ["DPE", a.dpe || "—"]], cw = W / facts.length;
+  const facts = [["Type", a.type || "Appartement meublé"], ["Surface", a.surf ? a.surf + " m²" : ""], ["Disponible", a.dispo ? frDate(a.dispo) : "Immédiatement"], ["DPE", a.dpe || ""]].filter(f => f[1]), cw = W / facts.length;
   facts.forEach(([l, v], i) => { const x = M + i * cw; d.text(x, d.y, l.toUpperCase(), {size:7.5, bold:true, color:"#8A9690"});
     if (l === "DPE" && DPE_COL[v]){ d.rect(x, d.y - 24, 22, 18, DPE_COL[v]); d.text(x + 11, d.y - 19, v, {size:12, bold:true, center:true, color:"#FFFFFF"}); if (a.ges) d.text(x + 30, d.y - 19, "GES " + a.ges, {size:9.5, color:"#3C4A45"}); }
     else d.text(x, d.y - 17, String(v).slice(0, 26), {size:11, bold:true}); }); d.y -= 38;
-  if (photos[0]){ const o = photos[0], h = Math.min(290, W * o.h / o.w), w = h === 290 ? 290 * o.w / o.h : W; d.need(h + 20); d.image(M + (W - w) / 2, d.y - h, w, h, o); d.y -= h + 18; }
   const own = a.perso && a.perso.trim();
+  /* Hauteur du texte estimée d'avance : la photo principale prend la place qui reste, pour que le texte tienne sur la 1re page */
+  const nLines = str => { let n = 1, line = ""; for (const w of String(str).split(" ")){ const t = line ? line + " " + w : w; if (pdfW(t, 11) > W){ n++; line = w; } else line = t; } return n; };
+  let textH = 0; if (own) for (const par of own.split(/\r?\n/)) textH += par.trim() ? nLines(par.trim()) * 16 + 3 : 6; else textH = 330;
+  if (photos[0]){ const o = photos[0], hmax = Math.max(150, Math.min(300, d.y - 62 - textH - 16)), k = Math.min(W / o.w, hmax / o.h), w = o.w * k, h = o.h * k; d.need(h + 20); d.image(M + (W - w) / 2, d.y - h, w, h, o); d.y -= h + 18; }
   if (own){ d.y -= 2; for (const par of own.split(/\r?\n/)){ if (!par.trim()){ d.y -= 6; continue; } d.para(par.trim(), 11, 16); d.y -= 3; } }
   const desc = own ? "" : ((a.equip && a.equip.trim()) || "");
   if (desc){ d.h("Description", 13); for (const par of desc.split(/\n+/)) d.para(par, 10.5, 15); }
@@ -3444,13 +3448,14 @@ async function annoncePdf(bien){
   d.h("Conditions", 13); d.para("Loyer : " + eur(a.loyer) + (Number(a.charges) ? " + " + eur(a.charges) + " de charges, soit " + eur(cc) + " charges comprises" : " par mois") + ".", 10.5, 15); d.para("Dépôt de garantie : " + eur(a.depot) + ".", 10.5, 15); if (a.dpe) d.para("Performance énergétique (DPE) : classe " + a.dpe + (a.ges ? " · GES : classe " + a.ges : "") + ".", 10.5, 15);
   d.h("Pour candidater", 13); d.para("Écrivez-moi" + (a.mail ? " à " + a.mail : "") + (a.tel ? " ou appelez le " + a.tel : "") + " en indiquant : votre nom, un numéro de téléphone, votre situation professionnelle, vos revenus mensuels, le nombre d'occupants, votre date d'emménagement souhaitée et, si vous en avez un, votre garant. Une visite vous sera proposée, puis les pièces justificatives vous seront demandées.", 10.5, 15);
   }
+  /* Autres photos : grille régulière (cases de même taille, photo entière centrée), à la suite du texte */
   const more = photos.slice(1);
-  if (more.length){ d.newPage(); d.y = d.H - 52; d.text(M, d.y, "Photos", {size:15, bold:true, color:"#0E6B5C"}); d.y -= 22;
-    const gap = 10, cw2 = (W - gap) / 2; let col = 0, rowH = 0;
-    for (const o of more){ const h = Math.min(190, cw2 * o.h / o.w), w = h === 190 ? 190 * o.w / o.h : cw2;
-      if (col === 0 && d.y - h < 50){ d.newPage(); d.y = d.H - 52; }
-      d.image(M + col * (cw2 + gap) + (cw2 - w) / 2, d.y - h, w, h, o); rowH = Math.max(rowH, h);
-      if (col === 1){ d.y -= rowH + gap; col = 0; rowH = 0; } else col = 1; }
+  if (more.length){ const gap = 10, cols = more.length === 1 ? 1 : more.length === 2 || more.length === 4 ? 2 : 3, cwp = (W - gap * (cols - 1)) / cols, ch = Math.min(cwp * 0.75, 230);
+    d.need(ch + 50); d.y -= 6; d.text(M, d.y - 10, "Photos", {size:13, bold:true, color:"#0E6B5C"}); d.y -= 26;
+    for (let i = 0; i < more.length; i += cols){ d.need(ch + gap);
+      for (let j = 0; j < cols && i + j < more.length; j++){ const o = more[i + j], x = M + j * (cwp + gap), k = Math.min(cwp / o.w, ch / o.h), w = o.w * k, h = o.h * k;
+        d.rect(x, d.y - ch, cwp, ch, "#F2F5F4"); d.image(x + (cwp - w) / 2, d.y - ch + (ch - h) / 2, w, h, o); }
+      d.y -= ch + gap; }
   }
   return d.finish("Annonce");
 }

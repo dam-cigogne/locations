@@ -1109,8 +1109,11 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.9.4";
+const APP_VERSION = "2.9.5";
 const CHANGELOG = [
+  {v:"2.9.5", date:"2026-10-25", titre:"Pièces jointes des candidatures", items:[
+    "Formulaire : la candidature est maintenant aussi jointe sous forme de fichier (candidature.txt) avec les pièces, et un message clair explique quand le téléphone ne permet pas de joindre les pièces.",
+    "« Coller une candidature reçue » accepte aussi les fichiers reçus : sélectionne candidature.txt et les pièces (photos, PDF) en une fois, la fiche est remplie et les pièces y sont jointes."]},
   {v:"2.9.4", date:"2026-10-25", titre:"Formulaire de candidature en ligne", items:[
     "Location › Candidats : un lien de formulaire à envoyer aux personnes intéressées. Le candidat remplit ses informations (et peut joindre ses pièces), puis son téléphone prépare un e-mail adressé à toi. Rien n'est stocké sur un serveur.",
     "« Coller une candidature reçue » : tu copies le texte de l'e-mail reçu, l'appli remplit la fiche candidat toute seule (coordonnées, situation, revenus, garant, message). Un doublon est détecté.",
@@ -3235,10 +3238,11 @@ document.addEventListener("click", async ev => {
     case "cd-link-share": { const l = $("#cd-link").value; try { if (navigator.share) await navigator.share({title:"Candidature de location", text:"Voici le formulaire de candidature :", url:l}); else toast("Utilise « Copier le lien »"); } catch(e){} break; }
     case "cd-paste": sheetPaste(); break;
     case "cd-paste-read": { try { const t = await navigator.clipboard.readText(); $("#cp-txt").value = t; } catch(e){ toast("Colle le texte à la main dans la zone"); } break; }
-    case "cd-paste-ok": { const o = parseCandText($("#cp-txt").value); if (!o) return toast("Texte non reconnu : il doit contenir « Nom : … »");
+    case "cd-paste-ok": { const fl = [...($("#cp-files") ? $("#cp-files").files : [])], tf = fl.find(f => /\.txt$/i.test(f.name) || f.type === "text/plain"), others = fl.filter(f => f !== tf);
+      let txt = $("#cp-txt").value; if (!txt.trim() && tf) txt = await tf.text(); const o = parseCandText(txt); if (!o) return toast("Texte non reconnu : il doit contenir « Nom : … »");
       const c = candFromParsed(o), dup = candList().find(x => !x.del && x.bien === c.bien && ((c.email && x.email && x.email.toLowerCase() === c.email.toLowerCase()) || x.nom.toLowerCase() === c.nom.toLowerCase()));
-      if (dup){ toast("Ce candidat est déjà dans la liste"); sheetCand(dup.id); break; }
-      candList().push(c); persist(); V.lsel = c.bien; V.lsub = "cand"; render(); sheetCand(c.id); toast("Fiche créée : vérifie les informations"); break; }
+      if (dup){ const n = await candAttach(dup, others); persist(); toast(n ? n + " pièce(s) ajoutée(s) à la fiche existante" : "Ce candidat est déjà dans la liste"); sheetCand(dup.id); break; }
+      candList().push(c); const n = await candAttach(c, others); persist(); V.lsel = c.bien; V.lsub = "cand"; render(); sheetCand(c.id); toast("Fiche créée" + (n ? " avec " + n + " pièce(s)" : "") + " : vérifie les informations"); break; }
     case "cd-new": sheetCand(""); break;
     case "cd-open": sheetCand(id); break;
     case "cd-save": { const c = cdSave(id); if (!c) break; closeSheet(); render(); toast("Candidat enregistré"); break; }
@@ -3277,8 +3281,8 @@ document.addEventListener("change", async ev => {
   if (t.id === "cd-file" && t.files && t.files.length){
     const idc = (document.querySelector('[data-act="cd-save"]') || {dataset:{}}).dataset.id, c = candGet(idc); if (!c) return;
     const saved = cdSave(idc); if (!saved) return;
-    for (const f of t.files){ const fid = uid(); try { await flPut(fid, {name:f.name, type:f.type || "application/octet-stream", buf:await f.arrayBuffer()}); saved.fichiers = (saved.fichiers || []).concat([{fid, nom:f.name, date:todayIso()}]); } catch(e){ toast("Fichier non enregistré : " + e.message); } }
-    persist(); sheetCand(idc); toast("Pièce(s) jointe(s)");
+    const n = await candAttach(saved, [...t.files]);
+    persist(); sheetCand(idc); toast(n === t.files.length ? n + " pièce(s) jointe(s)" : n + " sur " + t.files.length + " pièce(s) jointe(s)");
   }
 });
 
@@ -3345,6 +3349,8 @@ function sheetPaste(){
   openSheet(`<h2>Coller une candidature reçue</h2><div class="info">Le formulaire envoie un e-mail à ton adresse. Ouvre-le, copie le texte (de « CANDIDATURE » jusqu'au message) et colle-le ici : la fiche est remplie toute seule.</div>
     <label class="f">Texte reçu<textarea id="cp-txt" style="min-height:220px" placeholder="CANDIDATURE – …&#10;Nom : …"></textarea></label>
     <div class="btns"><button class="btn ghost sm" data-act="cd-paste-read">Coller depuis le presse-papiers</button></div>
+    <label class="f">Ou choisis les fichiers reçus (candidature.txt et pièces jointes)<input id="cp-files" type="file" multiple accept=".txt,text/plain,.pdf,image/*"></label>
+    <div class="small muted">Enregistre d'abord les pièces jointes de l'e-mail dans Fichiers, puis sélectionne-les toutes ici : le texte remplit la fiche, les autres fichiers y sont joints.</div>
     <div class="btns"><button class="btn" style="flex:1" data-act="cd-paste-ok">Créer la fiche</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
 }
 
@@ -3355,6 +3361,12 @@ function candCard(bien){
     ${link ? `<label class="f">Lien à envoyer<input id="cd-link" readonly value="${esc(link)}"></label>
     <div class="btns"><button class="btn sm" data-act="cd-link-copy">Copier le lien</button><button class="btn sm ghost" data-act="cd-link-share">Partager le lien</button></div>` : '<div class="info" style="background:var(--warn-soft)">Indique d\'abord ton e-mail dans « Annonce › Modifier » : le formulaire envoie les candidatures à cette adresse.</div>'}
     <div class="btns"><button class="btn sm ghost" data-act="cd-paste">Coller une candidature reçue</button></div></div>`;
+}
+
+async function candAttach(c, files){
+  let n = 0; c.fichiers = c.fichiers || [];
+  for (const f of files){ const fid = uid(); try { const buf = await f.arrayBuffer(); await flPut(fid, {name:f.name, type:f.type || (/\.pdf$/i.test(f.name) ? "application/pdf" : "application/octet-stream"), buf}); c.fichiers.push({fid, nom:f.name, date:todayIso()}); n++; } catch(e){ toast("Fichier non enregistré (" + f.name + ") : " + (e && e.message || "erreur")); } }
+  if (n) c.upd = Date.now(); return n;
 }
 
 /* ============ Démarrage ============ */

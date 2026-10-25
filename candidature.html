@@ -10,6 +10,7 @@
 :root{--bg:#F3F6F5;--surface:#FFFFFF;--ink:#17231F;--muted:#5C6B66;--line:#DDE5E1;--accent:#0E6B5C;--accent-ink:#FFFFFF;--soft:#D8EEE8;--warn:#9A5B00}
 @media (prefers-color-scheme: dark){:root{--bg:#0E1715;--surface:#16231F;--ink:#E8F0ED;--muted:#9DB0A9;--line:#27382F;--accent:#3CC2A6;--accent-ink:#06211B;--soft:#17332C;--warn:#F0B35C}}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:0 16px calc(32px + env(safe-area-inset-bottom,0px))}
 main{max-width:560px;margin:0 auto;padding-top:calc(18px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:14px}
 h1{font-size:23px;line-height:1.2;margin:4px 0 0}
@@ -88,10 +89,12 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px s
     ev.preventDefault(); const e = check(); $("err").textContent = e; if (e) return;
     const text = build(), subject = "Candidature – " + titre, files = [...$("fil").files]; window.__last = text;
     $("pre").textContent = text; $("dest").textContent = to; $("prev").hidden = false;
-    if (files.length && navigator.canShare && navigator.canShare({files})){
-      try { await navigator.share({title:subject, text, files}); $("how").textContent = "Dans la fenêtre de partage, choisis Mail et vérifie que l'adresse du destinataire est " + to + "."; return; } catch(err){ if (err && err.name === "AbortError") return; }
-    }
-    $("how").textContent = files.length ? "Ton e-mail s'ouvre : ajoute toi-même tes pièces jointes avant de l'envoyer (ou apporte-les à la visite)." : "Ton e-mail s'ouvre : appuie sur Envoyer.";
+    const txtFile = new File([text], "candidature.txt", {type:"text/plain"}), all = [txtFile].concat(files);
+    if (navigator.canShare && navigator.share && navigator.canShare({files:all})){
+      try { await navigator.share({title:subject, text, files:all}); $("how").textContent = "Dans la fenêtre de partage, choisis Mail et vérifie que le destinataire est " + to + ". Ta candidature et tes " + files.length + " pièce(s) sont jointes."; return; }
+      catch(err){ if (err && err.name === "AbortError") return; $("how").textContent = "Le partage des pièces n'a pas fonctionné (" + ((err && err.name) || "erreur") + "). Ton e-mail s'ouvre sans pièces : ajoute-les toi-même ou apporte-les à la visite."; }
+    } else if (files.length){ $("how").textContent = "Ton téléphone ne permet pas de joindre les pièces automatiquement : ton e-mail s'ouvre sans elles. Ajoute-les toi-même avant d'envoyer, ou apporte-les à la visite."; }
+    else { $("how").textContent = "Ton e-mail s'ouvre : appuie sur Envoyer."; }
     location.href = "mailto:" + to + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(text);
   });
 })();

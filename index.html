@@ -356,7 +356,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 /* ============ Modèle de données ============ */
-function emptyData(){ return { v:1, demo:false, biens:[], tarifs:[], journal:[], factures:[], locataires:[], seen:[], partages:[], rapp:{}, modeles:[], clotures:[], edl:[], inv:[], cfg:{bailleur:"", adr:{}} }; }
+function emptyData(){ return { v:1, demo:false, biens:[], tarifs:[], journal:[], factures:[], locataires:[], seen:[], partages:[], rapp:{}, modeles:[], clotures:[], edl:[], inv:[], docs:[], cfg:{bailleur:"", adr:{}} }; }
 const live = a => a.filter(x => !x.del);
 const bienName = id => { const b = S.biens.find(x => x.id === id); return b ? b.nom : id; };
 const bienIds = () => { const ids = live(S.biens).map(b => b.id); for (const j of S.journal) if (j.bien && !ids.includes(j.bien)) ids.push(j.bien); return ids; };
@@ -1092,8 +1092,12 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.4.0";
+const APP_VERSION = "2.5.0";
 const CHANGELOG = [
+  {v:"2.5.0", date:"2026-10-25", titre:"Importer tes documents existants", items:[
+    "Biens › Documents : importe le bail signé, un état des lieux ou un inventaire déjà faits (PDF, photo, Word, Excel).",
+    "Un inventaire Excel ou CSV est lu et repris dans l'appli. Un état des lieux importé crée l'état d'entrée : tu peux ensuite faire celui de sortie.",
+    "Le document d'entrée reste consultable depuis l'état de sortie. Nouvelle zone « Autres documents » pour chaque bien."]},
   {v:"2.4.0", date:"2026-10-25", titre:"Documents du locataire et performance", items:[
     "Biens › Documents : solde du locataire avec l'historique des loyers et bouton Relancer.",
     "États des lieux d'entrée et de sortie pièce par pièce, avec photos, compteurs, clés et PDF à signer. La sortie reprend l'entrée et signale ce qui est plus dégradé.",
@@ -1239,7 +1243,8 @@ const HELP = {
     "État des lieux : choisis les pièces, ouvre-en une, note l'état de chaque élément (Neuf, Bon, Moyen, Mauvais), ajoute des observations et des photos. Les compteurs et les clés se notent en haut.",
     "À la sortie, crée l'état de sortie : il reprend l'entrée. Ce qui est plus dégradé apparaît en rouge dans le PDF.",
     "Inventaire du mobilier : la liste minimale légale d'un meublé est préremplie. Ajoute ou retire des articles.",
-    "Les photos restent sur le téléphone : elles ne vont ni dans la sauvegarde ni dans Excel, mais elles sont jointes au PDF.",
+    "Importer un document déjà fait : bail signé, état des lieux ou inventaire. Un inventaire Excel ou CSV est lu ; les autres formats sont gardés tels quels. L'état des lieux importé devient l'état d'entrée, prêt pour la sortie.",
+    "Les photos et les documents importés restent sur le téléphone : ils ne vont ni dans la sauvegarde ni dans Excel, mais les photos sont jointes au PDF.",
     "Bail et lettres : relis chaque champ. Le dépôt de garantie ne peut pas dépasser 2 mois de loyer hors charges. Ces modèles ne remplacent pas un conseil juridique."]},
   "bld-tarifs":{t:"Biens › Tarifs", p:"Les montants qui changent en cours d'année.", l:[
     "Le tarif en vigueur est la ligne la plus récente dont la date est passée.",
@@ -2190,19 +2195,26 @@ function viewDocs(){
   const id = V.bsel, s = soldeLoc(id), by = k => docList(k).filter(x => x.bien === id && !x.del).sort((a, b) => b.date.localeCompare(a.date) || (b.upd || 0) - (a.upd || 0));
   const E = by("edl"), I = by("inv"), hist = s.L.slice(-12).reverse();
   const row = (k, e) => `<div class="row"><button class="rowbtn" data-act="dx-open" data-v="${k}" data-id="${e.id}"><div class="t">${e.type === "sortie" ? "Sortie" : "Entrée"} · ${frDate(e.date)}</div>
-    <div class="s">${esc(e.loc || "locataire non précisé")} · ${k === "edl" ? e.pieces.reduce((a, p) => a + p.items.filter(i => i.etat).length, 0) + " élément(s) renseigné(s)" : e.items.filter(i => i.etat).length + "/" + e.items.length + " article(s) renseigné(s)"}</div></button><span class="chip ${e.type === "sortie" ? "warn" : "ok"}">${e.type === "sortie" ? "Sortie" : "Entrée"}</span></div>`;
+    <div class="s">${esc(e.loc || "locataire non précisé")} · ${k === "edl" ? e.pieces.reduce((a, p) => a + p.items.filter(i => i.etat).length, 0) + " élément(s) renseigné(s)" : e.items.filter(i => i.etat).length + "/" + e.items.length + " article(s) renseigné(s)"}</div></button><span class="chip ${e.type === "sortie" ? "warn" : "ok"}">${e.type === "sortie" ? "Sortie" : "Entrée"}${e.fichier ? " + doc" : ""}</span></div>`;
   return `<div class="card"><h2>Solde du locataire</h2>${s.t ? `<div class="small muted">${esc(s.t.nom)} · loyer ${eur(s.t.loyer)}${s.t.charges ? " dont charges " + eur(s.t.charges) : ""}</div>
       <div class="hero" style="margin:8px 0"><div class="small">${s.solde < -0.005 ? "Retard cumulé" : "Solde des loyers"}</div><div class="big num">${eur(s.solde)}</div><div class="small">Reçu ${eur(s.recu)} sur ${eur(s.du)} dus depuis le début du bail</div></div>
       <div class="rows">${hist.map(j => `<div class="row"><div class="main"><div class="t">${MOIS[mo(j)]} ${yr(j)}</div><div class="s">${eur(j.montant)}</div></div>${j.pointe === "x" ? '<span class="chip ok">Reçu</span>' : '<span class="chip bad">Non reçu</span>'}${j.pointe !== "x" ? `<button class="mini" data-act="relance" data-id="${j.id}">Relancer</button>` : ""}</div>`).join("") || '<div class="empty">Aucun loyer à ce jour.</div>'}</div>` : '<div class="empty">Ajoute d\'abord un locataire (onglet Locataires).</div>'}</div>
   <div class="card"><div class="top"><h2>États des lieux</h2></div><div class="small muted">Pièce par pièce, avec photos, puis PDF à faire signer.</div>
     <div class="btns"><button class="btn sm" data-act="dx-new" data-v="edl" data-t="entree">Nouvel état d'entrée</button><button class="btn sm ghost" data-act="dx-new" data-v="edl" data-t="sortie">État de sortie</button></div>
-    <div class="rows">${E.map(e => row("edl", e)).join("") || '<div class="empty">Aucun état des lieux pour ce bien.</div>'}</div></div>
+    <div class="btns"><button class="btn sm ghost" data-act="im-open" data-v="edl">Importer un état déjà fait</button></div>
+    <div class="rows">${E.map(e => row("edl", e)).join("") || '<div class="empty">Aucun état des lieux pour ce bien.</div>'}${fileDocs(id, "edl").filter(d => !E.some(e => e.fichier === d.id)).map(fileRow).join("")}</div></div>
   <div class="card"><div class="top"><h2>Inventaire du mobilier</h2></div><div class="small muted">Obligatoire pour un meublé : liste minimale du décret, à compléter.</div>
     <div class="btns"><button class="btn sm" data-act="dx-new" data-v="inv" data-t="entree">Nouvel inventaire d'entrée</button><button class="btn sm ghost" data-act="dx-new" data-v="inv" data-t="sortie">Inventaire de sortie</button></div>
-    <div class="rows">${I.map(e => row("inv", e)).join("") || '<div class="empty">Aucun inventaire pour ce bien.</div>'}</div></div>
+    <div class="btns"><button class="btn sm ghost" data-act="im-open" data-v="inv">Importer un inventaire déjà fait</button></div>
+    <div class="rows">${I.map(e => row("inv", e)).join("") || '<div class="empty">Aucun inventaire pour ce bien.</div>'}${fileDocs(id, "inv").filter(d => !I.some(e => e.fichier === d.id)).map(fileRow).join("")}</div></div>
   <div class="card"><h2>Bail et lettres</h2><div class="small muted">Les PDF se remplissent avec les données du bien et du locataire.</div>
     <div class="btns"><button class="btn sm" data-act="bail-open">Bail meublé (PDF)</button></div>
-    <div class="btns"><button class="btn sm ghost" data-act="let-open" data-v="impaye">Lettre de loyer impayé</button><button class="btn sm ghost" data-act="let-open" data-v="attest">Attestation de loyer</button><button class="btn sm ghost" data-act="let-open" data-v="depot">Restitution du dépôt</button></div></div>`;
+    <div class="btns"><button class="btn sm ghost" data-act="let-open" data-v="impaye">Lettre de loyer impayé</button><button class="btn sm ghost" data-act="let-open" data-v="attest">Attestation de loyer</button><button class="btn sm ghost" data-act="let-open" data-v="depot">Restitution du dépôt</button></div>
+    <div class="btns"><button class="btn sm ghost" data-act="im-open" data-v="bail">Importer le bail signé</button></div>
+    <div class="rows">${fileDocs(id, "bail").map(fileRow).join("")}</div></div>
+  <div class="card"><h2>Autres documents</h2><div class="small muted">Diagnostics, assurance, courriers… gardés avec le dossier du bien, sur ce téléphone.</div>
+    <div class="btns"><button class="btn sm ghost" data-act="im-open" data-v="autre">Importer un document</button></div>
+    <div class="rows">${fileDocs(id, "autre").map(fileRow).join("") || '<div class="empty">Aucun document.</div>'}</div></div>`;
 }
 function dxTop(e, titre){
   return `<div class="btns"><button class="btn ghost sm" data-act="dx-back">‹ Documents</button></div>
@@ -2221,7 +2233,7 @@ function viewEdl(e){
       `<div class="grid2 dxi" style="margin-top:8px"><input id="ni-${p.id}" placeholder="Ajouter un élément"><button class="btn sm ghost" data-act="edl-additem" data-p="${p.id}">Ajouter</button></div>
        <div class="btns"><button class="btn sm danger" data-act="edl-delroom" data-p="${p.id}">Supprimer la pièce</button></div>`;
     return `<div class="card" style="padding:12px 16px"><button class="rowbtn" data-act="dx-room" data-p="${p.id}" style="width:100%"><div class="top"><div><div class="t" style="font-weight:600">${esc(p.nom)}</div><div class="s">${done}/${p.items.length} renseignés</div></div><span class="muted">${isOpen ? "▾" : "▸"}</span></div></button>${items}</div>`; }).join("");
-  return topbar("État des lieux") + dxTop(e, "État des lieux") + `
+  return topbar("État des lieux") + dxTop(e, "État des lieux") + fileLink(e) + `
     <div class="small muted" style="margin-top:6px">Relevés des compteurs${ref ? " (entrée : élec. " + esc(ref.elec || "—") + " · eau " + esc(ref.eau || "—") + " · gaz " + esc(ref.gaz || "—") + ")" : ""}</div>
     <div class="grid2 dxi"><label class="f">Électricité<input data-dxh="elec" inputmode="decimal" value="${esc(e.elec || "")}"></label><label class="f">Eau<input data-dxh="eau" inputmode="decimal" value="${esc(e.eau || "")}"></label></div>
     <div class="grid2 dxi"><label class="f">Gaz<input data-dxh="gaz" inputmode="decimal" value="${esc(e.gaz || "")}"></label><label class="f">Clés remises<input data-dxh="cles" inputmode="numeric" value="${esc(e.cles || "")}"></label></div>
@@ -2239,7 +2251,7 @@ function viewInv(e){
       ${sortie && (it.e0 || it.q0) ? `<div class="small muted">À l'entrée : ${esc(it.q0 || "1")} · ${esc(it.e0 || "état non noté")}${it.c0 ? " · " + esc(it.c0) : ""}</div>` : ""}
       <div class="dxi" style="display:grid;grid-template-columns:70px 1fr;gap:8px"><input data-dx="qte" data-i="${it.id}" inputmode="numeric" value="${esc(it.qte || "")}" aria-label="Quantité">${etatSel(it.etat, `data-dx="etat" data-i="${it.id}"`)}</div>
       <div class="dxi" style="margin-top:6px"><input data-dx="com" data-i="${it.id}" placeholder="Observation" value="${esc(it.com || "")}"></div></div>`).join("")}</div>`).join("");
-  return topbar("Inventaire") + dxTop(e, "Inventaire du mobilier") + `<div class="small muted">Liste minimale d'un meublé (décret n° 2015-981) : complète-la avec le mobilier réellement présent.</div></div>
+  return topbar("Inventaire") + dxTop(e, "Inventaire du mobilier") + fileLink(e) + `<div class="small muted">Liste minimale d'un meublé (décret n° 2015-981) : complète-la avec le mobilier réellement présent.</div></div>
   ${body}
   <div class="card"><h2>Ajouter un article</h2><div class="dxi"><input id="ni-nom" placeholder="Ex. Télévision, bureau"></div>
     <label class="f">Rangé dans<select id="ni-grp">${[...new Set(["Chambre", "Séjour", "Cuisine", "Entretien", "Autres"].concat(groups))].map(g => `<option>${esc(g)}</option>`).join("")}</select></label>
@@ -2248,7 +2260,7 @@ function viewInv(e){
     <div class="btns"><button class="btn" style="flex:1" data-act="dx-pdf">Créer le PDF</button><button class="btn danger" data-act="dx-del">Supprimer</button></div></div>`;
 }
 function sheetNewDoc(kind, type){
-  const id = V.bsel, t = tenantFor(id, todayIso()), prev = docList(kind).filter(x => x.bien === id && !x.del && x.type === "entree").sort((a, b) => b.date.localeCompare(a.date));
+  const id = V.bsel, t = tenantFor(id, todayIso()), prev = docList(kind).filter(x => x.bien === id && !x.del && x.type === "entree").sort((a, b) => b.date.localeCompare(a.date) || (b.upd || 0) - (a.upd || 0));
   openSheet(`<h2>${kind === "edl" ? "État des lieux" : "Inventaire du mobilier"} ${type === "entree" ? "d'entrée" : "de sortie"}</h2>
     ${dxF("dx-date", "Date", todayIso(), 'type="date"')}${dxF("dx-loc", "Locataire", t ? t.nom : "")}
     ${type === "sortie" ? (prev.length ? dxS("dx-ref", "Comparer avec l'entrée du", prev.map(e => [e.id, frDate(e.date) + " · " + (e.loc || "")]), prev[0].id) : '<div class="info">Aucun document d\'entrée pour ce bien : celui de sortie sera vierge.</div>') : ""}
@@ -2477,8 +2489,86 @@ document.addEventListener("click", ev => {
   }
 });
 
+/* ============ Documents importés (bail signé, état des lieux, inventaire déjà faits) ============ */
+/* Les fichiers sont gardés dans IndexedDB (clé "f:<id>"), la fiche (nom, date, bien) dans S.docs. */
+async function flPut(fid, rec){ const db = PH.db || await phOpen(); if (!db) throw new Error("stockage indisponible");
+  return new Promise((res, rej) => { const tx = db.transaction("p", "readwrite"); tx.objectStore("p").put(rec, "f:" + fid); tx.oncomplete = () => res(); tx.onerror = tx.onabort = () => rej(tx.error || new Error("écriture impossible")); }); }
+async function flGet(fid){ const db = PH.db || await phOpen(); if (!db) return null;
+  return new Promise(res => { try { const q = db.transaction("p").objectStore("p").get("f:" + fid); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); } catch(e){ res(null); } }); }
+async function flDel(fid){ const db = PH.db || await phOpen(); if (!db) return;
+  return new Promise(res => { try { const tx = db.transaction("p", "readwrite"); tx.objectStore("p").delete("f:" + fid); tx.oncomplete = tx.onerror = tx.onabort = () => res(); } catch(e){ res(); } }); }
+const FKIND = {bail:"Bail", edl:"État des lieux", inv:"Inventaire", autre:"Autre document"};
+const MIMES = {pdf:"application/pdf", jpg:"image/jpeg", jpeg:"image/jpeg", png:"image/png", heic:"image/heic", doc:"application/msword", docx:"application/vnd.openxmlformats-officedocument.wordprocessingml.document", xls:"application/vnd.ms-excel", xlsx:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", csv:"text/csv", txt:"text/plain"};
+const mimeOf = n => MIMES[(String(n).split(".").pop() || "").toLowerCase()] || "application/octet-stream";
+const sizeStr = n => n >= 1048576 ? (n / 1048576).toFixed(1).replace(".", ",") + " Mo" : Math.max(1, Math.round(n / 1024)) + " Ko";
+const fileDocs = (bien, kind) => docList("docs").filter(x => x.bien === bien && !x.del && (!kind || x.kind === kind));
+function fileRow(d){
+  return `<div class="row"><div class="main"><div class="t">${esc(d.nom)}</div><div class="s">${esc(FKIND[d.kind] || "Document")} · ${frDate(d.date)} · ${sizeStr(d.size || 0)}</div></div>
+    <button class="mini" data-act="fl-open" data-id="${d.id}">Ouvrir</button><button class="mini" data-act="fl-del" data-id="${d.id}" aria-label="Supprimer">×</button></div>`;
+}
+function fileLink(e){
+  const src = e.fichier ? e : (e.ref ? docGet(V.doc.kind, e.ref) : null), d = src && src.fichier ? docList("docs").find(x => x.id === src.fichier && !x.del) : null; if (!d) return "";
+  return `<div class="info" style="margin:8px 0">${e.fichier ? "Document joint" : "État d'entrée signé (document joint)"} : ${esc(d.nom)} <button class="mini" data-act="fl-open" data-id="${d.id}">Ouvrir</button></div>`;
+}
+function sheetImport(kind){
+  const id = V.bsel, t = tenantFor(id, todayIso()), rooms = kind === "edl" ? '<div class="small muted">Pièces de l\'état des lieux (pour pouvoir faire celui de sortie)</div>' + EDL_PIECES.map((p, i) => `<label style="display:flex;gap:8px;align-items:center;padding:4px 0"><input type="checkbox" id="im-pc-${i}" checked> ${esc(p[0])}</label>`).join("") : "";
+  const help = {bail:"Le bail signé est conservé tel quel (PDF ou photo). Il n'est pas lu par l'appli.", edl:"Le document est conservé. L'appli crée aussi un état des lieux d'entrée à compléter avec les pièces cochées : tu pourras ensuite créer celui de sortie.",
+    inv:"Excel ou CSV : la liste est lue et reprise dans l'appli (désignation, quantité, état, observation). PDF, Word ou photo : le document est conservé et une liste type est créée à compléter.", autre:"Le document est simplement conservé dans le dossier du bien."}[kind];
+  openSheet(`<h2>Importer · ${esc(FKIND[kind])}</h2><div class="info">${help}</div>
+    <label class="f">Fichier<input id="im-file" type="file" accept=".pdf,.xlsx,.xls,.csv,.doc,.docx,.txt,image/*"></label>
+    ${dxF("im-date", "Date du document", todayIso(), 'type="date"')}${dxF("im-nom", "Nom (facultatif)", "", 'placeholder="Ex. Bail signé 2025"')}
+    ${kind === "edl" || kind === "inv" ? dxF("im-loc", "Locataire", t ? t.nom : "") : ""}${rooms}
+    <div class="btns"><button class="btn" style="flex:1" data-act="im-save" data-v="${kind}">Importer</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
+}
+function normEtat(s){ const t = String(s || "").toLowerCase(); if (!t.trim()) return ""; if (/neuf/.test(t)) return "Neuf"; if (/mauvais|\bhs\b|cass|d[ée]grad|abim/.test(t)) return "Mauvais"; if (/moyen|us[ée]|usag|passable|v[ée]tust/.test(t)) return "Moyen"; if (/bon|correct|satisf|\bok\b|propre/.test(t)) return "Bon"; return ""; }
+function invFromSheet(buf, name){
+  try {
+    let wb; if (/\.csv$/i.test(name || "")){ const txt = new TextDecoder("utf-8").decode(new Uint8Array(buf)).replace(/^\uFEFF/, ""), first = txt.split("\n")[0] || "", fs = [";", "\t", ","].map(d => [d, first.split(d).length]).sort((a, b) => b[1] - a[1])[0][0]; wb = XLSX.read(txt, {type:"string", FS:fs}); } else wb = XLSX.read(buf, {type:"array"});
+    const ws = wb.Sheets[wb.SheetNames[0]], rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:"", raw:false}).map(r => r.map(c => String(c ?? "").trim()));
+    let h = -1, c = {nom:0, qte:-1, etat:-1, com:-1, grp:-1};
+    for (let i = 0; i < Math.min(15, rows.length) && h < 0; i++){ const r = rows[i], ni = r.findIndex(x => /d[ée]signation|article|objet|mobilier|[ée]l[ée]ment|libell|nom/i.test(x));
+      if (ni >= 0 && r.filter(Boolean).length >= 2){ h = i; c = {nom:ni, qte:r.findIndex(x => /qt|quantit|nombre|^nb/i.test(x)), etat:r.findIndex(x => /[ée]tat/i.test(x)), com:r.findIndex(x => /obs|comment|remarque|note/i.test(x)), grp:r.findIndex(x => /pi[eè]ce|cat[ée]gorie|groupe|local/i.test(x))}; } }
+    if (h < 0){ const sec = rows.filter(r => /^\d+([.,]\d+)?$/.test(r[1] || "")).length; c.qte = sec > rows.length / 3 ? 1 : -1; }
+    const multi = c.qte >= 0 || c.etat >= 0 || c.com >= 0, out = []; let grp = "Importé";
+    for (const r of rows.slice(h + 1)){ const nom = (r[c.nom] || "").trim(); if (!nom) continue;
+      const qte = c.qte >= 0 ? r[c.qte] : "", raw = c.etat >= 0 ? r[c.etat] : "", obs = c.com >= 0 ? r[c.com] : "";
+      if (multi && c.grp < 0 && !qte && !raw && !obs){ grp = nom; continue; }
+      const et = normEtat(raw), com = [obs, raw && !et ? raw : ""].filter(Boolean).join(" · ");
+      out.push({id:uid(), grp:c.grp >= 0 && r[c.grp] ? r[c.grp] : grp, nom, qte:qte || "1", etat:et, com});
+      if (out.length >= 300) break; }
+    return out;
+  } catch(e){ return null; }
+}
+document.addEventListener("click", async ev => {
+  const b = ev.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act, id = b.dataset.id, v = b.dataset.v;
+  switch (a){
+    case "im-open": sheetImport(v); break;
+    case "im-save": {
+      const f = $("#im-file") && $("#im-file").files[0]; if (!f) return toast("Choisis un fichier");
+      if (f.size > 25e6) return toast("Fichier trop gros (25 Mo maximum)");
+      try {
+        const buf = await f.arrayBuffer(), fid = uid(), type = f.type || mimeOf(f.name), date = dxV("im-date") || todayIso(), loc = dxV("im-loc");
+        await flPut(fid, {name:f.name, type, buf});
+        docList("docs").push({id:fid, bien:V.bsel, kind:v, nom:dxV("im-nom") || f.name, fname:f.name, date, type, size:f.size, upd:Date.now()});
+        let msg = "Document importé";
+        if (v === "edl"){ docList("edl").push({id:uid(), bien:V.bsel, type:"entree", date, loc, elec:"", eau:"", gaz:"", cles:"", fumee:"", rem:"", ref:"", fichier:fid, upd:Date.now(),
+            pieces:EDL_PIECES.filter((p, i) => !$("#im-pc-" + i) || $("#im-pc-" + i).checked).map(p => mkPiece(p[0], p[1]))}); msg = "Importé : état d'entrée créé, prêt pour la sortie"; }
+        if (v === "inv"){ let items = /\.(xlsx|xls|csv)$/i.test(f.name) ? invFromSheet(buf, f.name) : null; const lu = items && items.length;
+          if (!lu){ items = []; INV_DEF.forEach(([g, L]) => L.forEach(n => items.push({id:uid(), grp:g, nom:n, qte:"1", etat:"", com:""}))); }
+          docList("inv").push({id:uid(), bien:V.bsel, type:"entree", date, loc, rem:"", ref:"", fichier:fid, items, upd:Date.now()}); msg = lu ? "Inventaire lu : " + items.length + " article(s) repris" : "Document gardé, liste type créée à compléter"; }
+        persist(); closeSheet(); toast(msg); render();
+      } catch(err){ toast("Import impossible : " + err.message); }
+      break; }
+    case "fl-open": { const d = docList("docs").find(x => x.id === id); if (!d) break; const rec = await flGet(id); if (!rec) return toast("Fichier introuvable sur cet appareil");
+      saveFile(d.fname || rec.name || "document", rec.buf, rec.type || mimeOf(d.fname)); break; }
+    case "fl-del": { const d = docList("docs").find(x => x.id === id); if (!d) break;
+      openSheet(`<h2>Supprimer ce document ?</h2><p style="margin:0">« ${esc(d.nom)} » sera retiré de l'appli. Ton original reste dans tes fichiers.</p><div class="btns"><button class="btn danger" data-act="fl-del-ok" data-id="${id}">Supprimer</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`); break; }
+    case "fl-del-ok": { const d = docList("docs").find(x => x.id === id); if (d){ d.del = true; d.upd = Date.now(); flDel(id); for (const k of ["edl", "inv"]) docList(k).forEach(e => { if (e.fichier === id) e.fichier = ""; }); persist(); } closeSheet(); render(); break; }
+  }
+});
+
 /* ============ Démarrage ============ */
-const migrate = () => { if (!S.cfg || typeof S.cfg !== "object") S.cfg = {bailleur:"", adr:{}}; if (!Array.isArray(S.modeles)) S.modeles = []; if (!Array.isArray(S.clotures)) S.clotures = []; if (!S.rapp || typeof S.rapp !== "object") S.rapp = {}; for (const k of ["biens","tarifs","journal","factures","locataires","seen","partages","edl","inv"]) if (!Array.isArray(S[k])) S[k] = []; };
+const migrate = () => { if (!S.cfg || typeof S.cfg !== "object") S.cfg = {bailleur:"", adr:{}}; if (!Array.isArray(S.modeles)) S.modeles = []; if (!Array.isArray(S.clotures)) S.clotures = []; if (!S.rapp || typeof S.rapp !== "object") S.rapp = {}; for (const k of ["biens","tarifs","journal","factures","locataires","seen","partages","edl","inv","docs"]) if (!Array.isArray(S[k])) S[k] = []; };
 function startApp(){
   S = load();
   if (!S || !Array.isArray(S.journal)){ S = emptyData(); persist(); }

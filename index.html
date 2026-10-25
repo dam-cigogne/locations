@@ -896,6 +896,7 @@ function sheetLoc(id){
     <div class="grid2"><label class="f">Loyer charges comprises (€)<input id="t-loyer" inputmode="decimal" value="${fmtNum(t.loyer)}"></label><label class="f">Dont charges (€)<input id="t-chg" inputmode="decimal" value="${fmtNum(t.charges || "")}"></label></div>
     <label class="f">Dépôt de garantie (€)<input id="t-depot" inputmode="decimal" value="${fmtNum(t.depot)}"></label>
     <label class="f">Note<input id="t-note" value="${esc(t.note)}"></label>
+    ${id ? `<div class="card" style="padding:12px;gap:6px;background:var(--bg)"><b style="font-size:14px">Le locataire part ?</b><div class="small muted">« Clôturer » enregistre la date de fin, coche les étapes du départ, calcule le dépôt à rendre et, si tu veux, efface son dossier. Rien n'est supprimé sans ton accord.</div><button class="btn ghost sm" data-act="tcl-open" data-id="${id}">Clôturer ce locataire</button></div>` : ""}
     <div class="btns"><button class="btn" data-act="l-save" data-id="${id||""}" style="flex:1">Enregistrer</button>${id ? `<button class="btn danger" data-act="l-del" data-id="${id}">Supprimer</button>` : ""}<button class="btn ghost" data-act="sheetclose">Fermer</button></div>`);
 }
 function sheetRelance(id){
@@ -1132,8 +1133,9 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.9.12";
+const APP_VERSION = "2.9.13";
 const CHANGELOG = [
+  {v:"2.9.13", date:"2026-10-25", titre:"Clôturer un locataire", items:["Fiche d'un locataire : bouton « Clôturer ce locataire ». Tu indiques la date de départ et les retenues : l'appli calcule le dépôt à rendre, coche les étapes du départ et note le résumé dans la fiche.","Options (cases à cocher) : dépôt déjà rendu, préparer l'opération de remboursement dans le journal (tu valides toi-même), effacer le dossier et les documents du locataire.","Le « Comment ça marche » de Location est refait : il décrit tout le parcours, de l'annonce au départ."]},
   {v:"2.9.12", date:"2026-10-25", titre:"Documents de chaque locataire", items:["Fiche d'un locataire (aussi les locataires actuels) : bloc « Documents du locataire ». Choisis les fichiers dans Fichiers (iCloud Drive…) avec le type de pièce, puis ouvre-les d'un clic.","Miniatures dans toutes les listes de documents : touche la miniature ou « Ouvrir » pour voir la photo ou le PDF en grand dans l'appli (bouton Partager pour l'enregistrer ou l'envoyer)."]},
   {v:"2.9.11", date:"2026-10-25", titre:"Dossier du locataire", items:["La fiche d'un locataire issu d'une candidature affiche tout son dossier : situation, revenus, occupants, garant, pièces reçues et documents (Ouvrir)."]},
   {v:"2.9.10", date:"2026-10-25", titre:"Noms de pièces lisibles", items:["Formulaire dossier : les pièces jointes portent leur vrai nom (Pièce identité, Contrat de travail, Bulletin de salaire 1, Avis imposition…).","L'appli range toujours chaque pièce au bon endroit à partir de ce nom."]},
@@ -1324,20 +1326,26 @@ const HELP = {
   "bld-loc":{t:"Biens › Locataires", p:"Une fiche simple par locataire.", l:[
     "Nom, téléphone, bail, loyer et dépôt de garantie. Appeler, SMS ou e-mail en un appui.",
     "Les fiches restent sur ton téléphone (chiffrées si le code est activé) et dans le classeur Excel.",
+    "Dans la fiche : le dossier de candidature, les documents du locataire (miniatures) et « Clôturer ce locataire » pour son départ.",
     "Le nom, l'adresse du bien et le loyer sont repris dans les relances, les quittances et les bilans (Excel et PDF).",
     "« Dont charges » sert à séparer loyer et charges sur la quittance."]},
-  "rent":{t:"Location", p:"Trouver un locataire sans serveur : tout passe par ton e-mail.", l:[
-    "Annonce : remplis les infos du bien, ajoute tes photos, crée le PDF à envoyer par Mail ou Messages, ou copie le texte pour un site d'annonces.",
-    "Candidats : envoie le lien du formulaire à chaque personne intéressée ; quand son e-mail arrive, copie le texte et colle-le avec « Coller une candidature reçue » : la fiche se remplit. Tu peux aussi créer une fiche à la main.",
-    "Réponds avec les courriers prêts à l'emploi, note la visite, coche les pièces reçues (tu peux les joindre sur ton téléphone).",
-    "La note compare les revenus au loyer charges comprises (3 fois = vert). Elle est indicative : ne refuse jamais pour un motif discriminatoire.",
-    "Retenir : crée le locataire du bien et prépare l'arrivée (bail, inventaire, état des lieux).",
-    "Les fiches et pièces jointes restent sur cet appareil. Efface les dossiers des candidats non retenus."]},
+  "rent":{t:"Location", p:"Du candidat au départ du locataire, sans serveur : tout passe par ton e-mail.", l:[
+    "1. Annonce : remplis les infos du bien, ajoute tes photos, crée le PDF à envoyer par Mail ou Messages, ou copie le texte pour un site d'annonces.",
+    "2. Candidats : envoie le lien du 1er formulaire (infos de base) à chaque personne intéressée. Quand son e-mail arrive, copie le texte et colle-le avec « Coller une candidature ou un dossier reçu » : la fiche se remplit. Tu peux aussi créer une fiche à la main.",
+    "3. Visite : note la date. « Écrire au candidat » propose toujours le bon courrier suivant ; après la visite il contient le 2e lien, le formulaire « dossier complet ».",
+    "4. Dossier complet : le candidat y dépose chaque pièce (identité, domicile, contrat de travail, bulletins, avis d'imposition, garant…). Les fichiers portent leur vrai nom. Enregistre-les dans Fichiers, puis colle le texte « DOSSIER » et joins les fichiers : les pièces se cochent toutes seules.",
+    "5. La note compare les revenus au loyer charges comprises (3 fois = vert). Elle est indicative : ne refuse jamais pour un motif discriminatoire.",
+    "6. Retenir : crée le locataire du bien, garde son dossier dans sa fiche et prépare l'arrivée (bail, inventaire, état des lieux).",
+    "7. Pendant la location : dans la fiche du locataire, « Documents du locataire » : ajoute depuis Fichiers (iCloud Drive…) ses papiers. Miniature ou « Ouvrir » = grand affichage, bouton pour enregistrer ou partager.",
+    "8. Départ : fiche du locataire › « Clôturer ce locataire ». Date de fin, retenues, dépôt à rendre, étapes cochées ; tu choisis d'effacer ou non son dossier. Le suivi détaillé est dans Biens › Arrivée/Départ.",
+    "Les fiches, pièces et documents restent sur cet appareil et ne sont pas dans la sauvegarde. Efface les dossiers des candidats non retenus."]},
   "bld-mvt":{t:"Biens › Arrivée/Départ", p:"La démarche complète, étape par étape.", l:[
     "Deux listes : le départ (en haut) et l'arrivée. Coche chaque étape quand elle est faite : la date s'inscrit.",
     "Les boutons ouvrent directement le bon document. À la sortie, l'inventaire et l'état des lieux reprennent ceux de l'entrée.",
+    "Départ : « Clôturer ce locataire » (fiche du locataire) coche seul les étapes retenues, dépôt restitué et locataire clos.",
     "Ce sont des repères généraux : vérifie les délais et les règles sur service-public.fr avant chaque location."]},
   "bld-docs":{t:"Biens › Documents", p:"Tout ce qu'il faut pour un locataire, sans autre site.", l:[
+    "Les papiers personnels d'un locataire (identité, contrat…) se rangent dans sa fiche, pas ici.",
     "Avant de signer, « PDF de relecture » sort le document sans signature pour le relire avec le locataire.",
     "À la création d'un état des lieux ou d'un inventaire, tu peux reprendre la liste d'un autre document pour le préparer à l'avance.",
     "Le solde montre ce qui a été reçu par rapport à ce qui est dû depuis le début du bail. « Relancer » prépare le message.",
@@ -3475,6 +3483,43 @@ async function viewFile(fid, name){
     (isImg ? `<div class="vimg"><img data-blob="${url}" src="${url}" alt=""></div>` : `<iframe data-blob="${url}" src="${url}" title="${esc(V.vw.name)}"></iframe>`);
   document.body.appendChild(v);
 }
+
+
+/* ---------- Clôturer un locataire (départ) ---------- */
+function sheetClot(tid){
+  const t = S.locataires.find(x => x.id === tid); if (!t) return;
+  const c = candList().find(x => !x.del && x.loc === tid), nd = docList("docs").filter(x => x.kind === "loc" && x.loc === tid && !x.del).length, nf = c ? (c.fichiers || []).length : 0;
+  openSheet(`<h2>Clôturer · ${esc(t.nom)}</h2>
+    <div class="small muted">À faire quand le locataire est parti (ou part). Cela : 1) enregistre la date de fin du bail, 2) coche les étapes « Retenues », « Dépôt restitué » et « Locataire clos » du départ (Biens › Arrivée/Départ), 3) calcule le dépôt à rendre. Tu peux annuler en rouvrant la fiche : rien n'est supprimé sans ta case cochée.</div>
+    <label class="f">Date de fin du bail (départ)<input id="tc-fin" type="date" value="${esc(t.fin || todayIso())}"></label>
+    <div class="kv"><span>Dépôt de garantie versé</span><b>${eur(t.depot || 0)}</b></div>
+    <label class="f">Retenues justifiées (€) — dégradations, loyers impayés… avec devis ou factures<input id="tc-ret" inputmode="decimal" value="0"></label>
+    <div class="kv"><span>Dépôt à restituer</span><b id="tc-rest" data-dep="${t.depot || 0}">${eur(t.depot || 0)}</b></div>
+    <label style="display:flex;gap:10px;align-items:flex-start;font-size:14px"><input type="checkbox" id="tc-res"> Le dépôt a déjà été rendu (coche l'étape « Dépôt restitué »)</label>
+    <label style="display:flex;gap:10px;align-items:flex-start;font-size:14px"><input type="checkbox" id="tc-op"> Préparer l'opération de remboursement dans le journal (tu vérifies la catégorie et tu enregistres : rien n'est écrit tout seul)</label>
+    <label style="display:flex;gap:10px;align-items:flex-start;font-size:14px"><input type="checkbox" id="tc-erase"> Effacer le dossier de candidature et les documents de ce locataire (${nf + nd} fichier(s), définitif, de cet appareil seulement)</label>
+    <div class="small muted">Conseil : garde le dossier tant que le dépôt n'est pas rendu et que le décompte final n'est pas accepté.</div>
+    <div class="btns"><button class="btn" style="flex:1" data-act="tcl-ok" data-id="${tid}">Clôturer</button><button class="btn ghost" data-act="ledit" data-id="${tid}">Annuler</button></div>`);
+}
+document.addEventListener("input", ev => { const i = ev.target; if (!i || i.id !== "tc-ret") return; const o = document.getElementById("tc-rest"); if (!o) return;
+  o.textContent = eur(Math.max(0, (+o.dataset.dep || 0) - (parseNum(i.value) || 0))); });
+document.addEventListener("click", async ev => {
+  const b = ev.target.closest("[data-act]"); if (!b) return; const a = b.dataset.act, id = b.dataset.id;
+  if (a === "tcl-open"){ sheetClot(id); return; }
+  if (a !== "tcl-ok") return;
+  const t = S.locataires.find(x => x.id === id); if (!t) return;
+  const fin = document.getElementById("tc-fin").value; if (!fin) return toast("Indique la date de fin");
+  const ret = Math.max(0, parseNum(document.getElementById("tc-ret").value) || 0), rest = Math.max(0, (t.depot || 0) - ret);
+  const wRes = document.getElementById("tc-res").checked, wOp = document.getElementById("tc-op").checked, wEr = document.getElementById("tc-erase").checked;
+  t.fin = fin; t.upd = Date.now();
+  t.note = ((t.note ? t.note + " · " : "") + "Clôturé le " + frDate(todayIso()) + (t.depot ? " · dépôt " + eur(t.depot) + ", retenues " + eur(ret) + ", à restituer " + eur(rest) : "")).trim();
+  const r = mvtRec(t.bien, "dep"), td = todayIso(); if (ret > 0) r.done.ret = r.done.ret || td; if (wRes) r.done.res = r.done.res || td; r.done.clo = td; r.upd = Date.now();
+  if (wEr){ const c = candList().find(x => !x.del && x.loc === id); if (c) await cdErase(c.id);
+    for (const d of docList("docs").filter(x => x.kind === "loc" && x.loc === id && !x.del)){ d.del = true; d.upd = Date.now(); await flDel(d.id); } }
+  persist(); closeSheet();
+  if (wOp && rest > 0){ V.back = V.tab; V.editId = null; V.draft = newDraft({type:"Dépense", bien:t.bien, cat:"Divers", lib:"Restitution dépôt de garantie - " + t.nom, mont:fmtNum(rest), montAuto:false, note:"Dépôt " + eur(t.depot || 0) + " moins retenues " + eur(ret)}); V.tab = "add"; render(); toast("Vérifie la catégorie puis enregistre"); return; }
+  V.tab = "bld"; V.bsel = t.bien; V.bsub = "mvt"; render(); toast("Locataire clôturé : à restituer " + eur(rest));
+});
 
 /* ============ Démarrage ============ */
 const migrate = () => { if (!S.cfg || typeof S.cfg !== "object") S.cfg = {bailleur:"", adr:{}}; if (!Array.isArray(S.modeles)) S.modeles = []; if (!Array.isArray(S.clotures)) S.clotures = []; if (!S.rapp || typeof S.rapp !== "object") S.rapp = {}; for (const k of ["biens","tarifs","journal","factures","locataires","seen","partages","edl","inv","docs"]) if (!Array.isArray(S[k])) S[k] = []; };

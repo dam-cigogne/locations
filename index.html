@@ -962,7 +962,7 @@ function commitImport(replace){
     if (replace || S.demo){ const base = emptyData(); S = base; }
     S.demo = false;
     if (d.biens){ const old = new Map(S.biens.map(b => [b.id, b])), ids = new Set(d.biens.map(b => b.id));
-      S.biens = d.biens.map(b => { const o = old.get(b.id); if (o && !b.adresse && o.adresse) b.adresse = o.adresse; if (o && o.emprunt && !b.emprunt) b.emprunt = o.emprunt; if (o && o.app) b.app = true; return b; }).concat(S.biens.filter(b => b.app && !ids.has(b.id))); }
+      S.biens = d.biens.map(b => { const o = old.get(b.id); if (o && !b.adresse && o.adresse) b.adresse = o.adresse; if (o && o.emprunt && !b.emprunt) b.emprunt = o.emprunt; if (o && o.lmnp) b.lmnp = o.lmnp; if (o && o.app) b.app = true; return b; }).concat(S.biens.filter(b => b.app && !ids.has(b.id))); }
     if (d.reglages){ S.cfg = S.cfg || {bailleur:"", adr:{}}; if (d.reglages.bailleur) S.cfg.bailleur = d.reglages.bailleur; if (d.reglages.bailleuradresse) S.cfg.bailleurAdr = d.reglages.bailleuradresse; }
     if (d.tarifs){ const k = t => [t.bien, t.poste, t.date].join("|"), have = new Set(d.tarifs.map(k)); S.tarifs = d.tarifs.concat(S.tarifs.filter(t => t.app && !have.has(k(t)))); }
     if (d.partages) S.partages = d.partages;
@@ -1086,8 +1086,12 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.2.0";
+const APP_VERSION = "2.3.0";
 const CHANGELOG = [
+  {v:"2.3.0", date:"2026-10-25", titre:"Compta : prêt à saisir sur le site", items:[
+    "La page Compta suit les écrans du site : Logements, Échéances, Dépenses, Recettes.",
+    "Chaque ligne a son rond « saisi sur le site » et les articles du site (modifiables).",
+    "Un PDF imprimable « À saisir sur jedeclaremonmeuble.com » et un Excel avec les mêmes colonnes que le site."]},
   {v:"2.2.0", date:"2026-10-24", titre:"Biens regroupés et page Compta", items:[
     "Les loyers et les dépenses sont maintenant dans Biens, bien par bien.",
     "Dans Biens, le locataire actuel du bien choisi s'affiche en haut.",
@@ -1171,6 +1175,10 @@ const HELP = {
     "Les trois tuiles (retard, à pointer, à saisir en compta) sont cliquables.",
     "Le bénéfice réalisé ne compte que ce qui est vraiment passé sur le compte (pointé)."]},
   cmp:{t:"Compta", p:"Ce qu'il faut pour remplir ta compta en ligne.", l:[
+    "Les 5 onglets suivent le site : Synthèse, Logements, Échéances, Dépenses, Recettes. Remplis le site dans cet ordre.",
+    "Dépenses et Recettes : une ligne par facture, avec l'article du site. Touche le rond quand c'est saisi. « Articles » change l'article d'une catégorie.",
+    "Échéances : date, total, capital, intérêts pour chaque mois. Compare avec l'échéancier de ta banque.",
+    "PDF : le dossier à imprimer, avec une case à cocher par ligne. Excel : mêmes colonnes que le site.",
     "Choisis l'année et le bien (ou « Tous »). Le résultat = loyers − charges − intérêts d'emprunt − assurance emprunteur.",
     "Les charges sont rangées par poste, comme sur le site. Le regroupement est indicatif : on l'ajustera.",
     "Emprunt : renseigne capital, taux, durée et date de la 1re échéance. L'appli calcule les intérêts de chaque année.",
@@ -1683,19 +1691,22 @@ document.addEventListener("click", ev => {
 
 /* ---------- Compta : regroupement pour jedeclaremonmeuble.com (indicatif, à ajuster) ---------- */
 const COMPTA_SITE = "https://www.jedeclaremonmeuble.com";
-const COMPTA_MAP = {
-  "Crédit (mensualité)":"Emprunt (capital + intérêts : voir tableau)",
-  "Assurance PNO":"Assurances", "Assurance GMPA":"Assurances",
-  "Syndic / copropriété":"Charges de copropriété",
-  "Eau":"Eau et énergie", "Électricité":"Eau et énergie",
-  "Taxe foncière":"Impôts et taxes", "CFE":"Impôts et taxes",
-  "Comptabilité":"Honoraires et gestion", "CGA / OGA":"Honoraires et gestion", "Abonnement Rendement locatif":"Honoraires et gestion",
-  "Entretien / réparations":"Entretien et réparations",
-  "Mobilier / équipement":"Mobilier et équipement (à immobiliser / amortir)",
-  "Diagnostics":"Diagnostics", "Frais bancaires / cotisations":"Frais bancaires"
+/* Articles de dépenses du site (liste lue sur l'écran Dépenses) */
+const SITE_ART = ["Eau","Energie","Internet","Téléphone","Charges courantes","Fond de prévoyance","Fond de roulement","Fond Travaux ALUR","Travaux de copropriété","Assurance emprunteur","Assurance GLI","Assurance Habitation 'Propriétaire Non Occupant'","Autres assurances","Autres Equipements","Cuisine équipée","Electroménager","Entretien et réparations","Mobilier","Terrain","Travaux","Adhésion à un OGA","Autres charges","Autres honoraires","Documentation","Frais de comptabilité (facture JD2M, ELM,...)","Frais de diagnostics","Frais de tenue de compte","Frais postaux","Honoraires agence (mise en relation et gestion) / Conciergerie","Publicité","Séminaires et formations","Commission garantie / de caution (Crédit Logement)","Frais agence","Frais de courtage emprunt","Honoraires du notaire","Cotisation Foncière des Entreprises (CFE)","Taxe d'assainissement","Taxe enlèvement des ordures ménagères (TEOM)","Taxe foncière","Autres Impôts et taxes","Charges locatives","Location immobilière"];
+const SITE_ART_REC = ["Loyer hors charges locatives","Provision pour charges","Régularisation des charges","Forfait pour charges","Récupération de la TOM","Dépôt de garantie versé par le locataire","Indemnité assurance loyer impayé","Indemnité assurance sinistre","Indemnité assurance emprunteur"];
+const SITE_IMMO = ["Autres Equipements","Cuisine équipée","Electroménager","Mobilier","Terrain","Travaux"];
+const ART_DEFAULT = {
+  "Assurance PNO":"Assurance Habitation 'Propriétaire Non Occupant'", "Assurance GMPA":"Autres assurances",
+  "Syndic / copropriété":"Charges courantes", "Eau":"Eau", "Électricité":"Energie",
+  "Taxe foncière":"Taxe foncière", "CFE":"Cotisation Foncière des Entreprises (CFE)",
+  "Comptabilité":"Frais de comptabilité (facture JD2M, ELM,...)", "CGA / OGA":"Adhésion à un OGA", "Abonnement Rendement locatif":"Autres charges",
+  "Entretien / réparations":"Entretien et réparations", "Mobilier / équipement":"Mobilier", "Diagnostics":"Frais de diagnostics",
+  "Frais bancaires / cotisations":"Frais de tenue de compte", "Divers":"Autres charges"
 };
-const posteOf = c => COMPTA_MAP[c] || "Autres charges";
-const POSTE_CREDIT = COMPTA_MAP["Crédit (mensualité)"];
+const artOf = c => ((S.cfg && S.cfg.cmap) || {})[c] || ART_DEFAULT[c] || "Autres charges";
+const posteOf = artOf;
+const isImmoArt = a => SITE_IMMO.includes(a);
+const cdone = k => !!((S.cfg && S.cfg.cdone) || {})[k];
 
 /* emprunt d'un bien : {capital, taux, duree (mois), debut (AAAA-MM-JJ), assur (€/mois)} */
 function empOf(id){ const b = S.biens.find(x => x.id === id); return b && b.emprunt && b.emprunt.capital > 0 && b.emprunt.duree > 0 && b.emprunt.debut ? b.emprunt : null; }
@@ -1748,7 +1759,7 @@ function viewCompta(){
     ${empOf(d.id) ? `<div class="small muted">${eur(empOf(d.id).capital)} à ${String(empOf(d.id).taux).replace(".", ",")} % sur ${empOf(d.id).duree} mois, depuis ${frDate(empOf(d.id).debut)}</div>
       ${d.ey ? kv("Intérêts " + y, eur(d.ey.it)) + kv("Capital remboursé " + y, eur(d.ey.kap)) + kv("Assurance emprunteur " + y, eur(d.ey.assur)) + kv("Capital restant dû fin " + y, eur(d.ey.crd)) : ""}`
       : '<div class="small muted">Emprunt non renseigné : les intérêts ne sont pas comptés.</div>'}</div>`; }).join("");
-  return topbar("Compta", yearNav()) + seg + `
+  const syn = `
   <div class="hero"><div class="small">Résultat ${y} (indicatif)</div><div class="big num">${eur(T("resultat"))}</div>
     <div class="small">Loyers ${eur(T("loyers"))} − charges ${eur(T("charges"))} − intérêts ${eur(T("interets"))}</div></div>
   <div class="tiles"><button class="tile ${aSaisir ? "warn" : ""}" data-act="go" data-v="month" data-sub="" data-f="compta"><span class="n">${aSaisir}</span><span class="l">dépense(s) à saisir en compta</span></button>
@@ -1761,6 +1772,9 @@ function viewCompta(){
   <div class="card"><h2>Emprunt et intérêts</h2>${emp}</div>
   <div class="card"><h2>Exporter pour ta compta</h2><div class="small muted">Un fichier Excel (synthèse, détail par poste, emprunt, factures) ou un PDF à garder. Regroupement indicatif, à ajuster avec le site.</div>
     <div class="btns"><button class="btn" data-act="cmp-xlsx">Excel</button><button class="btn ghost" data-act="cmp-pdf">PDF</button><a class="btn ghost" href="${COMPTA_SITE}" target="_blank" rel="noopener">Ouvrir le site</a></div></div>`;
+  const SUBS = [["syn","Synthèse"],["log","Logements"],["emp","Échéances"],["dep","Dépenses"],["rec","Recettes"]]; if (!SUBS.some(x => x[0] === V.csub)) V.csub = "syn";
+  const subseg = `<div class="seg">${SUBS.map(([k, l]) => `<button class="${V.csub === k ? "on" : ""}" data-act="csub" data-v="${k}">${l}</button>`).join("")}</div>`;
+  return topbar("Compta", yearNav()) + seg + subseg + (V.csub === "syn" ? syn : cmpSite(V.csub, list, y));
 }
 
 function sheetEmprunt(id){
@@ -1770,6 +1784,7 @@ function sheetEmprunt(id){
     <label class="f">Taux annuel hors assurance (%)<input id="em-taux" inputmode="decimal" value="${e.taux != null && e.taux !== "" ? String(e.taux).replace(".", ",") : ""}"></label>
     <label class="f">Durée (mois)<input id="em-dur" inputmode="numeric" value="${e.duree || ""}"></label>
     <label class="f">Date de la première échéance<input id="em-deb" type="date" value="${e.debut || ""}"></label>
+    <label class="f">Date de déblocage des fonds (comme sur le site)<input id="em-fonds" type="date" value="${e.fonds || ""}"></label>
     <label class="f">Assurance emprunteur (€ par mois)<input id="em-ass" inputmode="decimal" value="${e.assur ? fmtNum(e.assur) : ""}"></label>
     <div class="small muted">Les intérêts sont calculés avec un tableau d'amortissement classique. Compare avec ton tableau de la banque.</div>
     <div class="btns"><button class="btn" style="flex:1" data-act="emp-save" data-id="${esc(id)}">Enregistrer</button>${e.capital ? `<button class="btn danger" data-act="emp-del" data-id="${esc(id)}">Retirer</button>` : ""}<button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
@@ -1798,6 +1813,7 @@ function comptaXlsx(y, sel){
   const fa = [["Bien", "Date", "Fournisseur", "N° facture", "Catégorie", "Description", "Prix", "Enregistrée sur le site"]];
   for (const f of live(S.factures).filter(f => f.date && +f.date.slice(0, 4) === y)) fa.push(["", dt(f.date), f.fourn, f.num, f.cat, f.desc, f.prix, f.jdmm ? "x" : ""]);
   add("Factures", fa, [10, 12, 24, 14, 16, 36, 12, 20], k => k[0] === "B" && +k.slice(1) > 1 ? "dd/mm/yyyy" : (k[0] === "G" && +k.slice(1) > 1 ? money : null));
+  siteSheets(C, add, money, dt);
   return XLSX.write(wb, {type:"array", bookType:"xlsx", compression:true});
 }
 function comptaPdf(y, sel){
@@ -1816,17 +1832,143 @@ function comptaPdf(y, sel){
       line("Intérêts de l'année", x.ey.it); line("Capital remboursé", x.ey.kap); line("Assurance emprunteur", x.ey.assur); line("Capital restant dû fin " + y, x.ey.crd);
     } else d.para("Non renseigné.", 9.5, 12);
     d.y -= 4; d.line(M, d.y + 8, R, d.y + 8); line("Résultat (loyers − charges − intérêts − assurance)", x.resultat, true); }
+  sitePdf(d, C);
   return d.finish("Compta " + y);
+}
+
+/* ---------- Pages « comme sur le site » : Logements, Échéances, Dépenses, Recettes ---------- */
+function cmpMerge(rows){
+  if (!V.cgrp) return rows;
+  const m = new Map();
+  for (const r of rows){ const key = r.immo ? "i|" + r.k : r.bien + "|" + r.art, o = m.get(key);
+    if (!o) m.set(key, Object.assign({}, r, {n:1, first:r.date}));
+    else { o.k += "," + r.k; o.montant = r2(o.montant + r.montant); o.n++; o.done = o.done && r.done; o.pointe = o.pointe && r.pointe; if (r.date > o.date) o.date = r.date; if (r.date < o.first) o.first = r.date; } }
+  return [...m.values()].map(o => o.n > 1 ? Object.assign(o, {com:o.n + " lignes du " + frDate(o.first) + " au " + frDate(o.date)}) : o);
+}
+function cmpDepLines(y, ids){
+  const rows = [];
+  for (const j of J()){ if (j.type !== "Dépense" || yr(j) !== y || !ids.includes(j.bien) || j.compte === "Perso" || j.cat === "Crédit (mensualité)") continue;
+    const art = artOf(j.cat); rows.push({k:"j:" + j.id, bien:j.bien, art, com:(j.lib || j.cat) + (j.fourn ? " - " + j.fourn : ""), montant:j.montant, date:j.date, immo:isImmoArt(art), done:!!j.compta, pointe:j.pointe === "x"}); }
+  for (const id of ids){ const ey = empYear(id, y); if (ey && ey.assur > 0) rows.push({k:"a|" + id + "|" + y, bien:id, art:"Assurance emprunteur", com:"Assurance emprunteur " + y + " (" + ey.nb + " mois)", montant:ey.assur, date:y + "-12-31", immo:false, done:cdone("a|" + id + "|" + y), pointe:true}); }
+  return cmpMerge(rows.sort((a, b) => a.bien.localeCompare(b.bien) || a.date.localeCompare(b.date)));
+}
+function cmpRecLines(y, ids){
+  const rows = [];
+  for (const j of J()){ if (j.type !== "Recette" || yr(j) !== y || !ids.includes(j.bien)) continue;
+    if (j.cat === "Loyer"){ const t = tenantFor(j.bien, j.date), chg = r2(Math.min(N(t && t.charges), j.montant));
+      rows.push({k:"j:" + j.id, bien:j.bien, art:"Loyer hors charges locatives", com:j.lib || "Loyer", montant:r2(j.montant - chg), date:j.date, done:!!j.compta, pointe:j.pointe === "x"});
+      if (chg > 0) rows.push({k:"j:" + j.id, bien:j.bien, art:"Provision pour charges", com:j.lib || "Loyer", montant:chg, date:j.date, done:!!j.compta, pointe:j.pointe === "x"}); }
+    else rows.push({k:"j:" + j.id, bien:j.bien, art:"À classer à la main", com:j.lib || j.cat, montant:j.montant, date:j.date, done:!!j.compta, pointe:j.pointe === "x"}); }
+  return cmpMerge(rows.sort((a, b) => a.bien.localeCompare(b.bien) || a.date.localeCompare(b.date)));
+}
+function cmpEchLines(y, ids){
+  const rows = [];
+  for (const id of ids){ const e = empOf(id); if (!e) continue; const A = amort(e), day = e.debut.slice(8, 10);
+    for (const r of A.rows) if (r.y === y) rows.push({k:"e|" + id + "|" + y + "-" + pad(r.m + 1), bien:id, date:y + "-" + pad(r.m + 1) + "-" + day, total:r.mens, kap:r.kap, it:r.it, frais:0, crd:r.crd, done:cdone("e|" + id + "|" + y + "-" + pad(r.m + 1))}); }
+  return rows;
+}
+const cmpGroup = (rows, f) => { const ids = [...new Set(rows.map(r => r.bien))]; return ids.map(id => f(id, rows.filter(r => r.bien === id))).join(""); };
+const cmpJ = r => r.k.split(",").every(k => k.startsWith("j:"));
+const cmpChk = r => cmpJ(r) ? `<button class="chk ${r.pointe ? "on" : ""}" data-act="cmp-pt" data-k="${esc(r.k)}" aria-label="Payé ou encaissé (comme dans Pointage)">${ICON.check}</button>` : `<span class="chk on" style="opacity:.45"></span>`;
+const cmpSaisi = r => `<button class="chip ${r.done ? "ok" : ""}" style="border:0;cursor:pointer" data-act="cmp-tog" data-k="${esc(r.k)}">${r.done ? "Saisi sur le site" : "À saisir"}</button>`;
+function cmpProg(rows, pt){ const n = rows.length, d = rows.filter(r => r.done).length, p = rows.filter(r => r.pointe).length; return `<div class="small muted">${pt ? p + " / " + n + " " + pt + " · " : ""}${d} / ${n} saisie(s) sur le site</div>`; }
+function cmpSite(sub, ids, y){
+  if (sub === "log"){
+    return `<div class="card"><h2>Logements (comme sur le site)</h2><div class="small muted">À renseigner une seule fois dans Dossier > Logements. Les composants d'amortissement sont proposés par le site selon le prix.</div></div>` +
+      ids.map(id => { const b = S.biens.find(x => x.id === id) || {}, l = b.lmnp || {};
+        return `<div class="card"><div class="top">${bienPill(id)}<button class="mini" data-act="lmnp-open" data-id="${esc(id)}">Modifier</button></div>
+          ${kv("Adresse", esc(b.adresse || "à renseigner"))}${kv("Date de mise en location", l.miseLoc ? frDate(l.miseLoc) : "à renseigner")}${kv("Prix d'acquisition", l.prix ? eur(l.prix) : "à renseigner")}${kv("Régime", esc(b.regime || "-"))}
+          ${empOf(id) ? kv("Emprunt : date de déblocage", (empOf(id).fonds ? frDate(empOf(id).fonds) : "à renseigner")) : ""}</div>`; }).join("");
+  }
+  if (sub === "emp"){
+    const rows = cmpEchLines(y, ids);
+    return `<div class="card"><h2>Échéances d'emprunt ${y}</h2><div class="small muted">Le site demande chaque échéance (date, total, capital, intérêts, frais de dossier). Compare avec l'échéancier de ta banque : si un montant diffère, garde celui de la banque.</div>${cmpProg(rows)}</div>` +
+      (rows.length ? cmpGroup(rows, (id, L) => `<div class="card"><div class="top">${bienPill(id)}<span class="small muted">restant dû fin ${y} : ${eur(L[L.length - 1].crd)}</span></div><div class="rows">${L.map(r => `<div class="row">${cmpChk(r)}<div class="main"><div class="t">${frDate(r.date)} · total ${eur(r.total)}</div><div class="s">capital ${eur(r.kap)} · intérêts ${eur(r.it)} · frais 0 € ${cmpSaisi(r)}</div></div></div>`).join("")}</div>
+          <div class="kv tot"><span>Total année</span><span class="num">${eur(r2(sum(L.map(r => r.total))))}</span></div>${kv("dont intérêts", eur(r2(sum(L.map(r => r.it)))), "muted")}</div>`)
+        : `<div class="card"><div class="empty">Aucun emprunt renseigné pour cette année. Renseigne-le dans Synthèse.</div></div>`);
+  }
+  if (sub === "dep" || sub === "rec"){
+    const rows = sub === "dep" ? cmpDepLines(y, ids) : cmpRecLines(y, ids), dep = sub === "dep";
+    return `<div class="card"><div class="top"><h2>${dep ? "Dépenses" : "Recettes"} ${y} (comme sur le site)</h2>${dep ? `<button class="mini" data-act="map-open">Articles</button>` : ""}</div>
+      <div class="seg"><button class="${V.cgrp ? "" : "on"}" data-act="cgrp" data-v="0">Détail</button><button class="${V.cgrp ? "on" : ""}" data-act="cgrp" data-v="1">Regrouper par article</button></div>
+      <div class="small muted">${dep ? "Une ligne par facture : logement, article, commentaire, montant, date, immobilisation. Touche le rond quand c'est saisi sur le site." : "Loyer hors charges et provision pour charges sont séparés, avec la date d'encaissement."}</div>${cmpProg(rows, dep ? "payées" : "encaissées")}<div class="small muted">Le rond = payé / encaissé (le même que dans Pointage). « À saisir » passe à « Saisi sur le site » quand tu l'as recopié.</div></div>` +
+      (rows.length ? cmpGroup(rows, (id, L) => `<div class="card"><div class="top">${bienPill(id)}<span class="num">${eur(r2(sum(L.map(r => r.montant))))}</span></div><div class="rows">${L.map(r => `<div class="row">${cmpChk(r)}<div class="main"><div class="t">${esc(r.art)}${r.immo ? ' <span class="chip warn">immobilisation</span>' : ""}</div><div class="s">${frDate(r.date)} · ${esc(r.com)}${r.pointe ? "" : " · pas encore " + (dep ? "payé" : "encaissé")} ${cmpSaisi(r)}</div></div><div class="amt num">${eur(r.montant)}</div></div>`).join("")}</div></div>`)
+        : `<div class="card"><div class="empty">Rien pour cette année.</div></div>`);
+  }
+  return "";
+}
+function sheetLmnp(id){
+  const b = S.biens.find(x => x.id === id) || {}, l = b.lmnp || {};
+  openSheet(`<h2>${esc(bienName(id))} · infos du site</h2>
+    <label class="f">Date de mise en location<input id="lm-loc" type="date" value="${l.miseLoc || ""}"></label>
+    <label class="f">Prix d'acquisition (€)<input id="lm-prix" inputmode="decimal" value="${l.prix ? fmtNum(l.prix) : ""}"></label>
+    <div class="small muted">L'adresse se change dans « Modifier le bien ». Ces infos restent sur ton téléphone.</div>
+    <div class="btns"><button class="btn" style="flex:1" data-act="lmnp-save" data-id="${esc(id)}">Enregistrer</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
+}
+function sheetMap(){
+  const cats = [...new Set(J().filter(j => j.type === "Dépense" && j.cat !== "Crédit (mensualité)").map(j => j.cat))].sort();
+  openSheet(`<h2>Articles du site</h2><div class="small muted">Choisis l'article du site pour chaque catégorie de l'appli. Les changements ne touchent aucune donnée.</div>
+    ${cats.map((c, i) => `<label class="f">${esc(c)}<select data-map="${esc(c)}">${SITE_ART.map(a => `<option ${a === artOf(c) ? "selected" : ""}>${esc(a)}</option>`).join("")}</select></label>`).join("")}
+    <div class="btns"><button class="btn" style="flex:1" data-act="map-save">Enregistrer</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
+}
+function siteSheets(C, add, money, dt){
+  const ids = C.ids, y = C.y, eL = cmpEchLines(y, ids), dL = cmpDepLines(y, ids), rL = cmpRecLines(y, ids);
+  add("Site - Logements", [["Logement", "Adresse", "Date de mise en location", "Prix", "Régime", "Date de déblocage de l'emprunt"]].concat(ids.map(id => { const b = S.biens.find(x => x.id === id) || {}, l = b.lmnp || {}; return [bienName(id), b.adresse || "", l.miseLoc ? dt(l.miseLoc) : "", l.prix || "", b.regime || "", empOf(id) && empOf(id).fonds ? dt(empOf(id).fonds) : ""]; })), [22, 36, 20, 14, 10, 24], k => (k[0] === "C" || k[0] === "F") && +k.slice(1) > 1 ? "dd/mm/yyyy" : (k[0] === "D" && +k.slice(1) > 1 ? money : null));
+  add("Site - Echéances", [["Logement", "Date", "Total échéance", "Capital", "Intérêts", "Frais de dossier", "Capital restant dû", "Saisi"]].concat(eL.map(r => [bienName(r.bien), dt(r.date), r.total, r.kap, r.it, 0, r.crd, r.done ? "x" : ""])), [22, 12, 14, 12, 12, 14, 18, 8], k => k[0] === "B" && +k.slice(1) > 1 ? "dd/mm/yyyy" : (/^[C-G]/.test(k) && +k.slice(1) > 1 ? money : null));
+  add("Site - Dépenses", [["Logement", "Article", "Commentaire", "Montant", "Date de facture", "Immobilisation", "Saisi"]].concat(dL.map(r => [bienName(r.bien), r.art, r.com, r.montant, dt(r.date), r.immo ? "Oui" : "Non", r.done ? "x" : ""])), [22, 44, 40, 14, 14, 14, 8], k => k[0] === "D" && +k.slice(1) > 1 ? money : (k[0] === "E" && +k.slice(1) > 1 ? "dd/mm/yyyy" : null));
+  add("Site - Recettes", [["Logement", "Article", "Commentaire", "Montant", "Date d'encaissement", "Encaissé", "Saisi"]].concat(rL.map(r => [bienName(r.bien), r.art, r.com, r.montant, dt(r.date), r.pointe ? "x" : "", r.done ? "x" : ""])), [22, 32, 30, 14, 18, 10, 8], k => k[0] === "D" && +k.slice(1) > 1 ? money : (k[0] === "E" && +k.slice(1) > 1 ? "dd/mm/yyyy" : null));
+}
+function pdfTable(d, cols, rows){
+  const M = d.M; let x = M; const xs = cols.map(c => { const v = x; x += c.w; return v; });
+  const at = (i, c) => c.right ? xs[i] + c.w - 4 : xs[i];
+  const head = () => { d.need(34); cols.forEach((c, i) => d.text(at(i, c), d.y, c.t, {size:8.5, bold:true, color:"#5C6B66", right:c.right})); d.y -= 4; d.line(M, d.y, d.W - M, d.y); d.y -= 12; };
+  head();
+  for (const r of rows){ if (d.y - 16 < 60){ d.newPage(); head(); }
+    cols.forEach((c, i) => { let s = String(r[i] == null ? "" : r[i]); if (pdfW(s, 8.5) > c.w - 6){ while (s.length > 1 && pdfW(s + "…", 8.5) > c.w - 6) s = s.slice(0, -1); s += "…"; } d.text(at(i, c), d.y, s, {size:8.5, right:c.right}); });
+    d.y -= 13; }
+  d.y -= 6;
+}
+function sitePdf(d, C){
+  const ids = C.ids, y = C.y, M = d.M, ck = r => r.done ? "[x]" : "[  ]";
+  d.newPage(); d.text(M, d.y, "À saisir sur jedeclaremonmeuble.com", {size:16, bold:true, color:"#0E6B5C"}); d.y -= 20;
+  d.para("Dans l'ordre du site : Logements, Emprunts et échéances, Dépenses, Recettes. Coche chaque ligne une fois saisie.", 9.5, 13);
+  d.h("1. Logements", 12);
+  pdfTable(d, [{t:"Logement", w:110}, {t:"Adresse", w:190}, {t:"Mise en location", w:80}, {t:"Prix", w:70, right:true}, {t:"Régime", w:61}], ids.map(id => { const b = S.biens.find(x => x.id === id) || {}, l = b.lmnp || {}; return [bienName(id), b.adresse || "à renseigner", l.miseLoc ? frDate(l.miseLoc) : "à renseigner", l.prix ? eur(l.prix) : "", b.regime || ""]; }));
+  d.h("2. Emprunts : échéances " + y, 12);
+  const eL = cmpEchLines(y, ids); if (!eL.length) d.para("Aucun emprunt renseigné.", 9.5, 13);
+  for (const id of [...new Set(eL.map(r => r.bien))]){ const L = eL.filter(r => r.bien === id), e = empOf(id);
+    d.para(bienName(id) + " - déblocage des fonds : " + (e.fonds ? frDate(e.fonds) : "à renseigner") + " - capital restant dû fin " + y + " : " + eur(L[L.length - 1].crd), 9.5, 13);
+    pdfTable(d, [{t:"Fait", w:34}, {t:"Date", w:80}, {t:"Total échéance", w:100, right:true}, {t:"Capital", w:100, right:true}, {t:"Intérêts", w:100, right:true}, {t:"Frais", w:97, right:true}], L.map(r => [ck(r), frDate(r.date), eur(r.total), eur(r.kap), eur(r.it), eur(0)]).concat([["", "Total", eur(r2(sum(L.map(r => r.total)))), eur(r2(sum(L.map(r => r.kap)))), eur(r2(sum(L.map(r => r.it)))), ""]])); }
+  d.h("3. Dépenses " + y, 12);
+  const dL = cmpDepLines(y, ids);
+  for (const id of ids){ const L = dL.filter(r => r.bien === id); if (!L.length) continue; d.para(bienName(id), 10, 13);
+    pdfTable(d, [{t:"Fait", w:30}, {t:"Article", w:150}, {t:"Commentaire", w:158}, {t:"Montant", w:68, right:true}, {t:"Date", w:64}, {t:"Immo.", w:41}], L.map(r => [ck(r), r.art, r.com, eur(r.montant), frDate(r.date), r.immo ? "Oui" : "Non"]).concat([["", "Total", "", eur(r2(sum(L.map(r => r.montant)))), "", ""]])); }
+  d.h("4. Recettes " + y, 12);
+  const rL = cmpRecLines(y, ids);
+  for (const id of ids){ const L = rL.filter(r => r.bien === id); if (!L.length) continue; d.para(bienName(id), 10, 13);
+    pdfTable(d, [{t:"Fait", w:30}, {t:"Article", w:170}, {t:"Commentaire", w:158}, {t:"Montant", w:80, right:true}, {t:"Date", w:73}], L.map(r => [ck(r), r.art, r.com, eur(r.montant), frDate(r.date)]).concat([["", "Total", "", eur(r2(sum(L.map(r => r.montant)))), ""]])); }
+  d.para("Document établi par l'appli à partir de tes saisies : à comparer avec tes justificatifs et l'échéancier de ta banque avant de valider sur le site.", 8.5, 12);
 }
 
 document.addEventListener("click", ev => {
   const b = ev.target.closest("[data-act]"); if (!b) return;
   const a = b.dataset.act, id = b.dataset.id, v = b.dataset.v;
   switch (a){
+    case "csub": V.csub = v; render(); break;
+    case "cgrp": V.cgrp = v === "1"; render(); break;
+    case "lmnp-open": sheetLmnp(id); break;
+    case "lmnp-save": { const bn = S.biens.find(x => x.id === id); if (!bn) break; bn.lmnp = {miseLoc:$("#lm-loc").value, prix:parseNum($("#lm-prix").value) || 0}; bn.upd = Date.now(); persist(); closeSheet(); toast("Enregistré"); render(); break; }
+    case "map-open": sheetMap(); break;
+    case "map-save": { S.cfg = S.cfg || {bailleur:"", adr:{}}; S.cfg.cmap = S.cfg.cmap || {}; document.querySelectorAll("#sheet [data-map]").forEach(sel => { const c = sel.dataset.map; if (sel.value === ART_DEFAULT[c]) delete S.cfg.cmap[c]; else S.cfg.cmap[c] = sel.value; }); persist(); closeSheet(); toast("Articles enregistrés"); render(); break; }
+    case "cmp-pt": { const ks = b.dataset.k.split(","), on = b.classList.contains("on"); for (const k of ks){ const j = S.journal.find(x => x.id === k.slice(2)); if (j && (j.pointe === "x") === on){ j.pointe = on ? "" : "x"; j.upd = Date.now(); onPointe(j); } } persist(); render(); break; }
+    case "cmp-tog": { const ks = b.dataset.k.split(","), on = b.classList.contains("ok");
+      for (const k of ks){ if (k.startsWith("j:")){ const j = S.journal.find(x => x.id === k.slice(2)); if (j){ j.compta = on ? "" : "x"; j.upd = Date.now(); } }
+        else { S.cfg = S.cfg || {bailleur:"", adr:{}}; S.cfg.cdone = S.cfg.cdone || {}; if (on) delete S.cfg.cdone[k]; else S.cfg.cdone[k] = 1; } }
+      persist(); render(); break; }
     case "csel": V.csel = v; render(); break;
     case "emp-open": sheetEmprunt(id); break;
     case "emp-save": { const bn = S.biens.find(x => x.id === id); if (!bn) break;
-      const e = {capital:parseNum($("#em-cap").value) || 0, taux:parseNum($("#em-taux").value) || 0, duree:Math.round(parseNum($("#em-dur").value) || 0), debut:$("#em-deb").value, assur:parseNum($("#em-ass").value) || 0};
+      const e = {capital:parseNum($("#em-cap").value) || 0, taux:parseNum($("#em-taux").value) || 0, duree:Math.round(parseNum($("#em-dur").value) || 0), debut:$("#em-deb").value, fonds:$("#em-fonds").value, assur:parseNum($("#em-ass").value) || 0};
       if (!(e.capital > 0 && e.duree > 0 && e.debut)) return toast("Capital, durée et date sont nécessaires");
       bn.emprunt = e; bn.upd = Date.now(); persist(); closeSheet(); toast("Emprunt enregistré"); render(); break; }
     case "emp-del": { const bn = S.biens.find(x => x.id === id); if (bn) delete bn.emprunt; persist(); closeSheet(); render(); break; }

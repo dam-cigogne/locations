@@ -26,6 +26,7 @@ label.f textarea{min-height:110px;resize:vertical}
 .chk{display:flex;gap:10px;align-items:flex-start;font-size:14px}
 .chk input{margin-top:4px}
 button{font:inherit;font-weight:600;border:0;border-radius:12px;padding:13px 16px;background:var(--accent);color:var(--accent-ink);width:100%}
+a.btn{display:block;text-align:center;text-decoration:none;font-weight:600;border-radius:12px;padding:13px 16px;background:var(--accent);color:var(--accent-ink)}
 button.ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
 .files{font-size:13px;color:var(--muted)}
 .err{color:#C0392B;font-size:14px;font-weight:600}
@@ -57,7 +58,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px s
     <button type="button" class="ghost" id="cp">Copier le texte</button>
     <div class="muted" id="how"></div>
   </form>
-  <div class="card" id="prev" hidden><h2>Texte de ta candidature</h2><pre id="pre"></pre><div class="muted">Si ton e-mail ne s'est pas ouvert, copie ce texte et envoie-le à <b id="dest"></b>.</div></div>
+  <div class="card" id="prev" hidden><h2>Texte de ta candidature</h2><pre id="pre"></pre><div class="muted">Envoie ce texte à <b id="dest"></b>.</div><a id="ml" class="btn" href="#">Ouvrir mon e-mail</a><button type="button" id="sh">Partager avec mes pièces</button><button type="button" class="ghost" id="cp2">Copier le texte</button></div>
 </main>
 <script>
 (function(){
@@ -85,18 +86,35 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px s
   }
   window.__build = build;
   $("cp").addEventListener("click", async () => { const t = build(); try { await navigator.clipboard.writeText(t); $("err").textContent = ""; $("how").textContent = "Texte copié : colle-le dans un e-mail ou un message au propriétaire."; } catch(e){ $("pre").textContent = t; $("prev").hidden = false; } });
-  $("f").addEventListener("submit", async ev => {
-    ev.preventDefault(); const e = check(); $("err").textContent = e; if (e) return;
-    const text = build(), subject = "Candidature – " + titre, files = [...$("fil").files]; window.__last = text;
-    $("pre").textContent = text; $("dest").textContent = to; $("prev").hidden = false;
+  function mailto(text, subject){ return "mailto:" + to + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(text); }
+  async function doShare(text, subject, files){
     const txtFile = new File([text], "candidature.txt", {type:"text/plain"}), all = [txtFile].concat(files);
-    if (navigator.canShare && navigator.share && navigator.canShare({files:all})){
-      try { await navigator.share({title:subject, text, files:all}); $("how").textContent = "Dans la fenêtre de partage, choisis Mail et vérifie que le destinataire est " + to + ". Ta candidature et tes " + files.length + " pièce(s) sont jointes."; return; }
-      catch(err){ if (err && err.name === "AbortError") return; $("how").textContent = "Le partage des pièces n'a pas fonctionné (" + ((err && err.name) || "erreur") + "). Ton e-mail s'ouvre sans pièces : ajoute-les toi-même ou apporte-les à la visite."; }
-    } else if (files.length){ $("how").textContent = "Ton téléphone ne permet pas de joindre les pièces automatiquement : ton e-mail s'ouvre sans elles. Ajoute-les toi-même avant d'envoyer, ou apporte-les à la visite."; }
-    else { $("how").textContent = "Ton e-mail s'ouvre : appuie sur Envoyer."; }
-    location.href = "mailto:" + to + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(text);
+    if (!(navigator.canShare && navigator.share && navigator.canShare({files:all}))) throw new Error("nosupport");
+    await navigator.share({title:subject, text, files:all});
+  }
+  $("f").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    try {
+      const e = check(); $("err").textContent = e; if (e) return;
+      const text = build(), subject = "Candidature – " + titre, files = [...$("fil").files]; window.__last = text;
+      $("pre").textContent = text; $("dest").textContent = to; $("prev").hidden = false;
+      $("ml").href = mailto(text, subject); $("sh").hidden = !(navigator.share);
+      $("how").textContent = "Préparation de ton e-mail…";
+      try { $("prev").scrollIntoView({behavior:"smooth", block:"start"}); } catch(_){}
+      if (files.length){
+        try { await doShare(text, subject, files); $("how").textContent = "Dans la fenêtre de partage, choisis Mail et vérifie que le destinataire est " + to + ". Ta candidature et tes " + files.length + " pièce(s) sont jointes."; return; }
+        catch(err){ if (err && err.name === "AbortError"){ $("how").textContent = "Envoi annulé. Utilise les boutons ci-dessous pour réessayer."; return; }
+          $("how").textContent = "Les pièces n'ont pas pu être jointes automatiquement. Utilise « Ouvrir mon e-mail » (sans pièces) puis ajoute-les, ou apporte-les à la visite."; return; }
+      }
+      $("how").textContent = "Appuie sur « Ouvrir mon e-mail » ci-dessous, puis sur Envoyer.";
+      location.href = mailto(text, subject);
+    } catch(err){ $("err").textContent = "Erreur : " + ((err && err.message) || err) + ". Utilise « Copier le texte »."; }
   });
+  $("sh").addEventListener("click", async () => {
+    const text = window.__last || build(), subject = "Candidature – " + titre, files = [...$("fil").files];
+    try { await doShare(text, subject, files); } catch(err){ if (!err || err.name !== "AbortError") $("how").textContent = "Le partage n'est pas disponible sur ce téléphone : utilise « Ouvrir mon e-mail » ou « Copier le texte »."; }
+  });
+  $("cp2").addEventListener("click", () => $("cp").click());
 })();
 </script>
 </body>

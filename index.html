@@ -4,7 +4,27 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Mes locations</title>
-<meta name="theme-color" content="#24507A">
+<meta name="theme-color" content="#0E6B5C">
+<script>
+(function(){
+  var PALS={emeraude:["#0E6B5C","#3CC2A6"],ocean:["#1F6FB5","#6DB3F2"],violet:["#6B4FC8","#A99BF0"],soleil:["#D2561B","#FF9A5C"],rose:["#C2336F","#F27AA8"]};
+  function ls(k){try{return localStorage.getItem(k)}catch(e){return null}}
+  window.LOC_PALS=PALS;
+  window.isDarkNow=function(){
+    var m=ls("loc-theme")||"auto"; if(m==="dark")return true; if(m==="light")return false;
+    if(m==="sched"){ var s={}; try{s=JSON.parse(ls("loc-sched")||"{}")}catch(e){}
+      var f=s.from||"20:00",t=s.to||"07:00",d=new Date(),n=d.getHours()*60+d.getMinutes(),a=+f.slice(0,2)*60+ +f.slice(3,5),b=+t.slice(0,2)*60+ +t.slice(3,5);
+      return a<=b ? (n>=a&&n<b) : (n>=a||n<b); }
+    return !!(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches); };
+  window.applyTheme=function(){
+    var pal=ls("loc-pal")||"emeraude"; if(!PALS[pal])pal="emeraude"; var dk=window.isDarkNow(), r=document.documentElement;
+    r.setAttribute("data-theme",dk?"dark":"light"); r.setAttribute("data-pal",pal);
+    var m=document.querySelector('meta[name="theme-color"]'); if(m)m.setAttribute("content",dk?"#0E1715":PALS[pal][0]); };
+  window.applyTheme();
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Instrument+Sans:wght@400;500;600&display=swap">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,21 +34,27 @@
 <style>
 /* Mes locations : colonne unique 560px max, barre d'onglets fixe en bas, feuilles modales par le bas. */
 :root{
-  --bg:#F3F1EC; --surface:#FFFFFF; --ink:#1B2430; --muted:#5F6B78; --line:#E0DDD5;
-  --accent:#24507A; --accent-ink:#FFFFFF; --accent-soft:#DFE9F3;
+  --bg:#F2F5F3; --surface:#FFFFFF; --ink:#16231F; --muted:#5C6B66; --line:#DDE5E1;
+  --accent:#0E6B5C; --accent-ink:#FFFFFF; --accent-soft:#D8EEE8;
   --ok:#1E7F4F; --warn:#A8690F; --bad:#B3372B; --bad-soft:#F7E2DE; --warn-soft:#F8EBD3;
-  --font-display:ui-rounded,"SF Pro Rounded","Avenir Next","Trebuchet MS",system-ui,sans-serif;
-  --font-body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --font-body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   color-scheme:light;
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#10161D; --surface:#19222C; --ink:#E7EDF3; --muted:#9AA8B6; --line:#293645;
-    --accent:#6FA8DC; --accent-ink:#0B1D2E; --accent-soft:#1F3347;
-    --ok:#5BD08F; --warn:#E2B04E; --bad:#F08B7E; --bad-soft:#3A201C; --warn-soft:#3A2F15;
-    color-scheme:dark;
-  }
+:root[data-pal="ocean"]{--accent:#1F6FB5;--accent-ink:#FFFFFF;--accent-soft:#DCEAF7}
+:root[data-pal="violet"]{--accent:#6B4FC8;--accent-ink:#FFFFFF;--accent-soft:#E8E1F8}
+:root[data-pal="soleil"]{--accent:#D2561B;--accent-ink:#FFFFFF;--accent-soft:#FBE5D8}
+:root[data-pal="rose"]{--accent:#C2336F;--accent-ink:#FFFFFF;--accent-soft:#F9DFEA}
+:root[data-theme="dark"]{
+  --bg:#0E1715; --surface:#16221F; --ink:#E6EFEC; --muted:#94A8A2; --line:#263631;
+  --ok:#5BD08F; --warn:#E2B04E; --bad:#F08B7E; --bad-soft:#3A201C; --warn-soft:#3A2F15;
+  color-scheme:dark;
 }
+:root[data-theme="dark"][data-pal="emeraude"]{--accent:#3CC2A6;--accent-ink:#06201A;--accent-soft:#17352E}
+:root[data-theme="dark"][data-pal="ocean"]{--accent:#6DB3F2;--accent-ink:#08213A;--accent-soft:#17324D}
+:root[data-theme="dark"][data-pal="violet"]{--accent:#A99BF0;--accent-ink:#1B1340;--accent-soft:#2C2552}
+:root[data-theme="dark"][data-pal="soleil"]{--accent:#FF9A5C;--accent-ink:#2E1304;--accent-soft:#43281A}
+:root[data-theme="dark"][data-pal="rose"]{--accent:#F27AA8;--accent-ink:#35081D;--accent-soft:#4A1F33}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
@@ -79,12 +105,13 @@ button{cursor:pointer}
 .chip.warn{background:var(--warn-soft);color:var(--warn)}
 .chip.bad{background:var(--bad-soft);color:var(--bad)}
 .chip.ok{background:#DDF0E5;color:var(--ok)}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .chip.ok{background:#1B3A2A}}
+:root[data-theme="dark"] .chip.ok{background:#1B3A2A}
 .chk{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);background:none;flex:none;display:grid;place-items:center;color:var(--accent-ink)}
 .chk.on{background:var(--accent);border-color:var(--accent)}
 .chk svg{width:14px;height:14px;opacity:0}
 .chk.on svg{opacity:1}
-.bar{height:8px;border-radius:999px;background:var(--line);overflow:hidden}
+.mg{display:flex;gap:2px;height:16px;border-radius:999px;background:var(--line);overflow:hidden;margin:10px 0 8px;border:1px solid var(--line)}.mg i{display:block;height:100%}.mgl{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:13px;font-weight:600;color:var(--ink)}.mgl b{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:6px;vertical-align:-1px}
+.bar{height:10px;border-radius:999px;background:var(--line);overflow:hidden}
 .bar i{display:block;height:100%;background:var(--accent);border-radius:999px}
 .bar i.warn{background:var(--warn)} .bar i.bad{background:var(--bad)} .bar i.ok{background:var(--ok)}
 .seg{display:flex;flex-wrap:wrap;gap:6px}
@@ -143,6 +170,48 @@ nav.tabs button.add{color:var(--ink)}
 .pad button:active{background:var(--accent-soft)}
 .pad button svg{width:26px;height:26px}
 body.priv #main,body.priv #tabs{visibility:hidden}
+body.welcome #tabs{display:none}
+body.welcome{padding-bottom:40px}
+
+/* ---- effets verre / gloss ---- */
+.btn{background-image:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,0) 60%);box-shadow:inset 0 1px 0 rgba(255,255,255,.38),0 8px 16px -8px color-mix(in srgb,var(--accent) 65%,transparent)}
+.btn.ghost,.btn.danger{background-image:none;box-shadow:none}
+.card{box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 1px 2px rgba(20,30,40,.05),0 8px 20px -12px rgba(20,30,40,.22)}
+:root[data-theme="dark"] .card{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 8px 20px -12px rgba(0,0,0,.6)}
+.hero{position:relative;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -14px 28px rgba(0,0,0,.14),0 14px 28px -14px color-mix(in srgb,var(--accent) 80%,#000)}
+.hero::before{content:"";position:absolute;inset:0 0 55% 0;background:linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,0));pointer-events:none}
+.hero > *{position:relative}
+.glass{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:6px 12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.bourse{box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 14px 28px -14px #53247A}
+.top .app{font-size:21px}
+.q{border:1px solid var(--line);background:var(--surface);width:34px;height:34px;border-radius:50%;font-family:var(--font-display);font-weight:700;font-size:16px;color:var(--accent);flex:none;display:grid;place-items:center;padding:0}
+.q:active{background:var(--accent-soft)}
+.chip.slate{background:var(--line);color:var(--muted)}
+.cdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle;flex:none}
+.env .bar i{background:var(--c,var(--accent))}
+nav.tabs button.add span.pl{box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 8px 16px -4px color-mix(in srgb,var(--accent) 75%,#000);background-image:linear-gradient(180deg,rgba(255,255,255,.25),rgba(255,255,255,0))}
+#sheetbg{backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);animation:fadein .2s ease}
+#sheet{animation:slideup .26s cubic-bezier(.2,.8,.2,1);box-shadow:0 -10px 40px -12px rgba(0,0,0,.4)}
+.grab{width:42px;height:5px;border-radius:999px;background:var(--line);margin:-6px auto 2px;flex:none}
+@keyframes slideup{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+#toast{animation:fadein .2s ease;box-shadow:0 10px 24px -10px rgba(0,0,0,.5)}
+/* ---- saisie du montant ---- */
+.amt-in{width:100%;border:0!important;background:transparent!important;text-align:center;font-family:var(--font-display);font-weight:700;font-size:44px!important;letter-spacing:-.01em;padding:4px 0!important}
+.amtbox{background:var(--bg);border:1px solid var(--line);border-radius:18px;padding:8px 12px;display:flex;flex-direction:column;align-items:center}
+.amtbox small{color:var(--muted);font-size:12.5px}
+.npad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.npad button{height:52px;border-radius:16px;border:1px solid var(--line);background:var(--surface);font-family:var(--font-display);font-weight:600;font-size:22px;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
+.npad button:active{background:var(--accent-soft)}
+/* ---- réglages / thèmes ---- */
+.pals{display:flex;gap:10px;flex-wrap:wrap}
+.pal{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11.5px;color:var(--muted);background:none;border:0;padding:0;width:62px}
+.pal i{width:44px;height:44px;border-radius:50%;display:block;border:3px solid transparent;box-shadow:inset 0 1px 0 rgba(255,255,255,.4)}
+.pal.on{color:var(--ink);font-weight:600}.pal.on i{border-color:var(--ink)}
+.tl{display:flex;gap:10px}.tl label.f{flex:1}
+details.h{border-top:1px solid var(--line);padding:8px 0}details.h:first-of-type{border-top:0}
+details.h p{margin:6px 0 0;font-size:14px}details.h ul{margin:6px 0 0;padding-left:18px;font-size:14px;display:flex;flex-direction:column;gap:4px}
+.ver{text-align:center;color:var(--muted);font-size:12px;padding:6px 0 0}
 </style>
 </head>
 <body>
@@ -166,15 +235,16 @@ const TYPE_LAB = {"Recette":"Recette","Dépense":"Dépense","Sortie":"Épargne (
 const CATS = {
   "Recette":["Loyer","Remboursement","Autre recette"],
   "Dépense":["Crédit (mensualité)","Assurance PNO","Assurance GMPA","Syndic / copropriété","Eau","Électricité","Taxe foncière","CFE","Comptabilité","CGA / OGA","Abonnement Rendement locatif","Entretien / réparations","Mobilier / équipement","Diagnostics","Frais bancaires / cotisations","Divers"],
-  "Sortie":["Bourse","Assurance vie","Placement","Prêt","Transfert entre comptes","Achat personnel","Remboursement","Écart de rapprochement","Autre"],
-  "Entrée":["Bourse","Assurance vie","Placement","Prêt","Transfert entre comptes","Achat personnel","Remboursement","Écart de rapprochement","Autre"]
+  "Sortie":["Bourse","Livret A","PEL","Autre placement","Assurance vie","Placement","Prêt","Transfert entre comptes","Achat personnel","Remboursement","Écart de rapprochement","Autre"],
+  "Entrée":["Bourse","Livret A","PEL","Autre placement","Intérêts placement","Assurance vie","Placement","Prêt","Transfert entre comptes","Achat personnel","Remboursement","Écart de rapprochement","Autre"]
 };
 const FAMILLE = {"Crédit (mensualité)":"Crédit","Assurance PNO":"Assurances","Assurance GMPA":"Assurances","Taxe foncière":"Taxes","CFE":"Taxes","Comptabilité":"Compta & gestion","CGA / OGA":"Compta & gestion","Abonnement Rendement locatif":"Compta & gestion","Syndic / copropriété":"Copropriété & énergie","Eau":"Copropriété & énergie","Électricité":"Copropriété & énergie","Entretien / réparations":"Travaux & équipement","Mobilier / équipement":"Travaux & équipement","Diagnostics":"Travaux & équipement","Frais bancaires / cotisations":"Divers","Divers":"Divers"};
-const BIEN_COL = {"STUDIO":"#1B7F79", "T2":"#B03060"};
+const BIEN_COL0 = {"STUDIO":"#1B7F79", "T2":"#B03060"}, BIEN_PAL = ["#1B7F79","#B03060","#B8741A","#3B6FB6","#7A4FB3","#4C8A2E","#B5473A","#2F7F9E"];
+const BIEN_COL = new Proxy({}, {get:(_, id) => { if (typeof id !== "string") return undefined; if (BIEN_COL0[id]) return BIEN_COL0[id]; const ids = (typeof S !== "undefined" && S && S.biens ? S.biens.map(b => b.id) : []).filter(i => !BIEN_COL0[i]); const k = ids.indexOf(id); return BIEN_PAL[(k < 0 ? 2 : 2 + k) % BIEN_PAL.length]; }});
 const BOURSE_COL = "#7030A0";
 const PARTAGE_CAT = {"CFE":"CFE","Comptabilité":"Comptabilité","CGA / OGA":"CGA / OGA","Rendement locatif":"Abonnement Rendement locatif"};
 const POSTES_TARIF = ["Loyer","Crédit (mensualité)","Assurance GMPA","Assurance PNO"];
-const NO_EPARGNE = ["Écart de rapprochement","Transfert entre comptes"];
+const NO_EPARGNE = ["Écart de rapprochement","Transfert entre comptes","Intérêts placement"];
 
 /* ============ Utilitaires ============ */
 const $ = s => document.querySelector(s);
@@ -258,7 +328,7 @@ async function unlockFace(){ try { await faceAsk(); const dk = await idbGet("dk"
 function showLock(msg, bad){
   document.body.classList.remove("priv"); $("#lock").hidden = false; SEC.pin = ""; SEC.ask = false;
   const wait = Math.ceil((SEC.cfg.until - Date.now()) / 1000);
-  $("#lockmsg").textContent = wait > 0 ? "Trop d'essais. Patientez " + wait + " s." : (msg || "Entrez votre code"); $("#lockmsg").className = bad || wait > 0 ? "bad" : "";
+  $("#lockmsg").textContent = wait > 0 ? "Trop d'essais. Patiente " + wait + " s." : (msg || "Entre ton code"); $("#lockmsg").className = bad || wait > 0 ? "bad" : "";
   const key = n => `<button data-act="lk-d" data-id="${n}">${n}</button>`;
   $("#lockpad").innerHTML = [1,2,3,4,5,6,7,8,9].map(key).join("") + (SEC.cfg.face ? `<button data-act="lk-face" aria-label="Face ID">${ICON.face}</button>` : "<span></span>") + key(0) +
     `<button data-act="lk-del" aria-label="Effacer">⌫</button>`;
@@ -266,7 +336,7 @@ function showLock(msg, bad){
   lockDots();
 }
 function lockDots(){ $("#lockdots").innerHTML = Array.from({length:Math.max(4,SEC.pin.length)}, (_,i) => `<i class="${i < SEC.pin.length ? "on" : ""}"></i>`).join(""); }
-function hideLock(){ $("#lock").hidden = true; document.body.classList.remove("priv"); render(); }
+function hideLock(){ $("#lock").hidden = true; document.body.classList.remove("priv"); render(); if (typeof bootRoutines === "function") bootRoutines(); }
 async function lockSubmit(){
   if (Date.now() < SEC.cfg.until) return showLock("", true);
   if (SEC.pin.length < 4) return;
@@ -283,7 +353,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 /* ============ Modèle de données ============ */
-function emptyData(){ return { v:1, demo:false, biens:[], tarifs:[], journal:[], factures:[], locataires:[], seen:[], partages:[], rapp:{} }; }
+function emptyData(){ return { v:1, demo:false, biens:[], tarifs:[], journal:[], factures:[], locataires:[], seen:[], partages:[], rapp:{}, modeles:[], clotures:[], cfg:{bailleur:"", adr:{}} }; }
 const live = a => a.filter(x => !x.del);
 const bienName = id => { const b = S.biens.find(x => x.id === id); return b ? b.nom : id; };
 const bienIds = () => { const ids = live(S.biens).map(b => b.id); for (const j of S.journal) if (j.bien && !ids.includes(j.bien)) ids.push(j.bien); return ids; };
@@ -314,9 +384,10 @@ function counts(y){
   return { retard: J().filter(j => statut(j) === "En retard").length, pointer: J().filter(j => statut(j) === "À pointer").length,
            compta: L.filter(j => j.type === "Dépense" && j.pointe === "x" && !j.compta).length };
 }
+const bourseOn = () => { const c = S.cfg && S.cfg.bourse; return typeof c === "boolean" ? c : !!(S.demo || S.journal.some(j => !j.del && (j.cat === "Bourse" || j.cat === "Livret A" || j.cat === "PEL" || j.cat === "Autre placement"))); };
 const bienPill = id => `<span class="bp" style="background:${BIEN_COL[id] || "var(--accent)"}">${esc(bienName(id))}</span>`;
-function bourseOf(id){
-  const L = J().filter(j => j.cat === "Bourse" && (id == null || j.bien === id));
+function bourseOf(id, cat){
+  const L = J().filter(j => j.cat === (cat || "Bourse") && (id == null || j.bien === id));
   const mis = r2(sum(L.filter(j => j.type === "Sortie").map(j => j.montant))), remb = r2(sum(L.filter(j => j.type === "Entrée").map(j => j.montant)));
   return {mis, remb, reste:r2(mis - remb)};
 }
@@ -369,11 +440,12 @@ function sheetObjs(wb, name){
 const numOf = v => isNum(v) ? v : (parseNum(v) ?? 0);
 const comptaOf = v => { if (v === "" || v == null) return ""; if (isNum(v)) return v > 20000 ? serialToIso(v) : "x"; const s = String(v).trim(); if (/^x$/i.test(s)) return "x"; return anyToIso(s) || "x"; };
 function parseEchange(wb){
-  const out = {biens:null, tarifs:null, partages:null, journal:[], factures:[], locataires:[], hasAny:false};
-  const fp = sheetObjs(wb,"FraisPartages_appli"), b = sheetObjs(wb,"Biens_appli"), t = sheetObjs(wb,"Tarifs_appli"), j = sheetObjs(wb,"Journal_appli"), f = sheetObjs(wb,"Factures_appli"), l = sheetObjs(wb,"Locataires_appli");
+  const out = {biens:null, tarifs:null, partages:null, reglages:null, journal:[], factures:[], locataires:[], hasAny:false};
+  const rg = sheetObjs(wb,"Reglages_appli"), fp = sheetObjs(wb,"FraisPartages_appli"), b = sheetObjs(wb,"Biens_appli"), t = sheetObjs(wb,"Tarifs_appli"), j = sheetObjs(wb,"Journal_appli"), f = sheetObjs(wb,"Factures_appli"), l = sheetObjs(wb,"Locataires_appli");
   if (!b && !t && !j && !f && !l && !fp) return null;
+  if (rg){ out.reglages = {}; for (const o of rg) if (str(o.cle)) out.reglages[norm(o.cle)] = str(o.valeur); }
   if (fp) out.partages = fp.filter(o => str(o.frais)).map(o => { let p = numOf(o.partstudio); if (p > 1) p = p / 100; return {frais:str(o.frais), total:numOf(o.total), partStudio:p || 0}; });
-  if (b){ const seenB = new Set(); out.biens = b.filter(o => { const id = str(o.id); if (!id || seenB.has(id) || !anyToIso(o.datesoldeinitial)) return false; seenB.add(id); return true; }).map(o => ({id:str(o.id), nom:str(o.nom) || str(o.id), solde0:numOf(o.soldeinitial), date0:anyToIso(o.datesoldeinitial), loyer:numOf(o.loyermensuel), credit:numOf(o.mensualitecredit), regime:str(o.regimefiscal), notes:str(o.notes), upd:0})); }
+  if (b){ const seenB = new Set(); out.biens = b.filter(o => { const id = str(o.id); if (!id || seenB.has(id) || !anyToIso(o.datesoldeinitial)) return false; seenB.add(id); return true; }).map(o => ({id:str(o.id), nom:str(o.nom) || str(o.id), solde0:numOf(o.soldeinitial), date0:anyToIso(o.datesoldeinitial), loyer:numOf(o.loyermensuel), credit:numOf(o.mensualitecredit), regime:str(o.regimefiscal), notes:str(o.notes), adresse:str(o.adresse), upd:0, ...(numOf(o.empcapital) > 0 && numOf(o.empdureemois) > 0 && anyToIso(o.empdebut) ? {emprunt:{capital:numOf(o.empcapital), taux:numOf(o.emptaux), duree:Math.round(numOf(o.empdureemois)), debut:anyToIso(o.empdebut), assur:numOf(o.empassurmensuelle)}} : {})})); }
   if (t){ out.tarifs = t.filter(o => str(o.bien) && str(o.poste)).map(o => ({bien:str(o.bien), poste:str(o.poste), date:anyToIso(o.apartirdu), montant:numOf(o.montant), note:str(o.note)})); }
   if (j) for (const o of j){ const id = str(o.id), date = anyToIso(o.date); if (!id || !date) continue;
     out.journal.push({id, date, bien:str(o.bien), type:str(o.type), cat:str(o.categorie), lib:str(o.libelle), montant:numOf(o.montant), compte:str(o.compte) || "Bien", pointe:truthy(o.pointe) ? "x" : "",
@@ -381,7 +453,7 @@ function parseEchange(wb){
   if (f) for (const o of f){ const id = str(o.id); if (!id || !str(o.fournisseur)) continue;
     out.factures.push({id, fourn:str(o.fournisseur), num:str(o.numfacture), date:anyToIso(o.date), cat:str(o.categorie), desc:str(o.description), prix:numOf(o.prix), jdmm:truthy(o.enregistrejdmm) ? "x" : "", scan:truthy(o.scanne) ? "x" : "", upd:Number(o.modifie) || 0, del:truthy(o.supprime)}); }
   if (l) for (const o of l){ const id = str(o.id); if (!id) continue;
-    out.locataires.push({id, bien:str(o.bien), nom:str(o.nom), tel:str(o.telephone), email:str(o.email), debut:anyToIso(o.debutbail), fin:anyToIso(o.finbail), loyer:numOf(o.loyercc), depot:numOf(o.depotgarantie), note:str(o.note), upd:Number(o.modifie) || 0, del:truthy(o.supprime)}); }
+    out.locataires.push({id, bien:str(o.bien), nom:str(o.nom), tel:str(o.telephone), email:str(o.email), debut:anyToIso(o.debutbail), fin:anyToIso(o.finbail), loyer:numOf(o.loyercc), charges:numOf(o.charges), depot:numOf(o.depotgarantie), note:str(o.note), upd:Number(o.modifie) || 0, del:truthy(o.supprime)}); }
   return out;
 }
 function mergeList(list, incoming){
@@ -410,11 +482,13 @@ function buildEchange(){
     S.journal.map(j => [j.id, dt(j.date), j.bien, j.type, j.cat, j.lib, j.montant, j.compte || "Bien", j.pointe, j.compta === "x" ? "x" : dt(j.compta), j.justif, j.fourn, j.note, j.upd || 0, j.del ? 1 : ""]), ["B","J"]);
   sheet("Factures_appli", ["ID","Fournisseur","NumFacture","Date","Categorie","Description","Prix","EnregistreJDMM","Scanne","Modifie","Supprime"],
     S.factures.map(f => [f.id, f.fourn, f.num, dt(f.date), f.cat, f.desc, f.prix, f.jdmm, f.scan, f.upd || 0, f.del ? 1 : ""]), ["D"]);
-  sheet("Locataires_appli", ["ID","Bien","Nom","Telephone","Email","DebutBail","FinBail","LoyerCC","DepotGarantie","Note","Modifie","Supprime"],
-    S.locataires.map(t => [t.id, t.bien, t.nom, t.tel, t.email, dt(t.debut), dt(t.fin), t.loyer, t.depot, t.note, t.upd || 0, t.del ? 1 : ""]), ["F","G"]);
+  sheet("Locataires_appli", ["ID","Bien","Nom","Telephone","Email","DebutBail","FinBail","LoyerCC","DepotGarantie","Note","Modifie","Supprime","Charges"],
+    S.locataires.map(t => [t.id, t.bien, t.nom, t.tel, t.email, dt(t.debut), dt(t.fin), t.loyer, t.depot, t.note, t.upd || 0, t.del ? 1 : "", t.charges || 0]), ["F","G"]);
+  sheet("Biens_appli", ["ID","Nom","SoldeInitial","DateSoldeInitial","LoyerMensuel","MensualiteCredit","RegimeFiscal","Notes","Adresse","CreeDansAppli","EmpCapital","EmpTaux","EmpDureeMois","EmpDebut","EmpAssurMensuelle"],
+    live(S.biens).map(b => { const e = b.emprunt || {}; return [b.id, b.nom, b.solde0, dt(b.date0), b.loyer, b.credit, b.regime, b.notes, b.adresse || "", b.app ? 1 : "", e.capital || "", e.capital ? e.taux || 0 : "", e.duree || "", e.debut ? dt(e.debut) : "", e.assur || ""]; }), ["D","N"]);
   sheet("Tarifs_appli", ["Bien","Poste","APartirDu","Montant","Note","Modifie"],
     S.tarifs.filter(t => t.app).map(t => [t.bien, t.poste, dt(t.date), t.montant, t.note, t.upd || 0]), ["C"]);
-  sheet("Reglages_appli", ["Cle","Valeur"], [["Version", 1], ["DateExport", Date.now()]], []);
+  sheet("Reglages_appli", ["Cle","Valeur"], [["Version", 1], ["DateExport", Date.now()], ["Bailleur", (S.cfg && S.cfg.bailleur) || ""], ["BailleurAdresse", (S.cfg && S.cfg.bailleurAdr) || ""]], []);
   return XLSX.write(wb,{type:"array",bookType:"xlsx",compression:true});
 }
 async function saveFile(name, data, mime){
@@ -437,6 +511,7 @@ const ICON = {
   rent:svg('<circle cx="12" cy="12" r="9"/><path d="M15.500 9a3.500 3.500 0 1 0 0 6M8 11h6M8 13.500h6"/>'),
   add:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
   month:svg('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 15l2.500 2.500L16 13"/>'),
+  cmp:svg('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11.500h1M12 11.500h1M16 11.500h0M8 15.500h1M12 15.500h1M16 15.500h0"/>'),
   bld:svg('<path d="M5 21V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v17M15 9h3a1 1 0 0 1 1 1v11M3 21h18M9 7h2M9 11h2M9 15h2"/>'),
   chart:svg('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
   set:svg('<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.6a7 7 0 0 0-2 1.2l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.9c.6.5 1.3.9 2 1.2l.4 2.6h4l.4-2.6c.7-.3 1.4-.7 2-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/>'),
@@ -444,7 +519,7 @@ const ICON = {
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>'
 };
 function renderTabs(){
-  const T = [["home","Accueil"],["rent","Loyers"],["add","Ajouter"],["month","Pointage"],["bld","Biens"],["chart","Bilan"]];
+  const T = [["home","Accueil"],["cmp","Compta"],["add","Ajouter"],["month","Pointage"],["bld","Biens"],["chart","Bilan"]];
   $("#tabs .in").innerHTML = T.map(([k,l]) => k === "add"
     ? `<button class="add ${V.tab===k?"on":""}" data-act="tab" data-v="${k}" aria-label="${l}"><span class="pl">${ICON[k]}</span><span>${l}</span></button>`
     : `<button class="${V.tab===k?"on":""}" data-act="tab" data-v="${k}">${ICON[k]}<span>${l}</span></button>`).join("");
@@ -452,20 +527,21 @@ function renderTabs(){
 const yearNav = () => `<div class="nav"><button data-act="yprev" aria-label="Année précédente">‹</button><span>${V.y}</span><button data-act="ynext" aria-label="Année suivante">›</button></div>`;
 const monthNav = () => `<div class="nav"><button data-act="mprev" aria-label="Mois précédent">‹</button><span>${MOIS[V.m]} ${V.y}</span><button data-act="mnext" aria-label="Mois suivant">›</button></div>`;
 function topbar(title, nav){
-  return `<div class="top"><div class="app">${title}</div><div class="topr">${nav || ""}<button class="gear" data-act="tab" data-v="set" aria-label="Réglages">${ICON.set}</button></div></div>` +
-    (S.demo ? `<div class="banner">Données d'exemple. Importez le fichier <b>export_appli.xlsx</b> dans <b>Réglages</b> pour travailler avec vos vrais biens.</div>` : "");
+  return `<div class="top"><div class="app">${title}</div><div class="topr">${nav || ""}<button class="q" data-act="help" aria-label="Aide">?</button><button class="gear" data-act="tab" data-v="set" aria-label="Réglages">${ICON.set}</button></div></div>` +
+    (S.demo ? `<div class="banner">Données d'exemple. Importe le fichier <b>export_appli.xlsx</b> dans <b>Réglages</b> pour travailler avec tes vrais biens.</div>` : "");
 }
 const kv = (l, v, cl) => `<div class="kv"><span>${l}</span><span class="num ${cl || ""}">${v}</span></div>`;
 const signCl = v => v < 0 ? "neg" : "";
 function bienSeg(act, sel, withAll){
   return `<div class="seg">${withAll ? `<button class="${sel==="all"?"on":""}" data-act="${act}" data-v="all">Tous</button>` : ""}${bienIds().map(id => `<button class="${sel===id?"on":""}" data-act="${act}" data-v="${esc(id)}">${esc(bienName(id))}</button>`).join("")}</div>`;
 }
+const chipJ = (j, st) => st === "À pointer" ? `<span class="chip warn">${isIn(j) ? "À recevoir" : "Non pointé"}</span>` : chipFor(st);
 const chipFor = st => `<span class="chip ${st==="En retard"?"bad":st==="À pointer"?"warn":st==="Pointé"?"ok":""}">${st}</span>`;
 function jRow(j, showBien){
   const st = statut(j), sign = isIn(j) ? 1 : -1;
   return `<div class="row"><button class="chk ${j.pointe==="x"?"on":""}" data-act="jtoggle" data-id="${j.id}" aria-label="Pointer">${ICON.check}</button>
     <button class="rowbtn" data-act="jedit" data-id="${j.id}"><div class="t">${esc(j.lib || j.cat || j.type)}</div>
-    <div class="s">${frDate(j.date)}${showBien ? " " + bienPill(j.bien) : ""} · ${esc(j.cat || TYPE_LAB[j.type] || j.type)}${j.compte==="Perso" ? " · perso" : ""} ${st !== "Pointé" ? chipFor(st) : ""}</div></button>
+    <div class="s">${frDate(j.date)}${showBien ? " " + bienPill(j.bien) : ""} · <span class="cdot" style="background:${catColor(j.cat)};margin-right:4px"></span>${esc(j.cat || TYPE_LAB[j.type] || j.type)}${j.compte==="Perso" ? " · perso" : ""} ${st !== "Pointé" ? chipJ(j, st) : ""}</div></button>
     <div class="amt num ${sign>0?"pos":""}">${sign>0?"+":"−"} ${eur(j.montant)}</div></div>`;
 }
 
@@ -474,12 +550,15 @@ function viewHome(){
   const y = now0.getFullYear(), ids = bienIds(), c = counts(y), st = stats(null, y);
   const tot = r2(sum(ids.map(id => soldeBien(id))));
   const next = J().filter(j => statut(j) === "Prévu").sort((a,b) => a.date.localeCompare(b.date)).slice(0, 6);
+  const tileLate = n => { const l = J().filter(j => statut(j) === "En retard" && j.cat === "Loyer").sort((a, b) => a.date.localeCompare(b.date))[0]; return `<button class="tile ${n ? "bad" : ""}" data-act="go" data-v="bld" data-sub="loyers" data-bien="${l ? esc(l.bien) : ""}"><span class="n">${n}</span><span class="l">loyer(s) en retard</span></button>`; };
   const tile = (n, l, cl, to, f) => `<button class="tile ${n ? cl : ""}" data-act="go" data-v="${to}" data-f="${f || ""}"><span class="n">${n}</span><span class="l">${l}</span></button>`;
   return topbar("Mes locations") + `
   <div class="card hero"><div class="lbl">Solde de mes comptes appartements</div><div class="big num">${eur(tot)}</div>
-    ${ids.map(id => kv(bienPill(id), eur(soldeBien(id)), "")).join("")}</div>
-  ${bourseCard()}
-  <div class="tiles">${tile(c.retard,"loyer(s) en retard","bad","rent")}${tile(c.pointer,"à pointer","warn","month","todo")}${tile(c.compta,"à saisir en compta","warn","month","compta")}</div>
+    <div class="glass">${ids.map(id => { const p = placeOf(id), on = bourseOn(), parts = on ? PLACE_CATS.filter(c => p.by[c]).map(c => (c === "Bourse" ? "bourse" : c) + " " + eur(p.by[c])).concat(p.interets ? ["intérêts " + eur(p.interets)] : []) : [];
+      return kv(bienPill(id), eur(soldeBien(id)), "") + (parts.length ? `<div class="small" style="opacity:.85;text-align:right;margin:-4px 0 6px">(${parts.join(" + ")}) · total ${eur(r2(soldeBien(id) + p.total))}</div>` : ""); }).join("")}
+      <div class="small" style="opacity:.85;text-align:right;margin-top:4px">Total tous biens confondus${bourseOn() ? " (comptes + placé)" : ""} : <b>${eur(r2(tot + (bourseOn() ? placeOf(null).total : 0)))}</b></div></div></div>
+  ${matelasHome()}${bourseCard()}${placeCard(null)}
+  <div class="tiles">${tileLate(c.retard)}${tile(c.pointer,"à pointer","warn","month","todo")}${tile(c.compta,"à saisir en compta","warn","month","compta")}</div>
   <div class="card"><h2>Bénéfice ${y}</h2>
     ${kv("Recettes encaissées", eur(st.recP))}${kv("Dépenses payées", "− " + eur(st.depP))}
     <div class="kv tot"><span>Bénéfice réalisé</span><span class="num ${signCl(st.benef)}">${eur(st.benef)}</span></div>
@@ -488,53 +567,55 @@ function viewHome(){
 }
 
 function bourseCard(){
-  const ids = bienIds(), t = bourseOf(null); if (!t.mis && !t.remb) return "";
-  return `<div class="card bourse"><div class="lbl">Bourse, pas dépensé</div><div class="big num">${eur(t.reste)}</div><div class="small" style="opacity:.9">total à récupérer sur les comptes appartements</div>
-    ${ids.map(id => { const b = bourseOf(id); return b.mis || b.remb ? `<div class="kv">${bienPill(id)}<span class="num">${eur(b.reste)}</span></div>` : ""; }).join("")}
+  const ids = bienIds(), ty = usedTypes(null); if (!bourseOn() || !ty.length) return "";
+  const t = placeOf(null);
+  return `<div class="card bourse"><div class="lbl">${titleTypes(ty)}, pas dépensé</div><div class="big num">${eur(t.net)}</div><div class="small" style="opacity:.9">total à récupérer sur les comptes appartements</div>
+    ${ty.length > 1 ? `<div class="small" style="opacity:.9">${ty.map(c => c + " " + eur(t.by[c])).join(" · ")}</div>` : ""}
+    ${ids.map(id => { const p = placeOf(id); return usedTypes(id).length ? `<div class="kv">${bienPill(id)}<span class="num">${eur(p.net)}</span></div>` : ""; }).join("")}
     <div class="btns"><button class="btn sm" data-act="bourse" data-v="">Remboursement bourse</button></div></div>`;
 }
 
-/* ---------- Loyers ---------- */
+/* ---------- Loyers (dans Biens, bien par bien) ---------- */
 function loyerLines(bien, y){ return J().filter(j => j.bien === bien && j.type === "Recette" && j.cat === "Loyer" && yr(j) === y); }
-function viewRent(){
-  const late = J().filter(j => statut(j) === "En retard" && j.cat === "Loyer").sort((a,b) => a.date.localeCompare(b.date));
-  const lateHtml = late.length ? `<div class="card" style="border-color:var(--bad)"><h2>À relancer</h2><div class="rows">${late.map(j => `<div class="row"><div class="main"><div class="t">${esc(bienName(j.bien))} · ${MOIS[mo(j)].toLowerCase()} ${yr(j)}</div>
+function viewBienLoyers(){
+  const id = V.bsel, y = V.y;
+  const late = J().filter(j => j.bien === id && statut(j) === "En retard" && j.cat === "Loyer").sort((a, b) => a.date.localeCompare(b.date));
+  const lateHtml = late.length ? `<div class="card" style="border-color:var(--bad)"><h2>À relancer</h2><div class="rows">${late.map(j => `<div class="row"><div class="main"><div class="t">${MOIS[mo(j)].toLowerCase()} ${yr(j)}</div>
     <div class="s">${eur(j.montant)} · ${(() => { const t = tenantFor(j.bien, j.date); return t ? esc(t.nom) : "locataire non renseigné"; })()}</div></div>
     <button class="btn sm" data-act="relance" data-id="${j.id}">Relancer</button></div>`).join("")}</div></div>` : "";
-  const cards = bienIds().map(id => {
-    const L = loyerLines(id, V.y), att = sum(L.map(j => j.montant)), rec = sum(L.filter(j => j.pointe === "x").map(j => j.montant));
-    const p = att > 0 ? Math.min(100, Math.round(rec / att * 100)) : 0;
-    const rows = MOIS.map((nm, m) => {
-      const ls = L.filter(j => mo(j) === m).sort((a,b) => a.date.localeCompare(b.date));
-      if (!ls.length) return `<div class="row"><span class="chk" style="border-style:dashed"></span><div class="main"><div class="t muted">${nm}</div><div class="s">Aucun loyer prévu</div></div><button class="mini" data-act="rent-add" data-bien="${esc(id)}" data-m="${m}">Ajouter</button></div>`;
-      return ls.map(j => { const s = statut(j);
-        return `<div class="row"><button class="chk ${j.pointe==="x"?"on":""}" data-act="jtoggle" data-id="${j.id}" aria-label="Loyer encaissé">${ICON.check}</button>
-        <button class="rowbtn" data-act="jedit" data-id="${j.id}"><div class="t">${nm}</div><div class="s">${esc(j.lib || "")} ${s !== "Pointé" ? chipFor(s) : '<span class="chip ok">Encaissé</span>'}</div></button><div class="amt num">${eur(j.montant)}</div></div>`; }).join("");
-    }).join("");
-    return `<div class="card"><div class="top"><h2>${esc(bienName(id))}</h2><span class="muted small num">${eur(rec)} / ${eur(att)}</span></div>
-      <div class="bar"><i class="${rec >= att && att > 0 ? "ok" : ""}" style="width:${p}%"></i></div><div class="rows">${rows}</div></div>`;
+  const L = loyerLines(id, y), att = sum(L.map(j => j.montant)), rec = sum(L.filter(j => j.pointe === "x").map(j => j.montant));
+  const p = att > 0 ? Math.min(100, Math.round(rec / att * 100)) : 0;
+  const rows = MOIS.map((nm, m) => {
+    const ls = L.filter(j => mo(j) === m).sort((a, b) => a.date.localeCompare(b.date));
+    if (!ls.length) return `<div class="row"><span class="chk" style="border-style:dashed"></span><div class="main"><div class="t muted">${nm}</div><div class="s">Aucun loyer prévu</div></div><button class="mini" data-act="rent-add" data-bien="${esc(id)}" data-m="${m}">Ajouter</button></div>`;
+    return ls.map(j => { const s = statut(j);
+      return `<div class="row"><button class="chk ${j.pointe==="x"?"on":""}" data-act="jtoggle" data-id="${j.id}" aria-label="Loyer encaissé">${ICON.check}</button>
+      <button class="rowbtn" data-act="jedit" data-id="${j.id}"><div class="t">${nm}</div><div class="s">${esc(j.lib || "")} ${s !== "Pointé" ? chipJ(j, s) : '<span class="chip ok">Encaissé</span>'}</div></button><div class="amt num">${eur(j.montant)}</div>${j.pointe === "x" ? `<button class="mini" data-act="quit" data-id="${j.id}">Quittance</button>` : ""}</div>`; }).join("");
   }).join("");
-  return topbar("Loyers", yearNav()) + lateHtml + cards;
+  return lateHtml + `<div class="card"><div class="top"><h2>Loyers ${y}</h2><span class="muted small num">${eur(rec)} / ${eur(att)}</span></div>
+    <div class="bar"><i class="${rec >= att && att > 0 ? "ok" : ""}" style="width:${p}%"></i></div><div class="rows">${rows}</div></div>`;
 }
 
 /* ---------- Pointage (mois) ---------- */
-function monthList(){
+function monthListAll(){
   let L = J();
   if (V.bf !== "all") L = L.filter(j => j.bien === V.bf);
   if (V.mf === "todo") return L.filter(j => statut(j) === "À pointer" || statut(j) === "En retard");
   if (V.mf === "compta") return L.filter(j => j.type === "Dépense" && j.pointe === "x" && !j.compta);
   return L.filter(j => yr(j) === V.y && mo(j) === V.m);
 }
+function monthList(){ return monthListAll().filter(j => !isArch(j)); }
 function viewMonth(){
   const L = monthList().sort((a,b) => b.date.localeCompare(a.date) || (b.upd||0) - (a.upd||0));
   const todo = L.filter(j => j.pointe !== "x" && j.date <= todayIso());
-  const rec = sum(L.filter(j => j.type === "Recette").map(j => j.montant)), dep = sum(L.filter(j => j.type === "Dépense").map(j => j.montant));
+  const LA = monthListAll(), na = LA.length - L.length;
+  const rec = sum(LA.filter(j => j.type === "Recette").map(j => j.montant)), dep = sum(LA.filter(j => j.type === "Dépense").map(j => j.montant));
   const mseg = `<div class="seg"><button class="${V.mf==="mois"?"on":""}" data-act="mf" data-v="mois">Ce mois</button><button class="${V.mf==="todo"?"on":""}" data-act="mf" data-v="todo">À pointer</button><button class="${V.mf==="compta"?"on":""}" data-act="mf" data-v="compta">À saisir en compta</button></div>`;
   const summary = V.mf === "mois" ? `<div class="card"><h2>Bilan du mois</h2>${kv("Recettes", eur(rec))}${kv("Dépenses", "− " + eur(dep))}<div class="kv tot"><span>Résultat</span><span class="num ${signCl(rec-dep)}">${eur(rec - dep)}</span></div></div>` : "";
-  const help = V.mf === "compta" ? `<div class="small muted">Dépenses déjà payées mais pas encore saisies sur jedeclaremonmeuble. Touchez la ligne, puis « Saisi en compta ».</div>` : "";
-  return topbar("Pointage", V.mf === "mois" ? monthNav() : "") + mseg + bienSeg("bf", V.bf, true) + summary + `
+  const help = V.mf === "compta" ? `<div class="small muted">Dépenses déjà payées mais pas encore saisies sur jedeclaremonmeuble. Touche la ligne, puis « Saisi en compta ».</div>` : "";
+  return topbar("Pointage", V.mf === "mois" ? monthNav() : "") + mseg + bienSeg("bf", V.bf, true) + monthActions() + summary + `
   <div class="card"><div class="top"><h2>${V.mf==="mois" ? "Opérations" : V.mf==="todo" ? "À pointer" : "À saisir en compta"} (${L.length})</h2>
-    ${V.mf !== "compta" && todo.length ? `<button class="btn sm" data-act="pointall">Tout pointer (${todo.length})</button>` : ""}</div>${help}
+    ${V.mf !== "compta" && todo.length ? `<button class="btn sm" data-act="pointall">Tout pointer (${todo.length})</button>` : ""}</div>${help}${na ? `<div class="small muted">${na} ligne(s) archivée(s) masquée(s) · <button class="mini" data-act="arch-view">Voir</button></div>` : ""}
     <div class="rows">${L.length ? L.map(j => jRow(j, V.bf === "all")).join("") : '<div class="empty">Rien ici.</div>'}</div></div>`;
 }
 
@@ -549,12 +630,15 @@ function viewAdd(){
   const d = V.draft || (ed ? draftFrom(ed) : newDraft()); V.draft = d;
   const cats = allCats(d.type);
   const bs = bienIds();
-  return `<div class="top"><div class="app">${ed ? "Modifier l'opération" : "Ajouter une opération"}</div></div>
+  return `<div class="top"><button class="btn ghost sm" data-act="tab" data-v="${ed ? (V.back || "month") : "home"}">${ed ? "‹ Retour" : "‹ Accueil"}</button><button class="q" data-act="help" aria-label="Aide">?</button></div>
+  <div class="top"><div class="app">${ed ? "Modifier l'opération" : "Ajouter une opération"}</div></div>
   <div class="card">
+    ${modelesRow(ed)}
     <div class="seg">${TYPES.map(t => `<button class="${d.type===t?"on":""}" data-act="dtype" data-v="${t}">${TYPE_LAB[t]}</button>`).join("")}</div>
     <div class="seg">${bs.map(id => `<button class="${d.bien===id?"on":""}" data-act="dbien" data-v="${esc(id)}">${esc(bienName(id))}</button>`).join("")}${!ed && bs.length === 2 ? `<button class="${d.bien==="both"?"on":""}" data-act="dbien" data-v="both">Les 2 (50/50)</button>` : ""}</div>
-    <div class="grid2"><label class="f">Date<input id="f-date" type="date" value="${esc(d.date)}"></label>
-      <label class="f">Montant (€)<input id="f-mont" inputmode="decimal" value="${esc(d.mont)}" placeholder="0,00"></label></div>
+    <label class="f">Date<input id="f-date" type="date" value="${esc(d.date)}"></label>
+    <div class="amtbox"><small>Montant (€)</small><input class="amt-in" id="f-mont" inputmode="none" autocomplete="off" value="${esc(d.mont)}" placeholder="0,00"></div>
+    ${npadHtml("f-mont")}
     <label class="f">Catégorie<select id="f-cat"><option value="" ${d.cat===""?"selected":""}>—</option>${cats.map(o => `<option ${o===d.cat?"selected":""}>${esc(o)}</option>`).join("")}</select></label>
     <label class="f">Libellé<input id="f-lib" value="${esc(d.lib)}" placeholder="Facultatif (vide = catégorie)"></label>
     ${d.type === "Dépense" ? `<div><div class="small muted" style="margin-bottom:4px">Payé depuis</div><div class="seg"><button class="${d.compte!=="Perso"?"on":""}" data-act="dcompte" data-v="Bien">Compte du bien</button><button class="${d.compte==="Perso"?"on":""}" data-act="dcompte" data-v="Perso">Compte perso</button></div></div>` : ""}
@@ -564,7 +648,7 @@ function viewAdd(){
       ${d.type === "Dépense" ? `<button class="${d.compta?"on":""}" data-act="dtog" data-v="compta">Saisi en compta</button><button class="${d.justif?"on":""}" data-act="dtog" data-v="justif">Justificatif</button>` : ""}</div>
     <div id="f-info"></div>
     <div class="btns"><button class="btn" data-act="save" style="flex:1">Enregistrer</button>
-      ${ed ? `<button class="btn danger" data-act="jdel">Supprimer</button>` : `<button class="btn ghost" data-act="clear">Effacer</button>`}</div>
+      ${ed ? `<button class="btn ghost" data-act="jdup">Dupliquer</button><button class="btn danger" data-act="jdel">Supprimer</button>` : `<button class="btn ghost" data-act="clear">Effacer</button><button class="btn ghost" data-act="md-open">Enregistrer comme modèle</button>`}</div>
   </div>`;
 }
 function collectDraft(){
@@ -593,11 +677,11 @@ function updateInfo(){
 }
 function saveOp(){
   collectDraft(); const d = V.draft, mt = parseNum(d.mont), ed = V.editId ? S.journal.find(j => j.id === V.editId) : null;
-  if (!d.bien) return toast("Choisissez un bien");
-  if (!d.date) return toast("Choisissez une date");
-  if (!mt || mt <= 0) return toast("Saisissez un montant supérieur à 0");
+  if (!d.bien) return toast("Choisis un bien");
+  if (!d.date) return toast("Choisis une date");
+  if (!mt || mt <= 0) return toast("Saisis un montant supérieur à 0");
   const lib = d.lib.trim() || (d.cat === "Loyer" ? "Loyer " + MOIS[+d.date.slice(5,7)-1].toLowerCase() : d.cat);
-  const base = {date:d.date, type:d.type, cat:d.cat, lib, montant:r2(mt), compte:d.type === "Dépense" ? d.compte : "Bien", pointe:d.pt ? "x" : "",
+  const base = {date:d.date, type:d.type, cat:d.cat, lib, montant:r2(mt), compte:d.type === "Dépense" ? d.compte : (d.cat === "Intérêts placement" ? "Perso" : "Bien"), pointe:d.pt ? "x" : "",
     compta:d.type === "Dépense" && d.compta ? ((ed && ed.compta) || "x") : "", justif:d.type === "Dépense" && d.justif ? "x" : "", fourn:d.fourn.trim(), note:d.note.trim(), upd:Date.now()};
   if (ed){ Object.assign(ed, base, {bien:d.bien}); toast("Opération modifiée"); }
   else if (d.bien === "both"){
@@ -610,20 +694,31 @@ function saveOp(){
     else { S.journal.push(Object.assign({id:uid(), bien:d.bien}, base)); toast("Enregistré : " + eur(base.montant)); }
   }
   V.m = +d.date.slice(5,7) - 1; V.y = +d.date.slice(0,4); V.mf = "mois"; V.bf = "all";
-  V.editId = null; V.draft = null; persist(); V.tab = V.back || "month"; V.back = null; render();
+  V.editId = null; V.draft = null; archivePass(false); persist(); V.tab = V.back || "month"; V.back = null; render();
 }
 
 /* ---------- Biens ---------- */
+function tenantCard(id){
+  const t = tenantFor(id, todayIso()), ended = t && t.fin && t.fin < todayIso();
+  return `<div class="card" style="padding:12px 16px;gap:4px"><div class="top"><span class="small muted">Locataire actuel</span>${t ? `<button class="mini" data-act="ledit" data-id="${t.id}">Fiche</button>` : `<button class="mini" data-act="lnew">Ajouter</button>`}</div>
+    ${t ? `<div class="t" style="font-weight:600;font-size:16px">${esc(t.nom)}${ended ? ' <span class="chip warn">bail terminé</span>' : ""}</div>
+      <div class="small muted">Bail depuis le ${t.debut ? frDate(t.debut) : "?"}${t.fin ? " jusqu'au " + frDate(t.fin) : ""} · loyer ${eur(t.loyer)}${t.charges ? " dont charges " + eur(t.charges) : ""}</div>
+      <div class="btns" style="gap:6px">${t.tel ? `<a class="mini" href="tel:${esc(t.tel)}">Appeler</a><a class="mini" href="sms:${esc(t.tel)}">SMS</a>` : ""}${t.email ? `<a class="mini" href="mailto:${esc(t.email)}">E-mail</a>` : ""}</div>`
+    : '<div class="small muted">Aucun locataire enregistré pour ce bien.</div>'}</div>`;
+}
 function viewBiens(){
-  const sub = V.bsub, ids = bienIds(); if (!V.bsel || !ids.includes(V.bsel)) V.bsel = ids[0] || "";
-  const seg = `<div class="seg">${[["vue","Vue"],["charges","Charges"],["travaux","Travaux"],["loc","Locataires"],["tarifs","Tarifs"],["rapp","Rapprochement"]].map(([k,l]) => `<button class="${sub===k?"on":""}" data-act="bsub" data-v="${k}">${l}</button>`).join("")}</div>`;
-  const nav = sub === "vue" || sub === "charges" ? yearNav() : "";
+  const subs = [["vue","Vue"],["loyers","Loyers"],["dep","Dépenses"],["travaux","Travaux"],["loc","Locataires"],["tarifs","Tarifs"],["rapp","Rapprochement"]], ids = bienIds();
+  if (!subs.some(x => x[0] === V.bsub)) V.bsub = "vue";
+  const sub = V.bsub; if (!V.bsel || !ids.includes(V.bsel)) V.bsel = ids[0] || "";
+  const seg = `<div class="seg">${subs.map(([k,l]) => `<button class="${sub===k?"on":""}" data-act="bsub" data-v="${k}">${l}</button>`).join("")}</div>`;
+  const nav = sub === "vue" || sub === "loyers" || sub === "dep" ? yearNav() : "";
+  const sel = ["vue","loyers","dep","loc"].includes(sub) ? bienSeg("bsel", V.bsel, false) + tenantCard(V.bsel) : "";
   let body = "";
-  if (sub === "vue") body = viewBienVue(); else if (sub === "charges") body = viewCharges(); else if (sub === "travaux") body = viewTravaux(); else if (sub === "tarifs") body = viewTarifs(); else if (sub === "rapp") body = viewRapp(); else body = viewLoc();
-  return topbar("Biens", nav) + seg + body;
+  if (sub === "vue") body = viewBienVue(); else if (sub === "loyers") body = viewBienLoyers(); else if (sub === "dep") body = viewBienDep(); else if (sub === "travaux") body = viewTravaux(); else if (sub === "tarifs") body = viewTarifs(); else if (sub === "rapp") body = viewRapp(); else body = viewLoc();
+  return topbar("Biens", nav) + seg + sel + body;
 }
 function catBars(rows, max, restKey){
-  return rows.map(r => `<div class="env" style="padding:6px 0"><div class="top"><span>${esc(r.n)}</span><span class="num">${eur(r.v)}${r.reste > 0.005 ? ` <span class="chip warn">reste ${eur(r.reste)}</span>` : ""}</span></div><div class="bar"><i style="width:${max > 0 ? Math.round(r.v / max * 100) : 0}%"></i></div></div>`).join("");
+  return rows.map(r => `<div class="env" style="padding:6px 0;--c:${catColor(r.n)}"><div class="top"><span><span class="cdot" style="background:${catColor(r.n)}"></span>${esc(r.n)}</span><span class="num">${eur(r.v)}${r.reste > 0.005 ? ` <span class="chip warn">reste ${eur(r.reste)}</span>` : ""}</span></div><div class="bar"><i style="width:${max > 0 ? Math.round(r.v / max * 100) : 0}%"></i></div></div>`).join("");
 }
 function viewBienVue(){
   const id = V.bsel, y = V.y, s = stats(id, y), b = S.biens.find(x => x.id === id);
@@ -632,13 +727,16 @@ function viewBienVue(){
   const rows = Object.values(cats).sort((a,b) => b.v - a.v);
   const ops = J().filter(j => j.bien === id && yr(j) === y).sort((a,b) => b.date.localeCompare(a.date));
   const t = live(S.locataires).filter(x => x.bien === id);
-  return bienSeg("bsel", id, false) + `
+  return `
   <div class="card"><div class="top"><h2>${bienPill(id)} ${y}</h2></div>
     ${kv("Solde du compte au 1er janvier", eur(soldeAvant(id, y)))}${kv("Loyers (encaissés + prévus)", eur(s.rec))}${kv("Charges (payées + prévues)", "− " + eur(s.dep))}
     <div class="kv tot"><span>Cash flow</span><span class="num ${signCl(s.cf)}">${eur(s.cf)}</span></div>
     ${kv("Solde du compte au 31/12", eur(soldeBien(id, y)))}
-    ${b ? `<div class="small muted">Loyer ${eur(b.loyer)} · crédit ${eur(b.credit)}/mois${b.regime ? " · " + esc(b.regime) : ""}${t.length ? " · locataire : " + esc(t[t.length-1].nom) : ""}</div>` : ""}</div>
-  ${(() => { const b = bourseOf(id); return `<div class="card" style="border-color:${BOURSE_COL}"><div class="top"><h2 style="color:${BOURSE_COL}">Bourse</h2><button class="btn sm" style="background:${BOURSE_COL}" data-act="bourse" data-v="${esc(id)}">Remboursement</button></div>${kv("Mis en bourse", eur(b.mis))}${kv("Remboursé", eur(b.remb))}<div class="kv tot"><span>Reste à rembourser</span><span class="num" style="color:${BOURSE_COL}">${eur(b.reste)}</span></div></div>`; })()}
+    ${b ? `<div class="small muted">${b.adresse ? esc(b.adresse) + " · " : ""}Loyer ${eur(b.loyer)} · crédit ${eur(b.credit)}/mois${b.regime ? " · " + esc(b.regime) : ""}${t.length ? " · locataire : " + esc(t[t.length-1].nom) : ""}</div>` : ""}</div>
+  ${matelasCard(id)}
+  ${(() => { const ty = usedTypes(id); if (!bourseOn() || !ty.length) return ""; return `<div class="card" style="border-color:${BOURSE_COL}"><div class="top"><h2 style="color:${BOURSE_COL}">${titleTypes(ty)}</h2><button class="btn sm" style="background:${BOURSE_COL}" data-act="bourse" data-v="${esc(id)}">Remboursement</button></div>${ty.map(c => { const b = bourseOf(id, c); return (ty.length > 1 ? `<div class="small muted" style="margin-top:6px"><b>${c}</b></div>` : "") + kv(c === "Bourse" ? "Mis en bourse" : "Mis sur " + c, eur(b.mis)) + kv("Remboursé", eur(b.remb)) + `<div class="kv tot"><span>Reste à rembourser</span><span class="num" style="color:${BOURSE_COL}">${eur(b.reste)}</span></div>`; }).join("")}</div>`; })()}
+  ${placeCard(id)}
+  <div class="btns"><button class="btn ghost sm" data-act="bn-edit" data-id="${esc(id)}">Modifier le bien</button><button class="btn ghost sm" data-act="bn-new">Ajouter un bien</button></div>
   <div class="card"><h2>Charges par catégorie</h2>${rows.length ? catBars(rows, rows[0].v) : '<div class="empty">Aucune dépense cette année.</div>'}</div>
   <div class="card"><details><summary><span>Toutes les opérations (${ops.length})</span><span class="muted small">voir</span></summary><div class="rows" style="margin-top:6px">${ops.map(j => jRow(j, false)).join("")}</div></details></div>`;
 }
@@ -647,16 +745,16 @@ function partagesCard(){
     <div class="rows">${partagesList().map(p => { const [a, b] = splitPartage(p.total, p.partStudio);
       return `<div class="row"><div class="main"><div class="t">${esc(p.frais)}</div><div class="s">Total ${eur(p.total)} · Studio ${Math.round(p.partStudio*100)} % (${eur(a)}) · T2 ${eur(b)}</div></div><button class="mini" data-act="partage" data-v="${esc(p.frais)}">Saisir</button></div>`; }).join("")}</div></div>`;
 }
-function viewCharges(){
-  const y = V.y, ids = bienIds(), L = J().filter(j => yr(j) === y && j.type === "Dépense"), cats = {};
-  for (const j of L){ const k = j.cat || "Autre"; const c = cats[k] || (cats[k] = {n:k, v:0, reste:0, by:{}}); c.v += j.montant; c.by[j.bien] = (c.by[j.bien] || 0) + j.montant; if (j.pointe !== "x") c.reste += j.montant; }
-  const rows = Object.values(cats).sort((a,b) => b.v - a.v), total = sum(rows.map(r => r.v)), reste = sum(rows.map(r => r.reste));
-  const next = J().filter(j => statut(j) === "Prévu" && j.type === "Dépense").sort((a,b) => a.date.localeCompare(b.date)).slice(0, 8);
-  return partagesCard() + `<div class="card"><h2>Charges ${y}</h2>
-    ${rows.map(r => `<div class="env" style="padding:6px 0"><div class="top"><span>${esc(r.n)} <span class="muted small">${esc(FAMILLE[r.n] || "")}</span></span><span class="num">${eur(r.v)}</span></div>
-      <div class="small muted">${ids.filter(id => r.by[id]).map(id => esc(bienName(id)) + " " + eur(r.by[id])).join(" · ")}${r.reste > 0.005 ? ` · <span class="neg">reste à payer ${eur(r.reste)}</span>` : ""}</div></div>`).join("") || '<div class="empty">Aucune dépense cette année.</div>'}
+function viewBienDep(){
+  const id = V.bsel, y = V.y, L = J().filter(j => j.bien === id && yr(j) === y && j.type === "Dépense"), cats = {};
+  for (const j of L){ const k = j.cat || "Autre"; const c = cats[k] || (cats[k] = {n:k, v:0, reste:0}); c.v += j.montant; if (j.pointe !== "x") c.reste += j.montant; }
+  const rows = Object.values(cats).sort((a, b) => b.v - a.v), total = sum(rows.map(r => r.v)), reste = sum(rows.map(r => r.reste));
+  const next = J().filter(j => j.bien === id && statut(j) === "Prévu" && j.type === "Dépense").sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
+  const all = L.slice().sort((a, b) => b.date.localeCompare(a.date));
+  return partagesCard() + `<div class="card"><h2>Dépenses ${esc(bienName(id))} ${y}</h2>${catBars(rows, rows.length ? rows[0].v : 0)}${rows.length ? "" : '<div class="empty">Aucune dépense cette année.</div>'}
     <div class="kv tot"><span>Total</span><span class="num">${eur(total)}</span></div>${kv("dont reste à payer", eur(reste), "muted")}</div>
-  <div class="card"><h2>Prochaines charges</h2><div class="rows">${next.length ? next.map(j => `<div class="row"><div class="main"><div class="t">${esc(j.lib || j.cat)}</div><div class="s">${frDate(j.date)} · ${esc(bienName(j.bien))}</div></div><div class="amt num">${eur(j.montant)}</div></div>`).join("") : '<div class="empty">Rien de prévu.</div>'}</div></div>`;
+  <div class="card"><h2>Prochaines dépenses</h2><div class="rows">${next.length ? next.map(j => `<div class="row"><div class="main"><div class="t">${esc(j.lib || j.cat)}</div><div class="s">${frDate(j.date)}</div></div><div class="amt num">${eur(j.montant)}</div></div>`).join("") : '<div class="empty">Rien de prévu.</div>'}</div></div>
+  <div class="card"><details><summary><span>Toutes les dépenses (${all.length})</span><span class="muted small">voir</span></summary><div class="rows" style="margin-top:6px">${all.map(j => jRow(j, false)).join("")}</div></details></div>`;
 }
 function travList(){
   const q = V.fq.trim().toLowerCase();
@@ -677,11 +775,11 @@ function viewLoc(){
   const L = live(S.locataires);
   const soon = t => t.fin && t.fin >= todayIso() && t.fin <= new Date(Date.now() + 90 * 864e5).toISOString().slice(0,10);
   return `<div class="card"><div class="top"><h2>Locataires</h2><button class="btn sm" data-act="lnew">Ajouter</button></div>
-    <div class="small muted">Ces fiches sont stockées dans l'appli (chiffrées si le verrouillage est activé) et dans la feuille « Locataires » de votre classeur.</div></div>` +
-    (bienIds().map(id => { const T = L.filter(t => t.bien === id);
+    <div class="small muted">Ces fiches sont stockées dans l'appli (chiffrées si le verrouillage est activé) et dans la feuille « Locataires » de ton classeur.</div></div>` +
+    ([V.bsel].map(id => { const T = L.filter(t => t.bien === id);
       return `<div class="card"><h2>${esc(bienName(id))}</h2>${T.length ? T.map(t => `<div class="env" style="padding:8px 0;gap:6px"><div class="top"><button class="rowbtn" data-act="ledit" data-id="${t.id}"><div class="t" style="font-weight:600">${esc(t.nom)}</div>
         <div class="s">Bail ${t.debut ? frDateL(t.debut) : "?"} → ${t.fin ? frDateL(t.fin) : "en cours"} ${soon(t) ? '<span class="chip warn">fin proche</span>' : ""}</div>
-        <div class="s">Loyer ${eur(t.loyer)} · dépôt de garantie ${eur(t.depot)}</div>${t.note ? `<div class="s">${esc(t.note)}</div>` : ""}</button></div>
+        <div class="s">Loyer ${eur(t.loyer)}${t.charges ? " dont charges " + eur(t.charges) : ""} · dépôt de garantie ${eur(t.depot)}</div>${t.note ? `<div class="s">${esc(t.note)}</div>` : ""}</button></div>
         <div class="btns">${t.tel ? `<a class="mini" href="tel:${esc(t.tel)}">Appeler</a><a class="mini" href="sms:${esc(t.tel)}">SMS</a>` : ""}${t.email ? `<a class="mini" href="mailto:${esc(t.email)}">E-mail</a>` : ""}</div></div>`).join("") : '<div class="empty">Aucun locataire.</div>'}</div>`; }).join(""));
 }
 function viewTarifs(){
@@ -702,11 +800,13 @@ function viewRapp(){
 }
 function sheetBourse(bien){
   const ids = bienIds(), d = V.bs = Object.assign({bien:ids[0] || "", mont:"", date:todayIso(), confirm:false}, V.bs && V.bs.keep ? V.bs : {}, bien ? {bien} : {});
-  const b = bourseOf(d.bien), mt = parseNum(d.mont), over = mt && mt > b.reste + 0.005;
-  openSheet(`<h2 style="color:${BOURSE_COL}">Remboursement bourse</h2>
+  const tys = usedTypes(d.bien).length ? usedTypes(d.bien) : ["Bourse"]; if (!d.cat || !tys.includes(d.cat)) d.cat = tys.find(c => bourseOf(d.bien, c).reste > 0) || tys[0];
+  const b = bourseOf(d.bien, d.cat), mt = parseNum(d.mont), over = mt && mt > b.reste + 0.005;
+  openSheet(`<h2 style="color:${BOURSE_COL}">Remboursement ${d.cat === "Bourse" ? "bourse" : esc(d.cat)}</h2>
     <div class="seg">${ids.map(id => `<button class="${d.bien===id?"on":""}" data-act="bs-bien" data-v="${esc(id)}">${esc(bienName(id))}</button>`).join("")}</div>
-    <div class="small muted">Mis en bourse ${eur(b.mis)} · remboursé ${eur(b.remb)} · reste à rembourser <b>${eur(b.reste)}</b></div>
-    <div class="grid2"><label class="f">Montant (€)<input id="b-mont" inputmode="decimal" value="${esc(d.mont)}"></label><label class="f">Date<input id="b-date" type="date" value="${esc(d.date)}"></label></div>
+    ${tys.length > 1 ? `<div class="seg">${tys.map(c => `<button class="${d.cat===c?"on":""}" data-act="bs-cat" data-v="${esc(c)}">${esc(c)}</button>`).join("")}</div>` : ""}
+    <div class="small muted">Mis de côté ${eur(b.mis)} · remboursé ${eur(b.remb)} · reste à rembourser <b>${eur(b.reste)}</b></div>
+    <div class="grid2"><label class="f">Montant (€)<input id="b-mont" inputmode="none" value="${esc(d.mont)}"></label><label class="f">Date<input id="b-date" type="date" value="${esc(d.date)}"></label></div>${npadHtml("b-mont")}
     ${over ? `<div class="info bad">Ce montant dépasse le reste à rembourser (${eur(b.reste)}).${d.confirm ? " Touche encore pour enregistrer quand même." : ""}</div>` : ""}
     <div class="btns"><button class="btn" style="background:${BOURSE_COL};flex:1" data-act="b-save">${over && d.confirm ? "Enregistrer quand même" : "Enregistrer"}</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
   V.bs.keep = true;
@@ -755,16 +855,17 @@ function sheetLoc(id){
     <label class="f">Nom<input id="t-nom" value="${esc(t.nom)}"></label>
     <div class="grid2"><label class="f">Téléphone<input id="t-tel" type="tel" value="${esc(t.tel)}"></label><label class="f">E-mail<input id="t-mail" type="email" autocapitalize="none" value="${esc(t.email)}"></label></div>
     <div class="grid2"><label class="f">Début du bail<input id="t-debut" type="date" value="${esc(t.debut)}"></label><label class="f">Fin du bail<input id="t-fin" type="date" value="${esc(t.fin)}"></label></div>
-    <div class="grid2"><label class="f">Loyer charges comprises (€)<input id="t-loyer" inputmode="decimal" value="${fmtNum(t.loyer)}"></label><label class="f">Dépôt de garantie (€)<input id="t-depot" inputmode="decimal" value="${fmtNum(t.depot)}"></label></div>
+    <div class="grid2"><label class="f">Loyer charges comprises (€)<input id="t-loyer" inputmode="decimal" value="${fmtNum(t.loyer)}"></label><label class="f">Dont charges (€)<input id="t-chg" inputmode="decimal" value="${fmtNum(t.charges || "")}"></label></div>
+    <label class="f">Dépôt de garantie (€)<input id="t-depot" inputmode="decimal" value="${fmtNum(t.depot)}"></label>
     <label class="f">Note<input id="t-note" value="${esc(t.note)}"></label>
     <div class="btns"><button class="btn" data-act="l-save" data-id="${id||""}" style="flex:1">Enregistrer</button>${id ? `<button class="btn danger" data-act="l-del" data-id="${id}">Supprimer</button>` : ""}<button class="btn ghost" data-act="sheetclose">Fermer</button></div>`);
 }
 function sheetRelance(id){
   const j = S.journal.find(x => x.id === id), t = tenantFor(j.bien, j.date);
-  const msg = `Bonjour${t ? " " + t.nom : ""}, sauf erreur de ma part, le loyer de ${MOIS[mo(j)].toLowerCase()} ${yr(j)} (${eur(j.montant)}) pour ${bienName(j.bien)} n'est pas encore arrivé. Pourriez-vous vérifier de votre côté ? Merci d'avance, Damien.`;
-  openSheet(`<h2>Relancer · ${esc(bienName(j.bien))}</h2><div class="small muted">${t ? esc(t.nom) + (t.tel ? " · " + esc(t.tel) : " · pas de téléphone enregistré") : "Aucun locataire enregistré pour ce bien (onglet Biens › Locataires)."}</div>
+  const msg = `Bonjour${t ? " " + t.nom : ""}, sauf erreur de ma part, le loyer de ${MOIS[mo(j)].toLowerCase()} ${yr(j)} (${eur(j.montant)}) pour ${bienName(j.bien)} n'est pas encore arrivé. Pourriez-vous vérifier de votre côté ? Merci d'avance${S.cfg && S.cfg.bailleur ? ", " + S.cfg.bailleur : ""}.`;
+  openSheet(`<h2>Relancer · ${esc(bienName(j.bien))}</h2><div class="small muted">${t ? esc(t.nom) + (t.tel ? " · " + esc(t.tel) : " · pas de téléphone") + (t.email ? " · " + esc(t.email) : " · pas d'e-mail") : "Aucun locataire enregistré pour ce bien (onglet Biens › Locataires)."}</div>
     <label class="f">Message<textarea id="r-msg">${esc(msg)}</textarea></label>
-    <div class="btns">${t && t.tel ? `<button class="btn" data-act="r-sms" data-tel="${esc(t.tel)}">Envoyer par SMS</button>` : ""}<button class="btn ghost" data-act="r-copy">Copier</button><button class="btn ghost" data-act="sheetclose">Fermer</button></div>`);
+    <div class="btns">${t && t.tel ? `<button class="btn" data-act="r-sms" data-tel="${esc(t.tel)}">Envoyer par SMS</button>` : ""}${t && t.email ? `<button class="btn" data-act="r-mail" data-mail="${esc(t.email)}" data-sub="${esc("Loyer de " + MOIS[mo(j)].toLowerCase() + " " + yr(j) + " - " + bienName(j.bien))}">Envoyer par e-mail</button>` : ""}<button class="btn ghost" data-act="r-copy">Copier</button><button class="btn ghost" data-act="sheetclose">Fermer</button></div>`);
 }
 
 /* ---------- Bilan ---------- */
@@ -777,6 +878,7 @@ function viewBilan(){
   return topbar("Bilan", yearNav()) + `
   <div class="card hero"><div class="lbl">Cash flow ${y} (2 biens)</div><div class="big num">${eur(st.cf)}</div>
     <div class="sub">Loyers ${eur(st.rec)} − charges ${eur(st.dep)}. Encaissé à ce jour : ${eur(st.benef)}.</div></div>
+  <div class="btns"><button class="btn ghost sm" data-act="export-open">Exporter un mois (Excel / PDF)</button></div>
   <div class="card"><h2>Par bien</h2>${ids.map(id => { const s = stats(id, y); return `<div class="env" style="padding:6px 0"><div class="top"><b>${esc(bienName(id))}</b><span class="num ${signCl(s.cf)}">${eur(s.cf)}</span></div>
     <div class="small muted">Loyers ${eur(s.rec)} · charges ${eur(s.dep)} · solde fin d'année ${eur(soldeBien(id, y))}</div></div>`; }).join("")}
     ${kv("Argent mis en épargne cette année (net)", eur(st.ep), "muted")}</div>
@@ -789,7 +891,7 @@ function viewBilan(){
 /* ---------- Réglages ---------- */
 function secCard(){
   if (!secAvailable()) return `<div class="card"><h2>Sécurité</h2><div class="small muted">Le verrouillage est disponible dans l'appli installée sur l'iPhone (adresse web https), pas dans cet aperçu.</div></div>`;
-  if (!SEC.on) return `<div class="card"><h2>Sécurité</h2><div class="small muted">Protégez l'appli par un code. Vos données (dont les locataires) sont alors chiffrées sur le téléphone.</div>
+  if (!SEC.on) return `<div class="card"><h2>Sécurité</h2><div class="small muted">Protège l'appli par un code. Tes données (dont les locataires) sont alors chiffrées sur le téléphone.</div>
     <div class="btns"><button class="btn" data-act="sec-on">Activer le verrouillage</button></div></div>`;
   return `<div class="card"><h2>Sécurité</h2><div class="kv"><span>Verrouillage</span><span class="chip">Activé · données chiffrées</span></div>
     <label class="f">Verrouiller après être sorti de l'appli depuis<select id="sec-delay">${[[0,"Tout de suite"],[30,"30 secondes"],[120,"2 minutes"],[300,"5 minutes"]].map(([v,l]) => `<option value="${v}" ${SEC.cfg.delay === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
@@ -801,7 +903,7 @@ function sheetPin(mode){
   const f = (id, lab) => `<label class="f">${lab}<input id="${id}" type="password" inputmode="numeric" autocomplete="off" maxlength="6" pattern="[0-9]*"></label>`;
   const t = {set:"Choisir un code", change:"Changer le code", off:"Désactiver le verrouillage"}[mode];
   openSheet(`<h2>${t}</h2>${mode !== "set" ? f("pin-old", "Code actuel") : ""}${mode !== "off" ? f("pin-new", "Nouveau code (4 à 6 chiffres)") + f("pin-new2", "Confirmer le code") : ""}
-    ${mode === "set" ? `<div class="small muted">Si vous oubliez le code, il faudra effacer l'appli et réimporter vos données depuis Excel. Un code de 6 chiffres protège mieux qu'un code de 4.</div>` : ""}
+    ${mode === "set" ? `<div class="small muted">Si tu oublies le code, il faudra effacer l'appli et réimporter tes données depuis Excel. Un code de 6 chiffres protège mieux qu'un code de 4.</div>` : ""}
     ${mode === "off" ? `<div class="small muted">Les données seront de nouveau stockées sans chiffrement sur ce téléphone.</div>` : ""}
     <div class="btns"><button class="btn" data-act="pin-${mode}" style="flex:1">Valider</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
 }
@@ -811,27 +913,31 @@ function viewSet(){
     <div class="small">${p.kind === "json" ? "Sauvegarde complète de l'appli." : `${p.d.biens ? p.d.biens.length + " bien(s), " : ""}${p.d.tarifs ? p.d.tarifs.length + " tarif(s), " : ""}${p.d.journal.length} opération(s), ${p.d.factures.length} facture(s), ${p.d.locataires.length} locataire(s).`}</div>
     <div class="btns"><button class="btn" data-act="imp-merge">${p.kind === "json" ? "Restaurer" : "Fusionner (recommandé)"}</button>
     ${p.kind === "json" ? "" : `<button class="btn ghost" data-act="imp-replace">Remplacer mes données</button>`}<button class="btn ghost" data-act="imp-cancel">Annuler</button></div></div>` : "";
-  return `<div class="top"><div class="app">Réglages</div></div>${V.msg ? `<div class="info">${esc(V.msg)}</div>` : ""}${pend}
+  return `<div class="top"><div class="app">Réglages</div><button class="q" data-act="help" aria-label="Aide">?</button></div>${V.msg ? `<div class="info">${esc(V.msg)}</div>` : ""}${pend}
   <div class="card"><h2>Synchroniser avec Excel</h2>
-    <div class="small muted"><b>Excel → appli</b> : dans Excel, bouton « Exporter vers l'appli », puis importez ici <b>export_appli.xlsx</b>. Les lignes déjà connues sont mises à jour, les nouvelles ajoutées, celles supprimées dans Excel retirées.<br><b>Appli → Excel</b> : exportez le journal, enregistrez-le dans Fichiers › dossier IMPORT, puis bouton « Importer depuis l'appli » dans Excel.</div>
+    <div class="small muted"><b>Excel → appli</b> : dans Excel, bouton « Exporter vers l'appli », puis importe ici <b>export_appli.xlsx</b>. Les lignes déjà connues sont mises à jour, les nouvelles ajoutées, celles supprimées dans Excel retirées.<br><b>Appli → Excel</b> : exporte le journal, enregistre-le dans Fichiers › dossier IMPORT, puis bouton « Importer depuis l'appli » dans Excel.</div>
     <label class="f">Importer un fichier (export_appli.xlsx ou sauvegarde .json)<input id="file" type="file" accept=".xlsx,.xlsm,.json,.xls"></label>
     <div class="btns"><button class="btn" data-act="exp-journal">Exporter le journal (.xlsx)</button><button class="btn ghost" data-act="exp-json">Sauvegarde complète (.json)</button></div>
     <div class="small muted">La sauvegarde .json n'est pas chiffrée : à garder hors de tout dossier partagé.</div></div>
-  ${secCard()}
+  ${biensCard()}${bourseCardSet()}${secCard()}${themeCard()}${confortCard()}${modelesCard()}${archCard()}${aideCard()}${histCard()}
   <div class="card"><h2>Données</h2><div class="small muted">${live(S.biens).length} bien(s) · ${live(S.journal).length} opération(s) · ${live(S.factures).length} facture(s) · ${live(S.locataires).length} locataire(s)</div>
     ${V.wipe ? `<div class="small">Cette action efface tout ce qui est stocké sur cet appareil.</div><div class="btns"><button class="btn danger" data-act="wipe-yes">Oui, tout effacer</button><button class="btn ghost" data-act="wipe-no">Annuler</button></div>`
-             : `<div class="btns"><button class="btn ghost" data-act="wipe">Tout effacer</button></div>`}</div>`;
+             : `<div class="btns"><button class="btn ghost" data-act="wipe">Tout effacer</button></div>`}</div>
+  <div class="ver">Mes locations · version ${APP_VERSION}</div>`;
 }
 
 function render(){
   if (!S) return;
+  if (V.tab === "welcome" && live(S.biens).length && !(V.wz && V.wz.active)) V.tab = "home";
+  document.body.classList.toggle("welcome", V.tab === "welcome");
   renderTabs();
   const main = $("#main");
-  main.innerHTML = V.tab === "home" ? viewHome() : V.tab === "rent" ? viewRent() : V.tab === "add" ? viewAdd() : V.tab === "month" ? viewMonth() : V.tab === "bld" ? viewBiens() : V.tab === "chart" ? viewBilan() : viewSet();
+  const sig = V.tab + "|" + V.bsub, y0 = window.scrollY, same = sig === V.lastSig; V.lastSig = sig;
+  main.innerHTML = V.tab === "welcome" ? viewWelcome() : V.tab === "home" ? viewHome() : V.tab === "cmp" ? viewCompta() : V.tab === "add" ? viewAdd() : V.tab === "month" ? viewMonth() : V.tab === "bld" ? viewBiens() : V.tab === "chart" ? viewBilan() : viewSet();
   if (V.tab === "add") updateInfo();
-  window.scrollTo(0,0);
+  window.scrollTo(0, same ? y0 : 0);
 }
-function openSheet(html){ $("#sheet").innerHTML = html; $("#sheetbg").hidden = false; }
+function openSheet(html){ $("#sheet").innerHTML = '<div class="grab"></div>' + html; $("#sheetbg").hidden = false; }
 function closeSheet(){ $("#sheetbg").hidden = true; $("#sheet").innerHTML = ""; }
 
 /* ============ Import ============ */
@@ -842,7 +948,7 @@ async function onFile(file){
       V.pending = {kind:"json", name:file.name, data:obj, d:{journal:obj.journal, factures:[], locataires:[]}};
     } else {
       const wb = XLSX.read(await file.arrayBuffer(), {type:"array", sheets:["Biens_appli","Tarifs_appli","Journal_appli","Factures_appli","Locataires_appli","Reglages_appli","FraisPartages_appli"]});
-      const d = parseEchange(wb); if (!d) throw new Error("feuilles « …_appli » introuvables (utilisez le bouton d'export de la macro Excel).");
+      const d = parseEchange(wb); if (!d) throw new Error("feuilles « …_appli » introuvables (utilise le bouton d'export de la macro Excel).");
       V.pending = {kind:"echange", name:file.name, d};
     }
     V.msg = ""; render();
@@ -855,7 +961,9 @@ function commitImport(replace){
     const d = p.d, fromExcel = !!d.biens;
     if (replace || S.demo){ const base = emptyData(); S = base; }
     S.demo = false;
-    if (d.biens) S.biens = d.biens;
+    if (d.biens){ const old = new Map(S.biens.map(b => [b.id, b])), ids = new Set(d.biens.map(b => b.id));
+      S.biens = d.biens.map(b => { const o = old.get(b.id); if (o && !b.adresse && o.adresse) b.adresse = o.adresse; if (o && o.emprunt && !b.emprunt) b.emprunt = o.emprunt; if (o && o.app) b.app = true; return b; }).concat(S.biens.filter(b => b.app && !ids.has(b.id))); }
+    if (d.reglages){ S.cfg = S.cfg || {bailleur:"", adr:{}}; if (d.reglages.bailleur) S.cfg.bailleur = d.reglages.bailleur; if (d.reglages.bailleuradresse) S.cfg.bailleurAdr = d.reglages.bailleuradresse; }
     if (d.tarifs){ const k = t => [t.bien, t.poste, t.date].join("|"), have = new Set(d.tarifs.map(k)); S.tarifs = d.tarifs.concat(S.tarifs.filter(t => t.app && !have.has(k(t)))); }
     if (d.partages) S.partages = d.partages;
     const a = mergeJournal(S.journal, d.journal), b = mergeList(S.factures, d.factures), c = mergeList(S.locataires, d.locataires);
@@ -879,17 +987,17 @@ document.addEventListener("click", ev => {
   const a = b.dataset.act, id = b.dataset.id, v = b.dataset.v;
   switch (a){
     case "tab": collectDraft(); if (v === "add" && V.tab !== "add"){ V.editId = null; V.draft = null; V.back = null; } V.tab = v; render(); break;
-    case "go": V.tab = v; if (b.dataset.f){ V.mf = b.dataset.f; V.bf = "all"; } render(); break;
+    case "go": V.tab = v; if (b.dataset.sub){ V.bsub = b.dataset.sub; if (b.dataset.bien) V.bsel = b.dataset.bien; } if (b.dataset.f){ V.mf = b.dataset.f; V.bf = "all"; } render(); break;
     case "yprev": setY(-1); break; case "ynext": setY(1); break;
     case "mprev": setMonth(-1); break; case "mnext": setMonth(1); break;
     case "bf": V.bf = v; render(); break; case "mf": V.mf = v; render(); break;
     case "bsub": V.bsub = v; render(); break; case "bsel": V.bsel = v; render(); break;
-    case "jtoggle": { const j = getJ(id); j.pointe = j.pointe === "x" ? "" : "x"; j.upd = Date.now(); persist(); render(); break; }
-    case "jedit": V.back = V.tab; V.editId = id; V.draft = null; V.tab = "add"; render(); break;
+    case "jtoggle": { const j = getJ(id); j.pointe = j.pointe === "x" ? "" : "x"; j.upd = Date.now(); onPointe(j); persist(); render(); { const sr = $("#sres"); if (sr) sr.innerHTML = searchRes(V.sq || ""); } break; }
+    case "jedit": closeSheet(); V.back = V.tab; V.editId = id; V.draft = null; V.tab = "add"; render(); break;
     case "jdel": { const j = getJ(V.editId); j.del = true; j.upd = Date.now(); V.editId = null; V.draft = null; persist(); toast("Opération supprimée"); V.tab = V.back || "month"; V.back = null; render(); break; }
-    case "rent-add": { const m = +b.dataset.m, bien = b.dataset.bien; V.back = "rent"; V.editId = null; V.draft = newDraft({bien, date: V.y + "-" + pad(m + 1) + "-01", cat:"Loyer", pt:false}); V.tab = "add"; render(); autoSuggest(true); break; }
+    case "rent-add": { const m = +b.dataset.m, bien = b.dataset.bien; V.back = "bld"; V.bsub = "loyers"; V.bsel = bien; V.editId = null; V.draft = newDraft({bien, date: V.y + "-" + pad(m + 1) + "-01", cat:"Loyer", pt:false}); V.tab = "add"; render(); autoSuggest(true); break; }
     case "pointall": { const L = monthList().filter(j => j.pointe !== "x" && j.date <= todayIso()); openSheet(`<h2>Tout pointer ?</h2><div class="small muted">${L.length} opération(s) seront marquées comme passées sur le compte.</div><div class="btns"><button class="btn" data-act="pointall-ok" style="flex:1">Pointer ${L.length} ligne(s)</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`); break; }
-    case "pointall-ok": { const t = Date.now(); monthList().filter(j => j.pointe !== "x" && j.date <= todayIso()).forEach(j => { j.pointe = "x"; j.upd = t; }); persist(); closeSheet(); toast("Pointé"); render(); break; }
+    case "pointall-ok": { const t = Date.now(); monthList().filter(j => j.pointe !== "x" && j.date <= todayIso()).forEach(j => { j.pointe = "x"; j.upd = t; onPointe(j); }); persist(); closeSheet(); toast("Pointé"); render(); break; }
     case "dtype": collectDraft(); V.draft.type = v; V.draft.cat = v === "Recette" ? "Loyer" : ""; V.draft.montAuto = true; if (v !== "Dépense"){ V.draft.compta = false; V.draft.justif = false; V.draft.compte = "Bien"; } render(); autoSuggest(true); break;
     case "dbien": collectDraft(); V.draft.bien = v; render(); autoSuggest(false); break;
     case "dcompte": collectDraft(); V.draft.compte = v; render(); break;
@@ -898,14 +1006,16 @@ document.addEventListener("click", ev => {
     case "clear": V.draft = null; render(); break;
     case "relance": sheetRelance(id); break;
     case "r-copy": { const t = $("#r-msg").value; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast("Message copié")).catch(() => { $("#r-msg").select(); toast("Sélectionné : copiez-le"); }); break; }
+    case "r-mail": { location.href = "mailto:" + b.dataset.mail + "?subject=" + encodeURIComponent(b.dataset.sub) + "&body=" + encodeURIComponent($("#r-msg").value); break; }
     case "r-sms": { const t = encodeURIComponent($("#r-msg").value), sep = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? "&" : "?"; location.href = "sms:" + b.dataset.tel + sep + "body=" + t; break; }
     case "bourse": V.bs = null; sheetBourse(v || ""); break;
     case "bs-bien": { const f = V.bs; f.mont = $("#b-mont").value; f.date = $("#b-date").value; f.confirm = false; sheetBourse(v); break; }
+    case "bs-cat": { const f = V.bs; f.mont = $("#b-mont").value; f.date = $("#b-date").value; f.confirm = false; f.cat = v; sheetBourse(f.bien); break; }
     case "b-save": { const f = V.bs; f.mont = $("#b-mont").value; f.date = $("#b-date").value; const mt = parseNum(f.mont);
-      if (!mt || mt <= 0) return toast("Saisissez un montant"); if (!f.date) return toast("Choisissez une date");
-      const reste = bourseOf(f.bien).reste;
+      if (!mt || mt <= 0) return toast("Saisis un montant"); if (!f.date) return toast("Choisis une date");
+      const reste = bourseOf(f.bien, f.cat).reste;
       if (mt > reste + 0.005 && !f.confirm){ f.confirm = true; sheetBourse(f.bien); return; }
-      S.journal.push({id:uid(), date:f.date, bien:f.bien, type:"Entrée", cat:"Bourse", lib:"Remboursement bourse", montant:r2(mt), compte:"Bien", pointe:"x", compta:"", justif:"", fourn:"", note:"", upd:Date.now()});
+      S.journal.push({id:uid(), date:f.date, bien:f.bien, type:"Entrée", cat:f.cat || "Bourse", lib:"Remboursement " + (!f.cat || f.cat === "Bourse" ? "bourse" : f.cat), montant:r2(mt), compte:"Bien", pointe:"x", compta:"", justif:"", fourn:"", note:"", upd:Date.now()});
       V.bs = null; persist(); closeSheet(); toast("Remboursement de " + eur(mt) + " enregistré"); render(); break; }
     case "tarif-new": sheetTarif(); break;
     case "tf-save": { const mt = parseNum($("#tf-mont").value), d = $("#tf-date").value; if (!mt || mt <= 0 || !d) return toast("Date et montant obligatoires");
@@ -913,7 +1023,7 @@ document.addEventListener("click", ev => {
     case "partage": sheetPartage(v); break;
     case "pt-tog": V.pt.pt = !V.pt.pt; b.classList.toggle("on", V.pt.pt); break;
     case "pt-save": { const t = parseNum($("#pt-total").value), pc = (parseNum($("#pt-part").value) ?? 50) / 100, d = $("#pt-date").value;
-      if (!t || t <= 0) return toast("Saisissez le total"); if (!d) return toast("Choisissez une date"); if (pc < 0 || pc > 1) return toast("La part doit être entre 0 et 100 %");
+      if (!t || t <= 0) return toast("Saisis le total"); if (!d) return toast("Choisis une date"); if (pc < 0 || pc > 1) return toast("La part doit être entre 0 et 100 %");
       const [x, y2] = splitPartage(t, pc), cat = PARTAGE_CAT[V.pt.frais] || V.pt.frais, now = Date.now(), cpt = $("#pt-compte").value;
       [[V.pt.s1, x], [V.pt.s2, y2]].forEach(([bien, m]) => S.journal.push({id:uid(), date:d, bien, type:"Dépense", cat, lib:V.pt.frais, montant:m, compte:cpt, pointe:V.pt.pt ? "x" : "", compta:"", justif:"", fourn:"", note:"Frais partagés : total " + eur(t).replace(/[\u202f\u00a0]/g, " ") + ", part " + bienName(V.pt.s1) + " " + Math.round(pc*1000)/10 + " %", upd:now}));
       persist(); closeSheet(); toast("2 lignes créées : " + eur(x) + " + " + eur(y2)); render(); break; }
@@ -923,21 +1033,21 @@ document.addEventListener("click", ev => {
     case "fnew": sheetFacture(""); break; case "fedit": sheetFacture(id); break;
     case "ftog": { const f = S.factures.find(x => x.id === id), k = b.dataset.k; f[k] = f[k] === "x" ? "" : "x"; f.upd = Date.now(); persist(); render(); break; }
     case "xtog": { V.sf[b.dataset.k] = V.sf[b.dataset.k] === "x" ? "" : "x"; b.classList.toggle("on"); break; }
-    case "f-save": { const fourn = $("#x-fourn").value.trim(); if (!fourn) return toast("Donnez le fournisseur");
+    case "f-save": { const fourn = $("#x-fourn").value.trim(); if (!fourn) return toast("Donne le fournisseur");
       const o = {fourn, num:$("#x-num").value.trim(), date:$("#x-date").value, cat:$("#x-cat").value.trim(), desc:$("#x-desc").value.trim(), prix:parseNum($("#x-prix").value) || 0, jdmm:V.sf.jdmm, scan:V.sf.scan, upd:Date.now()};
       if (id) Object.assign(S.factures.find(x => x.id === id), o); else S.factures.push(Object.assign({id:uid()}, o)); persist(); closeSheet(); render(); break; }
     case "f-del": { const f = S.factures.find(x => x.id === id); f.del = true; f.upd = Date.now(); persist(); closeSheet(); render(); break; }
     case "lnew": sheetLoc(""); break; case "ledit": sheetLoc(id); break;
-    case "l-save": { const nom = $("#t-nom").value.trim(); if (!nom) return toast("Donnez le nom");
-      const o = {bien:$("#t-bien").value, nom, tel:$("#t-tel").value.trim(), email:$("#t-mail").value.trim(), debut:$("#t-debut").value, fin:$("#t-fin").value, loyer:parseNum($("#t-loyer").value) || 0, depot:parseNum($("#t-depot").value) || 0, note:$("#t-note").value.trim(), upd:Date.now()};
+    case "l-save": { const nom = $("#t-nom").value.trim(); if (!nom) return toast("Donne le nom");
+      const o = {bien:$("#t-bien").value, nom, tel:$("#t-tel").value.trim(), email:$("#t-mail").value.trim(), debut:$("#t-debut").value, fin:$("#t-fin").value, loyer:parseNum($("#t-loyer").value) || 0, charges:parseNum($("#t-chg").value) || 0, depot:parseNum($("#t-depot").value) || 0, note:$("#t-note").value.trim(), upd:Date.now()};
       if (id) Object.assign(S.locataires.find(x => x.id === id), o); else S.locataires.push(Object.assign({id:uid()}, o)); persist(); closeSheet(); render(); break; }
     case "l-del": { const t = S.locataires.find(x => x.id === id); t.del = true; t.upd = Date.now(); persist(); closeSheet(); render(); break; }
     case "sheetclose": closeSheet(); break;
     case "lk-d": if (SEC.pin.length < 6){ SEC.pin += id; lockDots(); if (SEC.pin.length === 6) lockSubmit(); } break;
     case "lk-del": SEC.pin = SEC.pin.slice(0,-1); lockDots(); break;
     case "lk-ok": lockSubmit(); break;
-    case "lk-face": unlockFace().then(ok => ok ? hideLock() : showLock("Face ID non reconnu, utilisez le code", true)); break;
-    case "lk-forgot": $("#lockmsg").textContent = "Effacer les données de ce téléphone ? Vous pourrez réimporter depuis Excel."; $("#lockmsg").className = "bad";
+    case "lk-face": unlockFace().then(ok => ok ? hideLock() : showLock("Face ID non reconnu, utilise le code", true)); break;
+    case "lk-forgot": $("#lockmsg").textContent = "Effacer les données de ce téléphone ? Tu pourras réimporter depuis Excel."; $("#lockmsg").className = "bad";
       $("#lockextra").innerHTML = `<button class="btn danger sm" data-act="lk-wipe">Oui, effacer</button><button class="btn ghost sm" data-act="lk-no">Annuler</button>`; break;
     case "lk-no": showLock(); break;
     case "lk-wipe": lsDel(ENC); lsDel(KEY); lsDel(SECK); idbDel("dk"); SEC.on = false; SEC.dk = null; SEC.cfg = {face:false, cred:"", delay:30, fails:0, until:0}; S = null; memCopy = null; $("#lock").hidden = true; startApp(); break;
@@ -973,14 +1083,818 @@ document.addEventListener("change", ev => {
   if (V.tab === "add" && /^f-(cat|date)$/.test(t.id)){ collectDraft(); autoSuggest(false); updateInfo(); }
 });
 
+
+/* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
+/* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
+const APP_VERSION = "2.2.0";
+const CHANGELOG = [
+  {v:"2.2.0", date:"2026-10-24", titre:"Biens regroupés et page Compta", items:[
+    "Les loyers et les dépenses sont maintenant dans Biens, bien par bien.",
+    "Dans Biens, le locataire actuel du bien choisi s'affiche en haut.",
+    "Nouvelle page Compta : charges par poste, emprunt et intérêts, exports Excel et PDF pour jedeclaremonmeuble.com.",
+    "Réglages : tu peux afficher ou masquer la partie « bourse » (argent mis de côté).",
+    "Livret A, PEL ou autre placement : choisis-le dans Ajouter (Épargne ou Entrée). L'argent placé reste compté dans le bien, les intérêts sont notés à part.",
+    "Chaque bien a un matelas (12 mois de loyer) et une jauge : l'argent utilisable est ce qui dépasse le matelas, charges des 3 prochains mois déduites."]},
+  {v:"2.1.0", date:"2026-10-24", titre:"Premier lancement guidé, biens et locataires partout", items:[
+    "Au premier lancement : une page d'explication, puis la création du bailleur, du bien (nom, adresse, solde de départ, loyer, crédit, régime) et du locataire.",
+    "Biens et bailleur modifiables dans Biens › Vue et dans Réglages. On peut ajouter un autre bien à tout moment.",
+    "Les locataires (téléphone, e-mail, bail, loyer, charges, dépôt) et l'adresse des biens sont repris dans le bilan Excel, le bilan PDF et les quittances.",
+    "La quittance se remplit toute seule : bailleur, locataire, adresse du logement, loyer et charges.",
+    "Échange Excel : colonnes Adresse et Charges, bailleur dans Reglages_appli, feuille Biens_appli au retour. Le prompt à donner à Claude dans Excel a été mis à jour."]},
+  {v:"2.0.0", date:"2026-10-24", titre:"Nouveau look et plus de confort", items:[
+    "Nouveau design arrondi, avec des effets verre et relief très discrets.",
+    "5 palettes de couleurs, et le mode sombre : automatique, clair, sombre ou à horaires (Réglages › Apparence).",
+    "Un bouton ? sur chaque écran explique la page. « Tout le guide » est dans Réglages.",
+    "Le montant se saisit au pavé numérique, en gros.",
+    "Recherche dans tout le journal, bouton Dupliquer et modèles d'ajout rapide.",
+    "Rappel une fois par jour des lignes à pointer, et choix de l'écran de démarrage.",
+    "Les lignes prévues sont archivées 30 jours après avoir été pointées (rien ne se perd, et ça ne change aucun solde).",
+    "Clôture de fin de mois guidée : solde réel du relevé, puis ce que tu peux mettre de côté.",
+    "Export du bilan d'un mois en Excel ou en PDF, et quittance de loyer en PDF."]},
+  {v:"1.1.1", date:"2026-10-18", titre:"Import plus fiable", items:[
+    "Le tableau Bourse du classeur n'est plus lu comme un bien.",
+    "Les frais partagés du classeur sont bien lus à l'import."]},
+  {v:"1.1.0", date:"2026-10-18", titre:"Bourse, tarifs, frais partagés, rapprochement", items:[
+    "Bandeau Bourse sur l'accueil et remboursement en un geste.",
+    "Tarifs qui changent en cours d'année : on ajoute une ligne, l'historique reste intact.",
+    "Frais partagés entre Studio et T2 : une saisie, deux lignes.",
+    "Rapprochement avec le relevé de banque et ajustement daté."]},
+  {v:"1.0.0", date:"2026-10-17", titre:"Première version", items:[
+    "Loyers, pointage, charges, travaux, locataires et bilan.",
+    "Échange avec le classeur Excel par fichiers, verrouillage par code et Face ID."]}
+];
+
+/* ---------- Petits utilitaires ---------- */
+const pref = (k, d) => { const v = lsGet(k); return v == null ? d : v; };
+const stripAcc = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const CAT_COL = ["#0E8F7E","#C2528B","#D98A1F","#4F7BD9","#8E5BD1","#C2503B","#5E9B3A","#2F8FB5","#B07A3C","#6C7A89"];
+const catColor = n => { let h = 0; for (const c of String(n || "Autre")) h = (h * 31 + c.charCodeAt(0)) >>> 0; return CAT_COL[h % CAT_COL.length]; };
+const lastDay = (y, m) => y + "-" + pad(m + 1) + "-" + pad(new Date(y, m + 1, 0).getDate());
+const soldeAt = (id, iso) => { const b = S.biens.find(x => x.id === id); return r2(N(b && b.solde0) + sum(J().filter(j => j.bien === id && j.date <= iso).map(impact))); };
+const nbsp = s => String(s).replace(/[  ]/g, " ");
+
+/* ---------- Thèmes ---------- */
+const PAL_NAMES = {emeraude:"Émeraude", ocean:"Océan", violet:"Violet", soleil:"Coucher de soleil", rose:"Rose"};
+const schedGet = () => { try { return Object.assign({from:"20:00", to:"07:00"}, JSON.parse(lsGet("loc-sched") || "{}")); } catch(e){ return {from:"20:00", to:"07:00"}; } };
+function themeCard(){
+  const cur = pref("loc-pal", "emeraude"), mode = pref("loc-theme", "auto"), sc = schedGet();
+  return `<div class="card"><h2>Apparence</h2>
+    <div class="small muted">Couleur de l'appli</div>
+    <div class="pals">${Object.keys(PAL_NAMES).map(k => `<button class="pal ${cur === k ? "on" : ""}" data-act="pal" data-v="${k}"><i style="background:${LOC_PALS[k][0]}"></i>${PAL_NAMES[k]}</button>`).join("")}</div>
+    <div class="small muted">Mode clair ou sombre</div>
+    <div class="seg">${[["auto","Automatique"],["light","Clair"],["dark","Sombre"],["sched","Horaires"]].map(([k, l]) => `<button class="${mode === k ? "on" : ""}" data-act="tmode" data-v="${k}">${l}</button>`).join("")}</div>
+    ${mode === "sched" ? `<div class="tl"><label class="f">Sombre à partir de<input type="time" id="sc-from" value="${sc.from}"></label><label class="f">Clair à partir de<input type="time" id="sc-to" value="${sc.to}"></label></div>
+      <div class="small muted">L'heure est vérifiée chaque minute et quand tu reviens dans l'appli.</div>` : mode === "auto" ? `<div class="small muted">Suit le réglage de ton iPhone.</div>` : ""}</div>`;
+}
+function confortCard(){
+  const st = pref("loc-start", "home"), rm = pref("loc-remind", "1");
+  return `<div class="card"><h2>Confort</h2>
+    <div class="small muted">Écran au démarrage (aussi après le code)</div>
+    <div class="seg"><button class="${st === "home" ? "on" : ""}" data-act="set-start" data-v="home">Accueil</button><button class="${st === "add" ? "on" : ""}" data-act="set-start" data-v="add">Ajouter</button></div>
+    <div class="small muted">Rappel des lignes à pointer (une fois par jour)</div>
+    <div class="seg"><button class="${rm === "1" ? "on" : ""}" data-act="set-remind" data-v="1">Activé</button><button class="${rm === "0" ? "on" : ""}" data-act="set-remind" data-v="0">Désactivé</button></div></div>`;
+}
+setInterval(() => applyTheme(), 60000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) applyTheme(); });
+try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => applyTheme()); } catch(e){}
+
+/* ---------- Mode d'emploi (aide par écran) ---------- */
+const HELP = {
+  welcome:{t:"Premier lancement", p:"Quelques minutes pour installer tes biens.", l:[
+    "Le bailleur (toi) apparaît sur les quittances et les bilans.",
+    "Pour chaque bien : le nom, l'adresse, le solde du compte à une date de départ, le loyer, la mensualité de crédit et le régime fiscal.",
+    "Le locataire est facultatif : tu peux l'ajouter plus tard dans Biens › Locataires.",
+    "Si tu as déjà le classeur Excel, importe plutôt export_appli.xlsx : tout est repris tel quel."]},
+  home:{t:"Accueil", p:"Le résumé de tes deux biens en un coup d'œil.", l:[
+    "Le gros chiffre est le solde de tes comptes appartements. En dessous : un solde par bien.",
+    "Le bandeau violet Bourse montre l'argent placé, pas dépensé, qu'il reste à récupérer. Le bouton enregistre un remboursement.",
+    "Les trois tuiles (retard, à pointer, à saisir en compta) sont cliquables.",
+    "Le bénéfice réalisé ne compte que ce qui est vraiment passé sur le compte (pointé)."]},
+  cmp:{t:"Compta", p:"Ce qu'il faut pour remplir ta compta en ligne.", l:[
+    "Choisis l'année et le bien (ou « Tous »). Le résultat = loyers − charges − intérêts d'emprunt − assurance emprunteur.",
+    "Les charges sont rangées par poste, comme sur le site. Le regroupement est indicatif : on l'ajustera.",
+    "Emprunt : renseigne capital, taux, durée et date de la 1re échéance. L'appli calcule les intérêts de chaque année.",
+    "« À saisir en compta » ouvre les dépenses payées pas encore saisies sur le site.",
+    "Excel ou PDF : un fichier prêt à garder ou à consulter pendant que tu remplis le site."]},
+  add:{t:"Ajouter une opération", p:"Une opération = une ligne du journal (comme dans Excel).", l:[
+    "Choisis le type (Recette, Dépense, Épargne, Entrée), le bien et la date. « Les 2 (50/50) » coupe le montant entre les deux biens.",
+    "Le montant se tape au pavé. Il est proposé automatiquement d'après le tarif en vigueur (tu peux le changer).",
+    "« Pointé » = l'argent est vraiment passé sur le compte. Sans pointage, la ligne reste prévue et ne bouge pas le solde.",
+    "Un loyer déjà prévu pour le mois est mis à jour, pas ajouté en double.",
+    "Les modèles remplissent le formulaire en un appui. Ils se créent avec « Enregistrer comme modèle ».",
+    "En modification, « Dupliquer » crée une copie que tu ajustes ensuite."]},
+  month:{t:"Pointage", p:"Le mois, ligne par ligne.", l:[
+    "Touche le rond d'une ligne pour la pointer quand tu la vois passer sur le relevé de banque.",
+    "« À pointer » regroupe tout ce qui est passé mais pas encore vérifié. « À saisir en compta » : dépenses payées, pas encore saisies sur jedeclaremonmeuble.",
+    "Rechercher : un mot, un montant, une date ou un mois, dans tout le journal.",
+    "Exporter : le bilan du mois en Excel ou en PDF.",
+    "Clôturer le mois : tu saisis le solde réel du relevé, l'appli crée l'ajustement si besoin et te propose ce que tu peux mettre de côté.",
+    "Les lignes prévues sont archivées 30 jours après pointage (elles restent comptées partout). Le lien « archivées » les montre."]},
+  "bld-loyers":{t:"Biens › Loyers", p:"Les loyers du bien choisi, mois par mois.", l:[
+    "Le locataire actuel est affiché en haut.",
+    "Touche le rond pour marquer un loyer encaissé. Touche la ligne pour le modifier. « Ajouter » crée un mois manquant.",
+    "« À relancer » liste les loyers en retard ; « Relancer » prépare un SMS poli.",
+    "Sur un loyer encaissé, « Quittance » fabrique le PDF."]},
+  "bld-dep":{t:"Biens › Dépenses", p:"Les dépenses du bien choisi.", l:[
+    "Total par catégorie, prochaines dépenses, puis la liste complète.",
+    "Frais partagés (CFE, comptabilité, CGA/OGA, Rendement locatif) : tu saisis le total une fois, l'appli crée une ligne par bien."]},
+  "bld-vue":{t:"Biens › Vue", p:"La fiche d'un bien pour l'année choisie.", l:[
+    "La jauge montre le matelas (12 mois de loyer, on n'y touche pas), ce qui est réservé pour les 3 prochains mois et ce qui est utilisable.",
+    "Livrets et placements : l'argent placé compte dans le total du bien ; « Ajouter des intérêts » note ce que le placement rapporte.",
+    "« Modifier le bien » change le nom, l'adresse, le loyer ou le crédit. « Ajouter un bien » en crée un autre.",
+    "Solde au 1er janvier, loyers, charges, cash flow et solde au 31/12.",
+    "Le bloc Bourse donne le mis en bourse, le remboursé et le reste.",
+    "Les charges sont rangées par catégorie, avec le reste à payer."]},
+  "bld-travaux":{t:"Biens › Travaux", p:"Les factures de travaux et d'équipement.", l:[
+    "Touche une facture pour la modifier. « Scanné » et « Compta » se cochent d'un appui.",
+    "La recherche filtre par fournisseur, description ou numéro."]},
+  "bld-loc":{t:"Biens › Locataires", p:"Une fiche simple par locataire.", l:[
+    "Nom, téléphone, bail, loyer et dépôt de garantie. Appeler, SMS ou e-mail en un appui.",
+    "Les fiches restent sur ton téléphone (chiffrées si le code est activé) et dans le classeur Excel.",
+    "Le nom, l'adresse du bien et le loyer sont repris dans les relances, les quittances et les bilans (Excel et PDF).",
+    "« Dont charges » sert à séparer loyer et charges sur la quittance."]},
+  "bld-tarifs":{t:"Biens › Tarifs", p:"Les montants qui changent en cours d'année.", l:[
+    "Le tarif en vigueur est la ligne la plus récente dont la date est passée.",
+    "« Nouveau tarif » ajoute une ligne. L'historique ne se modifie jamais.",
+    "Les formulaires se pré-remplissent avec le tarif en vigueur."]},
+  "bld-rapp":{t:"Biens › Rapprochement", p:"Comparer l'appli avec le relevé de banque.", l:[
+    "Tape le solde réel du relevé. L'écart = réel − calculé.",
+    "Si l'écart n'est pas nul, un bouton crée une seule ligne datée (qui compte dans le solde, pas dans le bénéfice).",
+    "Rien n'est jamais corrigé en silence : une correction est toujours une nouvelle ligne."]},
+  chart:{t:"Bilan", p:"Les chiffres de l'année.", l:[
+    "Le cash flow = loyers − charges (encaissé + prévu).",
+    "« Par bien » compare le Studio et le T2. « Mois par mois » : bleu = loyers, orange = charges.",
+    "« Toutes les années » : résultats, soldes et bourse versée cumulée.",
+    "Le bouton Exporter produit le bilan d'un mois en Excel ou en PDF."]},
+  set:{t:"Réglages", p:"Échange avec Excel, sécurité et confort.", l:[
+    "Excel → appli : importe export_appli.xlsx. Appli → Excel : exporte le journal, puis lance l'import dans le classeur.",
+    "La sauvegarde .json n'est pas chiffrée : garde-la hors des dossiers partagés.",
+    "Le code et Face ID chiffrent tes données sur le téléphone. Si tu oublies le code, il faut tout effacer puis réimporter depuis Excel.",
+    "Bailleur et biens : modifiables ici. Le bailleur est repris sur les quittances et les bilans.",
+    "Apparence : 5 palettes, et le mode sombre automatique, fixe ou à horaires.",
+    "Limites : l'appli n'écrit jamais de formule dans Excel et ne touche pas aux colonnes calculées. Les exports PDF et Excel passent par la feuille de partage Apple (« Enregistrer dans Fichiers »)."]}
+};
+const helpKey = () => V.tab === "welcome" ? "welcome" : V.tab === "bld" ? "bld-" + V.bsub : V.tab;
+const helpHtml = k => { const h = HELP[k]; return h ? `<h2>${esc(h.t)}</h2><p class="muted" style="margin:0">${esc(h.p)}</p><ul style="margin:4px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:14.5px">${h.l.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""; };
+function sheetHelp(){ openSheet(helpHtml(helpKey()) + `<div class="btns"><button class="btn ghost" data-act="guide">Tout le guide</button><button class="btn" data-act="sheetclose">Compris</button></div>`); }
+function sheetGuide(){
+  openSheet(`<h2>Tout le guide</h2>${Object.keys(HELP).map(k => `<details class="h"><summary><span>${esc(HELP[k].t)}</span><span class="muted small">voir</span></summary><p class="muted">${esc(HELP[k].p)}</p><ul>${HELP[k].l.map(x => `<li>${esc(x)}</li>`).join("")}</ul></details>`).join("")}
+    <div class="btns"><button class="btn ghost" data-act="tour">Revoir le parcours guidé</button><button class="btn" data-act="sheetclose">Fermer</button></div>`);
+}
+const TOUR = [
+  ["Bienvenue", "Cette appli suit les loyers, les charges et les soldes de tes deux biens, et parle avec ton classeur Excel."],
+  ["L'accueil", "Le solde de chaque bien, la bourse à récupérer et ce qu'il reste à faire. Le bouton ? de chaque écran explique la page."],
+  ["Ajouter", "Le + du milieu ajoute une opération : type, bien, date, montant au pavé. Les modèles remplissent tout en un appui."],
+  ["Pointer", "Quand une ligne est passée sur le relevé de banque, touche son rond. C'est ce qui fait bouger le solde."],
+  ["Avec Excel", "Dans Réglages, importe export_appli.xlsx pour charger tes vrais biens. Tu vois pour l'instant des données d'exemple."]
+];
+function sheetTour(i){
+  V.tourI = i; const [t, p] = TOUR[i], last = i === TOUR.length - 1;
+  openSheet(`<div class="small muted">Étape ${i + 1} sur ${TOUR.length}</div><h2>${esc(t)}</h2><p style="margin:0;font-size:15px">${esc(p)}</p>
+    <div class="btns">${i ? `<button class="btn ghost" data-act="tour-prev">Retour</button>` : ""}<button class="btn" style="flex:1" data-act="${last ? "tour-end" : "tour-next"}">${last ? "C'est parti" : "Suivant"}</button>${last ? "" : `<button class="btn ghost" data-act="tour-end">Passer</button>`}</div>`);
+}
+function sheetNews(e){ openSheet(`<div class="small muted">Nouveautés · version ${esc(e.v)} · ${frDate(e.date)}</div><h2>${esc(e.titre)}</h2><ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:14.5px">${e.items.map(x => `<li>${esc(x)}</li>`).join("")}</ul><div class="btns"><button class="btn" style="flex:1" data-act="sheetclose">Compris</button></div>`); }
+function histCard(){
+  const all = V.histAll, L = all ? CHANGELOG : CHANGELOG.slice(0, 20);
+  return `<div class="card"><h2>Historique des mises à jour</h2><div class="rows">${L.map(e => `<div class="row" style="align-items:flex-start"><div class="main"><div class="t">${esc(e.titre)}</div><div class="s">Version ${esc(e.v)} · ${frDate(e.date)}</div>
+    <ul style="margin:4px 0 0;padding-left:16px;font-size:13px;color:var(--muted)">${e.items.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div></div>`).join("")}</div>
+    ${!all && CHANGELOG.length > 20 ? `<div class="btns"><button class="btn ghost sm" data-act="hist-all">Afficher tout</button></div>` : ""}</div>`;
+}
+const aideCard = () => `<div class="card"><h2>Aide</h2><div class="btns"><button class="btn" data-act="guide">Tout le guide</button><button class="btn ghost" data-act="tour">Parcours guidé</button><button class="btn ghost" data-act="demo">Mode démo</button></div>
+  <div class="small muted">Le mode démo charge des données d'exemple à la place des données de cet appareil.</div></div>`;
+
+/* ---------- Routines de démarrage (aussi après le code) ---------- */
+function bootRoutines(){
+  if (!S) return;
+  applyTheme();
+  if (!live(S.biens).length && !S.demo){ V.tab = "welcome"; V.wz = V.wz || {step:0}; lsSet("loc-ver", APP_VERSION); render(); return; }
+  V.tab = pref("loc-start", "home") === "add" ? "add" : "home"; if (V.tab === "add"){ V.editId = null; V.draft = null; V.back = null; }
+  if (archivePass(false)) persist();
+  render();
+  const last = lsGet("loc-ver"), hadData = !!window.HAD_DATA;
+  if (!last){ lsSet("loc-ver", APP_VERSION); if (hadData) return sheetNews(CHANGELOG[0]); }
+  else if (last !== APP_VERSION){ lsSet("loc-ver", APP_VERSION); return sheetNews(CHANGELOG[0]); }
+  if (pref("loc-remind", "1") === "1" && lsGet("loc-rday") !== todayIso()){
+    const c = counts(now0.getFullYear()), n = c.pointer + c.retard;
+    if (n > 0){ lsSet("loc-rday", todayIso());
+      openSheet(`<h2>À pointer</h2><p style="margin:0">${c.pointer ? c.pointer + " ligne(s) à pointer" : ""}${c.pointer && c.retard ? " et " : ""}${c.retard ? c.retard + " loyer(s) en retard" : ""}.</p>
+        <div class="btns"><button class="btn" style="flex:1" data-act="remind-go">Voir</button><button class="btn ghost" data-act="sheetclose">Plus tard</button></div>`); }
+  }
+}
+
+/* ---------- Recherche dans tout le journal ---------- */
+function searchJ(q){
+  const toks = stripAcc(q).split(/\s+/).filter(Boolean); if (!toks.length) return [];
+  return J().filter(j => { const h = stripAcc([j.lib, j.cat, j.fourn, j.note, j.type, bienName(j.bien), j.bien, frDate(j.date), j.date, MOIS[mo(j)], fmtNum(j.montant), r2(j.montant).toFixed(2).replace(".", ",")].join(" "));
+    return toks.every(t => h.includes(t) || h.includes(t.replace(".", ","))); }).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 80);
+}
+function searchRes(q){ const L = searchJ(q); return q.trim() ? (L.length ? `<div class="small muted">${L.length}${L.length === 80 ? "+" : ""} résultat(s)</div><div class="rows">${L.map(j => jRow(j, true)).join("")}</div>` : '<div class="empty">Aucun résultat.</div>') : '<div class="empty">Tape un mot (« assurance »), un montant (« 413,02 »), une date (« 10/2026 ») ou un mois (« mars »).</div>'; }
+function sheetSearch(){ openSheet(`<h2>Rechercher</h2><input class="search" id="sq" placeholder="Mot, montant, date, mois…" autocomplete="off" value="${esc(V.sq || "")}"><div id="sres">${searchRes(V.sq || "")}</div><div class="btns"><button class="btn ghost" data-act="sheetclose">Fermer</button></div>`); }
+
+/* ---------- Modèles, doublon ---------- */
+function modelesCard(){
+  const M = S.modeles || [];
+  return `<div class="card"><h2>Modèles d'ajout rapide</h2>${M.length ? `<div class="rows">${M.map(m => `<div class="row"><div class="main"><div class="t">${esc(m.nom)}</div><div class="s">${esc(m.type)} · ${esc(m.bien === "both" ? "Les 2" : bienName(m.bien))} · ${esc(m.cat || "")}${m.montant ? " · " + eur(m.montant) : ""}</div></div><button class="mini" data-act="md-del" data-id="${m.id}">Supprimer</button></div>`).join("")}</div>`
+    : '<div class="small muted">Aucun modèle. Dans « Ajouter », remplis le formulaire puis touche « Enregistrer comme modèle ».</div>'}</div>`;
+}
+function sheetModele(){ openSheet(`<h2>Enregistrer comme modèle</h2><label class="f">Nom du modèle<input id="md-nom" placeholder="Ex. Syndic Studio"></label><div class="small muted">Le type, le bien, la catégorie, le libellé et le montant sont repris du formulaire.</div><div class="btns"><button class="btn" style="flex:1" data-act="md-save">Enregistrer</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`); }
+function dupOp(id){
+  const j = S.journal.find(x => x.id === id); if (!j) return;
+  const c = Object.assign({}, j, {id:uid(), pointe:"", compta:"", justif:"", upd:Date.now()}); delete c.arch; delete c.done; delete c.del;
+  if (c.date > todayIso()) c.fut = true; else delete c.fut;
+  S.journal.push(c); persist(); V.back = V.back || "month"; V.editId = c.id; V.draft = null; V.tab = "add"; toast("Copie créée : ajuste-la puis enregistre"); render();
+}
+
+/* ---------- Archivage des lignes prévues ---------- */
+const ARCH_DAYS = 30;
+function archivePass(force){
+  const t = todayIso(); let ch = 0;
+  for (const j of S.journal){
+    if (j.del) continue;
+    if (j.arch && j.pointe !== "x"){ j.arch = false; ch++; }
+    if (!j.fut && j.pointe !== "x" && j.date > t){ j.fut = true; ch++; }
+    if (!j.fut || j.arch || j.pointe !== "x") continue;
+    if (j.type === "Dépense" && !j.compta) continue;          // reste à saisir en compta : on ne le cache pas
+    if (!j.done){ j.done = t; ch++; if (!force) continue; }
+    const age = Math.round((new Date(t) - new Date(j.done)) / 864e5);
+    if (force || age >= ARCH_DAYS){ j.arch = true; ch++; }
+  }
+  return ch;
+}
+const isArch = j => !!j.arch && j.pointe === "x";
+const archList = () => J().filter(isArch);
+const onPointe = j => { if (j.pointe === "x"){ if (j.fut) j.done = todayIso(); } else { j.arch = false; delete j.done; } };
+const monthActions = () => `<div class="btns"><button class="btn ghost sm" data-act="srch">Rechercher</button><button class="btn ghost sm" data-act="export-open">Exporter</button>${V.mf === "mois" ? '<button class="btn ghost sm" data-act="clot-open">Clôturer le mois</button>' : ""}</div>`;
+const modelesRow = ed => (ed || !(S.modeles || []).length) ? "" : `<div><div class="small muted" style="margin-bottom:4px">Modèles</div><div class="seg">${S.modeles.map(m => `<button data-act="md-use" data-id="${m.id}">${esc(m.nom)}</button>`).join("")}</div></div>`;
+function archCard(){
+  const n = archList().length;
+  return `<div class="card"><h2>Archives</h2><div class="small muted">Les lignes prévues sont rangées ${ARCH_DAYS} jours après avoir été pointées. Elles restent comptées dans tous les soldes et bilans, et restent visibles dans Loyers, Biens et la recherche.</div>
+    <div class="kv"><span>Lignes archivées</span><span class="num">${n}</span></div>
+    <div class="btns"><button class="btn ghost" data-act="arch-now">Archiver maintenant</button>${n ? `<button class="btn ghost" data-act="arch-view">Voir les archivées</button>` : ""}</div></div>`;
+}
+function sheetArch(){ const L = archList().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 120);
+  openSheet(`<h2>Lignes archivées (${archList().length})</h2><div class="rows">${L.map(j => `<div class="row"><div class="main"><div class="t">${esc(j.lib || j.cat)}</div><div class="s">${frDate(j.date)} ${bienPill(j.bien)} · ${eur(j.montant)}</div></div><button class="mini" data-act="arch-restore" data-id="${j.id}">Désarchiver</button></div>`).join("") || '<div class="empty">Aucune.</div>'}</div><div class="btns"><button class="btn ghost" data-act="sheetclose">Fermer</button></div>`); }
+
+/* ---------- Clôture de fin de mois ---------- */
+function sheetCloture(y, m){
+  V.cl = {y, m}; const end = lastDay(y, m), nxt = m === 11 ? lastDay(y + 1, 0) : lastDay(y, m + 1), done = (S.clotures || []).find(c => c.ym === y + "-" + pad(m + 1));
+  const rows = bienIds().map(id => { const calc = soldeAt(id, end), prev = r2(sum(J().filter(j => j.bien === id && j.type === "Dépense" && j.pointe !== "x" && j.date > end && j.date <= nxt).map(j => j.montant)));
+    return `<div class="env" style="padding:8px 0;gap:6px"><div class="top">${bienPill(id)}<span class="num">${eur(calc)}</span></div><div class="small muted">Solde calculé au ${frDate(end)}</div>
+      <label class="f">Solde réel du relevé (€)<input id="cl-r-${esc(id)}" data-bien="${esc(id)}" inputmode="decimal" placeholder="${fmtNum(calc)}"></label>
+      <div class="kv"><span>Écart (réel − calculé)</span><span class="num" id="cl-e-${esc(id)}">${eur(0)}</span></div>
+      <div class="small muted">Charges prévues le mois suivant : ${eur(prev)}</div>
+      ${bourseOn() ? `<label class="f">À mettre de côté (€)<select id="cl-p-${esc(id)}"><option>Bourse</option><option>Livret A</option><option>PEL</option><option>Autre placement</option></select><input id="cl-s-${esc(id)}" data-bien="${esc(id)}" data-auto="1" data-prev="${prev}" inputmode="decimal" value="${fmtNum(Math.max(0, r2(calc - prev)))}"></label>` : ""}</div>`; }).join("");
+  openSheet(`<h2>Clôture de ${MOIS[m].toLowerCase()} ${y}</h2>
+    ${done ? `<div class="info">Ce mois est déjà clôturé (${frDate(done.ts)}).</div><div class="btns"><button class="btn danger" data-act="clot-undo" data-id="${done.id}">Annuler cette clôture</button></div>` : ""}
+    <div class="small muted">1. Compare avec le relevé de banque. 2. Choisis ce que tu mets de côté (proposé : solde moins les charges prévues du mois suivant). Laisse le solde réel vide pour ne rien ajuster.</div>${rows}
+    <div class="btns"><button class="btn" style="flex:1" data-act="clot-do">Clôturer le mois</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
+}
+const bourseCardSet = () => { const on = bourseOn(); return `<div class="card"><h2>Argent mis de côté (bourse, livret…)</h2>
+  <div class="small muted">Chaque mois, tu peux mettre de côté l'argent qui reste sur le compte d'un bien, puis suivre ce qui est placé et ce qui est remboursé. Cet argent peut aller en bourse ou dans un autre placement (assurance vie, livret…) : l'appli ne fait que le suivre. Si tu n'en as pas besoin, masque cette partie : rien n'est supprimé.</div>
+  <div class="seg"><button class="${on ? "on" : ""}" data-act="set-bourse" data-v="1">Affiché</button><button class="${on ? "" : "on"}" data-act="set-bourse" data-v="0">Masqué</button></div></div>`; };
+function clUpdate(t){
+  const id = t.dataset.bien, end = lastDay(V.cl.y, V.cl.m);
+  if (/^cl-s-/.test(t.id)){ t.dataset.auto = "0"; return; }
+  const calc = soldeAt(id, end), v = parseNum(t.value), has = t.value.trim() !== "" && v !== null, real = has ? v : calc, ec = has ? r2(v - calc) : 0;
+  $("#cl-e-" + id).textContent = eur(ec); const s = $("#cl-s-" + id);
+  if (s && s.dataset.auto === "1") s.value = fmtNum(Math.max(0, r2(real - N(+s.dataset.prev))));
+}
+function clotureDo(){
+  const {y, m} = V.cl, end = lastDay(y, m), ym = y + "-" + pad(m + 1), made = [], t = Date.now();
+  if ((S.clotures || []).find(c => c.ym === ym)) return toast("Ce mois est déjà clôturé");
+  for (const id of bienIds()){
+    const rr = $("#cl-r-" + id).value, calc = soldeAt(id, end), v = parseNum(rr);
+    if (rr.trim() !== "" && v !== null){ const ec = r2(v - calc);
+      if (ec){ const o = {id:uid(), date:end, bien:id, type:ec > 0 ? "Entrée" : "Sortie", cat:"Écart de rapprochement", lib:"Ajustement sur relevé banque du " + frDate(end), montant:Math.abs(ec), compte:"Bien", pointe:"x", compta:"", justif:"", fourn:"", note:"Solde réel relevé " + nbsp(eur(v)), upd:t}; S.journal.push(o); made.push(o.id); } }
+    const sv = $("#cl-s-" + id) ? parseNum($("#cl-s-" + id).value) : null, pcat = $("#cl-p-" + id) ? $("#cl-p-" + id).value : "Bourse";
+    if (sv && sv > 0){ const o = {id:uid(), date:end, bien:id, type:"Sortie", cat:pcat, lib:"Mise de côté fin " + MOIS[m].toLowerCase(), montant:r2(sv), compte:"Bien", pointe:"x", compta:"", justif:"", fourn:"", note:"Clôture de " + MOIS[m].toLowerCase() + " " + y, upd:t}; S.journal.push(o); made.push(o.id); }
+  }
+  S.clotures = (S.clotures || []).concat([{id:uid(), ym, ids:made, ts:todayIso()}]); persist(); closeSheet(); toast(made.length ? made.length + " ligne(s) créée(s)" : "Mois clôturé, rien à ajouter"); render();
+}
+
+/* ---------- PDF fabriqué dans l'appli (Helvetica, texte, plusieurs pages) ---------- */
+const WIN = {"€":0x80,"‚":0x82,"„":0x84,"…":0x85,"‘":0x91,"’":0x92,"“":0x93,"”":0x94,"•":0x95,"–":0x96,"—":0x97};
+function pdfStr(s){ s = String(s ?? "").replace(/[  ]/g, " ").replace(/−/g, "-").replace(/[→›]/g, ">").replace(/‹/g, "<"); let o = "";
+  for (const ch of s){ const c = ch.codePointAt(0); let b = WIN[ch] ?? (c < 256 ? c : 63); if (b < 32) b = 32; o += (b === 40 || b === 41 || b === 92) ? "\\" + String.fromCharCode(b) : String.fromCharCode(b); } return o; }
+function pdfW(s, size, bold){ let w = 0; for (const ch of String(s).replace(/[  ]/g, " ")){ w += /[0-9€]/.test(ch) ? 556 : /[ ,.]/.test(ch) ? 278 : /[-−+]/.test(ch) ? 333 : /[il|!']/.test(ch) ? 240 : /[mwMW]/.test(ch) ? 800 : /[A-Z]/.test(ch) ? 670 : 520; } return w * size / 1000 * (bold ? 1.06 : 1); }
+const hexRgb = h => [1, 3, 5].map(i => (parseInt(h.slice(i, i + 2), 16) / 255).toFixed(3)).join(" ");
+function PdfDoc(title){
+  this.title = title; this.pages = []; this.W = 595; this.H = 842; this.M = 42; this.newPage();
+}
+PdfDoc.prototype.newPage = function(){ this.cur = []; this.pages.push(this.cur); this.y = this.H - 70; };
+PdfDoc.prototype.need = function(h){ if (this.y - h < 60) this.newPage(); };
+PdfDoc.prototype.text = function(x, y, s, o){ o = o || {}; const size = o.size || 10, w = pdfW(s, size, o.bold), xx = o.right ? x - w : o.center ? x - w / 2 : x;
+  this.cur.push(`BT ${hexRgb(o.color || "#1B2430")} rg /${o.bold ? "F2" : "F1"} ${size} Tf ${xx.toFixed(1)} ${y.toFixed(1)} Td (${pdfStr(s)}) Tj ET`); };
+PdfDoc.prototype.rect = function(x, y, w, h, c){ this.cur.push(`${hexRgb(c)} rg ${x.toFixed(1)} ${y.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)} re f`); };
+PdfDoc.prototype.line = function(x1, y1, x2, y2, c){ this.cur.push(`${hexRgb(c || "#DDE5E1")} RG 0.6 w ${x1} ${y1} m ${x2} ${y2} l S`); };
+PdfDoc.prototype.pill = function(x, y, s, col){ const w = pdfW(s, 8.5, true) + 12; this.rect(x, y - 3, w, 13, col); this.text(x + 6, y + 0.5, s, {size:8.5, bold:true, color:"#FFFFFF"}); return w; };
+PdfDoc.prototype.para = function(str, size, gap){ const max = this.W - 2 * this.M; let line = "";
+  const flush = () => { if (line){ this.need(size + 6); this.text(this.M, this.y, line, {size}); this.y -= gap || size + 5; line = ""; } };
+  for (const w of String(str).split(" ")){ const t = line ? line + " " + w : w; if (pdfW(t, size) > max){ flush(); line = w; } else line = t; }
+  flush(); };
+PdfDoc.prototype.h = function(s, size){ this.need(34); this.y -= 8; this.text(this.M, this.y, s, {size:size || 13, bold:true, color:"#0E6B5C"}); this.y -= 16; };
+PdfDoc.prototype.finish = function(sub){
+  const n = this.pages.length, parts = ["%PDF-1.4\n%\xE2\xE3\xCF\xD3\n"], off = [];
+  const add = body => { off.push(parts.join("").length); parts.push((off.length) + " 0 obj\n" + body + "\nendobj\n"); };
+  const idPage = i => 5 + i * 2, idCont = i => 6 + i * 2;
+  add("<< /Type /Catalog /Pages 2 0 R >>");
+  add("<< /Type /Pages /Kids [" + this.pages.map((_, i) => idPage(i) + " 0 R").join(" ") + "] /Count " + n + " >>");
+  add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
+  add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+  this.pages.forEach((ops, i) => {
+    const head = [], foot = [];
+    this.cur = head; this.text(this.M, this.H - 40, "Mes locations", {size:11, bold:true, color:"#0E6B5C"}); this.text(this.W - this.M, this.H - 40, sub || this.title, {size:9.5, right:true, color:"#5C6B66"}); this.line(this.M, this.H - 48, this.W - this.M, this.H - 48);
+    this.cur = foot; this.line(this.M, 44, this.W - this.M, 44); this.text(this.M, 30, "Généré le " + frDate(todayIso()), {size:8.5, color:"#5C6B66"}); this.text(this.W - this.M, 30, "Page " + (i + 1) + " / " + n, {size:8.5, right:true, color:"#5C6B66"});
+    const stream = head.concat(ops, foot).join("\n");
+    add("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + this.W + " " + this.H + "] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents " + idCont(i) + " 0 R >>");
+    add("<< /Length " + stream.length + " >>\nstream\n" + stream + "\nendstream");
+  });
+  const body = parts.join(""); let xref = "xref\n0 " + (off.length + 1) + "\n0000000000 65535 f \n" + off.map(o => String(o).padStart(10, "0") + " 00000 n \n").join("");
+  const out = body + xref + "trailer\n<< /Size " + (off.length + 1) + " /Root 1 0 R >>\nstartxref\n" + body.length + "\n%%EOF";
+  const u = new Uint8Array(out.length); for (let i = 0; i < out.length; i++) u[i] = out.charCodeAt(i) & 255; return u;
+};
+
+/* ---------- Bilan d'un mois : données, Excel, PDF ---------- */
+function monthBilan(y, m){
+  const end = lastDay(y, m), start = y + "-" + pad(m + 1) + "-01", L = J().filter(j => yr(j) === y && mo(j) === m).sort((a, b) => a.date.localeCompare(b.date));
+  const per = bienIds().map(id => { const l = L.filter(j => j.bien === id), rec = sum(l.filter(j => j.type === "Recette").map(j => j.montant)), dep = sum(l.filter(j => j.type === "Dépense").map(j => j.montant));
+    return {id, rec:r2(rec), dep:r2(dep), res:r2(rec - dep), recP:r2(sum(l.filter(j => j.type === "Recette" && j.pointe === "x").map(j => j.montant))), depP:r2(sum(l.filter(j => j.type === "Dépense" && j.pointe === "x").map(j => j.montant))),
+      debut:soldeAt(id, new Date(new Date(start) - 864e5).toISOString().slice(0, 10)), fin:soldeAt(id, end)}; });
+  const fixes = []; for (const id of bienIds()) for (const p of POSTES_TARIF){ const v = tarifFor(id, p, end); if (v != null) fixes.push([bienName(id), p, v]); }
+  const part = partagesList().map(p => { const [a, b] = splitPartage(p.total, p.partStudio); return [p.frais, p.total, (Math.round(p.partStudio * 1000) / 10) + " %", a, b]; });
+  const info = bienIds().map(id => { const bn = S.biens.find(b => b.id === id) || {}, T = live(S.locataires).filter(t => t.bien === id && (!t.debut || t.debut <= end) && (!t.fin || t.fin >= start)), tt = T.length ? T : [tenantFor(id, end)].filter(Boolean);
+    return {id, nom:bn.nom || id, adresse:bn.adresse || "", regime:bn.regime || "", tenants:tt}; });
+  return {y, m, end, L, per, fixes, part, info, bailleur:(S.cfg && S.cfg.bailleur) || "", badr:(S.cfg && S.cfg.bailleurAdr) || "", tot:{rec:r2(sum(per.map(p => p.rec))), dep:r2(sum(per.map(p => p.dep)))}};
+}
+function bilanXlsx(y, m){
+  const B = monthBilan(y, m), wb = XLSX.utils.book_new(), dt = iso => isoToSerial(iso);
+  const add = (name, aoa, widths, fmt) => { const ws = XLSX.utils.aoa_to_sheet(aoa); ws["!cols"] = widths.map(w => ({wch:w}));
+    for (const k of Object.keys(ws)){ if (k[0] === "!") continue; const c = ws[k]; if (c.t === "n" && fmt && fmt(k, c)) c.z = fmt(k, c); } XLSX.utils.book_append_sheet(wb, ws, name); };
+  const money = "#,##0.00 \"€\"";
+  add("Bilan", [["Bilan de " + MOIS[m].toLowerCase() + " " + y], [B.bailleur ? "Bailleur : " + B.bailleur + (B.badr ? " · " + B.badr : "") : ""], ["Bien", "Recettes prévues", "Dépenses prévues", "Résultat", "Recettes encaissées", "Dépenses payées", "Solde début de mois", "Solde fin de mois"]]
+    .concat(B.per.map(p => [bienName(p.id), p.rec, p.dep, p.res, p.recP, p.depP, p.debut, p.fin])).concat([["Total", B.tot.rec, B.tot.dep, r2(B.tot.rec - B.tot.dep), r2(sum(B.per.map(p => p.recP))), r2(sum(B.per.map(p => p.depP))), r2(sum(B.per.map(p => p.debut))), r2(sum(B.per.map(p => p.fin)))]]),
+    [22, 16, 16, 14, 18, 16, 18, 18], (k, c) => /^[B-H]/.test(k) && +k.slice(1) > 3 ? money : null);
+  add("Fixes", [["Tarifs en vigueur fin " + MOIS[m].toLowerCase()], [], ["Bien", "Poste", "Montant mensuel"]].concat(B.fixes).concat([[], ["Frais partagés", "Total", "Part Studio (%)", "Montant Studio", "Montant T2"]]).concat(B.part).concat([[], ["Biens et locataires"], ["Bien", "Adresse", "Régime", "Locataire", "Téléphone", "E-mail", "Début du bail", "Fin du bail", "Loyer charges comprises", "Dont charges", "Dépôt de garantie"]]).concat(B.info.flatMap(i => (i.tenants.length ? i.tenants : [null]).map(t => [i.nom, i.adresse, i.regime, t ? t.nom : "(aucun locataire)", t ? t.tel : "", t ? t.email : "", t ? frDate(t.debut) : "", t ? (t.fin ? frDate(t.fin) : "en cours") : "", t ? t.loyer : "", t ? t.charges || 0 : "", t ? t.depot : ""]))),
+    [22, 30, 18, 22, 16, 26, 14, 14, 18, 14, 16], (k, c) => /^[B-K]/.test(k) && +k.slice(1) > 3 ? money : null);
+  const ops = [["Date", "Bien", "Type", "Catégorie", "Libellé", "Montant", "Compte", "Pointé", "Saisi compta", "Fournisseur / n° facture", "Note"]].concat(B.L.map(j => [dt(j.date), bienName(j.bien), j.type, j.cat, j.lib, j.montant, j.compte || "Bien", j.pointe === "x" ? "x" : "", j.compta ? "x" : "", j.fourn, j.note]));
+  add("Opérations", ops, [12, 16, 11, 26, 34, 14, 10, 8, 12, 24, 30], (k, c) => k[0] === "A" && +k.slice(1) > 1 ? "dd/mm/yyyy" : (k[0] === "F" && +k.slice(1) > 1 ? money : null));
+  return XLSX.write(wb, {type:"array", bookType:"xlsx", compression:true});
+}
+function bilanPdf(y, m){
+  const B = monthBilan(y, m), d = new PdfDoc("Bilan"), M = d.M, R = d.W - M;
+  d.text(M, d.y, "Bilan de " + MOIS[m].toLowerCase() + " " + y, {size:20, bold:true}); d.y -= 26;
+  d.text(M, d.y, "Du " + frDate(y + "-" + pad(m + 1) + "-01") + " au " + frDate(B.end), {size:10, color:"#5C6B66"}); d.y -= 13;
+  if (B.bailleur) d.para("Bailleur : " + B.bailleur + (B.badr ? " - " + B.badr : ""), 10, 13);
+  d.h("Par bien");
+  const cols = [M, 220, 300, 380, R]; ["Bien", "Recettes", "Dépenses", "Résultat", "Solde fin de mois"].forEach((t, i) => d.text(i ? [0, 285, 365, 445, R][i] : M, d.y, t, {size:9, bold:true, right:i > 0, color:"#5C6B66"})); d.y -= 6; d.line(M, d.y, R, d.y); d.y -= 15;
+  for (const p of B.per){ d.pill(M, d.y, bienName(p.id), BIEN_COL[p.id] || "#0E6B5C"); [p.rec, p.dep, p.res, p.fin].forEach((v, i) => d.text([285, 365, 445, R][i], d.y, eur(v), {size:10, right:true, bold:i === 2})); d.y -= 20; }
+  d.line(M, d.y + 8, R, d.y + 8); d.text(M, d.y - 4, "Total", {size:10, bold:true}); [B.tot.rec, B.tot.dep, r2(B.tot.rec - B.tot.dep), r2(sum(B.per.map(p => p.fin)))].forEach((v, i) => d.text([285, 365, 445, R][i], d.y - 4, eur(v), {size:10, right:true, bold:true})); d.y -= 22;
+  d.para("Les montants comptent les lignes prévues et pointées du mois ; le solde ne compte que ce qui est passé sur le compte.", 8.5, 12);
+  d.h("Biens et locataires");
+  for (const i of B.info){ d.need(60); d.pill(M, d.y, i.nom.slice(0, 18), BIEN_COL[i.id] || "#0E6B5C"); d.text(M + 120, d.y, [i.adresse, i.regime].filter(Boolean).join(" - ").slice(0, 70), {size:9.5, color:"#5C6B66"}); d.y -= 15;
+    for (const t of i.tenants){ d.para("Locataire : " + t.nom + (t.tel ? " - " + t.tel : "") + (t.email ? " - " + t.email : ""), 9.5, 12.5);
+      d.para("Bail du " + (t.debut ? frDate(t.debut) : "?") + " au " + (t.fin ? frDate(t.fin) : "en cours") + " - loyer charges comprises " + eur(t.loyer) + (t.charges ? " (dont charges " + eur(t.charges) + ")" : "") + " - dépôt de garantie " + eur(t.depot), 9.5, 12.5); }
+    if (!i.tenants.length) d.para("Aucun locataire enregistré.", 9.5, 12.5); d.y -= 4; }
+  d.h("Tarifs en vigueur");
+  for (const f of B.fixes){ d.need(16); d.text(M, d.y, f[0] + " · " + f[1], {size:10}); d.text(R, d.y, eur(f[2]), {size:10, right:true}); d.y -= 15; }
+  d.h("Frais partagés entre les 2 comptes");
+  for (const f of B.part){ d.need(16); d.text(M, d.y, f[0], {size:10}); d.text(R, d.y, "Total " + eur(f[1]) + " · Studio " + eur(f[3]) + " · T2 " + eur(f[4]), {size:9.5, right:true}); d.y -= 15; }
+  d.h("Opérations (" + B.L.length + ")");
+  const head = () => { ["Date", "Bien", "Catégorie · libellé"].forEach((t, i) => d.text([M, M + 58, M + 118][i], d.y, t, {size:9, bold:true, color:"#5C6B66"})); d.text(R - 40, d.y, "Montant", {size:9, bold:true, right:true, color:"#5C6B66"}); d.text(R, d.y, "Pointé", {size:9, bold:true, right:true, color:"#5C6B66"}); d.y -= 5; d.line(M, d.y, R, d.y); d.y -= 14; };
+  head();
+  for (const j of B.L){ if (d.y < 78){ d.newPage(); head(); }
+    d.text(M, d.y, frDate(j.date), {size:9}); d.pill(M + 58, d.y, String(j.bien).slice(0, 7), BIEN_COL[j.bien] || "#0E6B5C");
+    const lib = ((j.cat || "") + (j.lib && j.lib !== j.cat ? " · " + j.lib : "")).slice(0, 46); d.text(M + 118, d.y, lib, {size:9});
+    d.text(R - 40, d.y, (isIn(j) ? "+ " : "- ") + eur(j.montant), {size:9, right:true, color:isIn(j) ? "#1E7F4F" : "#1B2430"}); d.text(R, d.y, j.pointe === "x" ? "oui" : "", {size:9, right:true, color:"#5C6B66"}); d.y -= 15; }
+  if (!B.L.length) d.text(M, d.y, "Aucune opération ce mois-ci.", {size:10, color:"#5C6B66"});
+  return d.finish("Bilan " + MOIS[m].toLowerCase() + " " + y);
+}
+function sheetExport(){
+  const set = new Set(J().map(j => j.date.slice(0, 7))); set.add(V.y + "-" + pad(V.m + 1)); const sel = V.y + "-" + pad(V.m + 1);
+  const list = [...set].sort().reverse().slice(0, 48);
+  openSheet(`<h2>Exporter le bilan d'un mois</h2><label class="f">Mois<select id="ex-m">${list.map(k => `<option value="${k}" ${k === sel ? "selected" : ""}>${MOIS[+k.slice(5) - 1]} ${k.slice(0, 4)}</option>`).join("")}</select></label>
+    <div class="small muted">Excel : 3 feuilles (Bilan, Fixes, Opérations). PDF : un vrai fichier de plusieurs pages. Ensuite, choisis « Enregistrer dans Fichiers ».</div>
+    <div class="btns"><button class="btn" data-act="ex-xlsx" style="flex:1">Excel (.xlsx)</button><button class="btn" data-act="ex-pdf" style="flex:1">PDF</button></div><div class="btns"><button class="btn ghost" data-act="sheetclose">Fermer</button></div>`);
+}
+
+/* ---------- Quittance de loyer (PDF) ---------- */
+function sheetQuittance(id){
+  const j = S.journal.find(x => x.id === id), t = tenantFor(j.bien, j.date), cfg = S.cfg = S.cfg || {bailleur:"", adr:{}}, bn = S.biens.find(b => b.id === j.bien) || {}; V.q = id;
+  const chg = Math.min(N(t && t.charges), j.montant), adr = bn.adresse || (cfg.adr || {})[j.bien] || "";
+  openSheet(`<h2>Quittance · ${esc(bienName(j.bien))} · ${MOIS[mo(j)].toLowerCase()} ${yr(j)}</h2>
+    <label class="f">Bailleur (nom)<input id="q-bail" value="${esc(cfg.bailleur || "")}"></label>
+    <label class="f">Adresse du bailleur<input id="q-badr" value="${esc(cfg.bailleurAdr || "")}"></label>
+    <label class="f">Locataire<input id="q-loc" value="${esc(t ? t.nom : "")}" placeholder="Nom du locataire"></label>
+    <label class="f">Adresse du logement<input id="q-adr" value="${esc(adr)}"></label>
+    <div class="grid2"><label class="f">Loyer hors charges (€)<input id="q-loyer" inputmode="decimal" value="${fmtNum(r2(j.montant - chg))}"></label><label class="f">Charges (€)<input id="q-chg" inputmode="decimal" value="${fmtNum(chg)}"></label></div>
+    <label class="f">Montant réellement reçu (€) <span class="muted small">— à changer seulement si le locataire a payé moins : le document devient un reçu</span><input id="q-recu" inputmode="decimal" placeholder="${fmtNum(j.montant)}"></label>
+    <label class="f">Fait à (ville)<input id="q-ville" value="${esc(cfg.ville || "")}"></label>
+    <div class="small muted">Ces informations restent sur ton téléphone (chiffrées si le code est activé).</div>
+    <div class="btns"><button class="btn" style="flex:1" data-act="quit-pdf">Créer le PDF</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
+}
+/* montant en lettres (français) */
+function enLettres(n){
+  const U = ["zéro","un","deux","trois","quatre","cinq","six","sept","huit","neuf","dix","onze","douze","treize","quatorze","quinze","seize","dix-sept","dix-huit","dix-neuf"], D = ["","","vingt","trente","quarante","cinquante","soixante"];
+  const sub100 = x => { if (x < 20) return U[x]; const d = Math.floor(x / 10), u = x % 10;
+    if (d === 7 || d === 9) { const base = d === 7 ? "soixante" : "quatre-vingt", r = 10 + u; return base + (d === 7 && u === 1 ? " et " : "-") + U[r]; }
+    if (d === 8) return u ? "quatre-vingt-" + U[u] : "quatre-vingts";
+    return D[d] + (u === 1 ? " et un" : u ? "-" + U[u] : ""); };
+  const sub1000 = x => { const c = Math.floor(x / 100), r = x % 100; let s = "";
+    if (c) s = (c === 1 ? "cent" : U[c] + " cent") + (r === 0 && c > 1 ? "s" : ""); if (r) s += (s ? " " : "") + sub100(r); return s; };
+  n = Math.floor(n); if (n === 0) return "zéro"; const k = Math.floor(n / 1000), r = n % 1000; let s = "";
+  if (k) s = (k === 1 ? "mille" : sub1000(k).replace(/(vingt|cent)s$/, "$1") + " mille"); if (r) s += (s ? " " : "") + sub1000(r); return s; }
+const montantLettres = v => { const e = Math.floor(v + 1e-9), c = Math.round((v - e) * 100); return enLettres(e) + " euro" + (e > 1 ? "s" : "") + (c ? " et " + enLettres(c) + " centime" + (c > 1 ? "s" : "") : ""); };
+function quittancePdf(j, o){
+  const y = yr(j), m = mo(j), debut = y + "-" + pad(m + 1) + "-01", fin = lastDay(y, m), total = r2(o.loyer + o.chg), recu = o.recu != null ? o.recu : total, partiel = recu < total - 0.005;
+  const d = new PdfDoc(partiel ? "Reçu" : "Quittance"), M = d.M, R = d.W - M;
+  d.text(d.W / 2, d.y, partiel ? "REÇU DE PAIEMENT PARTIEL" : "QUITTANCE DE LOYER", {size:22, bold:true, center:true, color:"#0E6B5C"}); d.y -= 22;
+  d.text(d.W / 2, d.y, "Période du " + frDate(debut) + " au " + frDate(fin), {size:11, center:true, color:"#5C6B66"}); d.y -= 34;
+  const bloc = (t, l) => { d.text(M, d.y, t, {size:10, bold:true, color:"#5C6B66"}); d.y -= 15; l.filter(Boolean).forEach(x => { d.text(M, d.y, x, {size:11}); d.y -= 15; }); d.y -= 10; };
+  bloc("BAILLEUR (nom, prénom, adresse)", [o.bail || "(à renseigner)", o.badr]); bloc("LOCATAIRE (nom, prénom)", [o.loc || "(à renseigner)"]); bloc("LOGEMENT LOUÉ (adresse)", [bienName(j.bien), o.adr]);
+  d.line(M, d.y, R, d.y); d.y -= 18;
+  d.text(M, d.y, "Loyer (hors charges)", {size:11}); d.text(R, d.y, eur(o.loyer), {size:11, right:true}); d.y -= 18;
+  d.text(M, d.y, "Provision pour charges", {size:11}); d.text(R, d.y, eur(o.chg), {size:11, right:true}); d.y -= 8; d.line(M, d.y, R, d.y); d.y -= 20;
+  d.text(M, d.y, "Total du terme (loyer + charges)", {size:12, bold:true}); d.text(R, d.y, eur(total), {size:12, bold:true, right:true}); d.y -= 20;
+  if (partiel){ d.text(M, d.y, "Montant versé", {size:12, bold:true}); d.text(R, d.y, eur(recu), {size:12, bold:true, right:true}); d.y -= 18;
+    d.text(M, d.y, "Reste dû", {size:12, bold:true, color:"#B3261E"}); d.text(R, d.y, eur(r2(total - recu)), {size:12, bold:true, right:true, color:"#B3261E"}); d.y -= 30; }
+  else d.y -= 14;
+  if (partiel) d.para("Je soussigné(e) " + (o.bail || "………") + ", propriétaire (ou mandataire) du logement désigné ci-dessus, reconnais avoir reçu de " + (o.loc || "………") + " la somme de " + eur(recu) + " (" + montantLettres(recu) + "), à valoir sur le loyer et les charges de la période indiquée (total " + eur(total) + "). Il reste dû " + eur(r2(total - recu)) + ". Ce document est un reçu : il ne vaut pas quittance et ne libère pas le locataire du solde.", 10.5, 15);
+  else d.para("Je soussigné(e) " + (o.bail || "………") + ", propriétaire (ou mandataire) du logement désigné ci-dessus, déclare avoir reçu de " + (o.loc || "………") + " la somme de " + eur(total) + " (" + montantLettres(total) + "), au titre du paiement du loyer et des charges pour la période indiquée, et lui en donne quittance, sous réserve de tous mes droits.", 10.5, 15);
+  d.y -= 8;
+  if (!partiel){ d.para("Cette quittance annule tous les reçus qui auraient pu être établis précédemment en cas de paiement partiel du montant du présent terme.", 10.5, 15); d.y -= 8; }
+  d.para("Date de paiement : " + frDate(j.date), 10.5, 15);
+  d.y -= 24; d.text(M, d.y, "Fait" + (o.ville ? " à " + o.ville : "") + ", le " + frDate(todayIso()), {size:10.5}); d.y -= 50; d.text(R, d.y, "Signature du bailleur ou de son mandataire", {size:10, right:true, color:"#5C6B66"});
+  d.y -= 40; d.para("Document remis gratuitement au locataire (art. 21 de la loi du 6 juillet 1989).", 8.5, 12);
+  return d.finish((partiel ? "Reçu " : "Quittance ") + MOIS[m].toLowerCase() + " " + y);
+}
+
+/* ---------- Actions (écran en plus de celles de views.js) ---------- */
+document.addEventListener("click", ev => {
+  const b = ev.target.closest("[data-act]"); if (!b) return;
+  const a = b.dataset.act, id = b.dataset.id, v = b.dataset.v;
+  switch (a){
+    case "help": sheetHelp(); break;
+    case "guide": sheetGuide(); break;
+    case "tour": sheetTour(0); break;
+    case "tour-next": sheetTour(V.tourI + 1); break; case "tour-prev": sheetTour(V.tourI - 1); break;
+    case "tour-end": lsSet("loc-tour", "1"); closeSheet(); break;
+    case "hist-all": V.histAll = true; render(); break;
+    case "demo": openSheet(`<h2>Mode démo</h2><p style="margin:0">Cela remplace les données de cet appareil par des données d'exemple. Pense à exporter une sauvegarde avant. Tu pourras réimporter ton fichier Excel ensuite.</p><div class="btns"><button class="btn danger" data-act="demo-ok">Charger les données d'exemple</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`); break;
+    case "demo-ok": S = demoData(); persist(); closeSheet(); V.tab = "home"; toast("Données d'exemple chargées"); render(); break;
+    case "pal": lsSet("loc-pal", v); applyTheme(); render(); break;
+    case "tmode": lsSet("loc-theme", v); applyTheme(); render(); break;
+    case "set-start": lsSet("loc-start", v); render(); break;
+    case "set-bourse": S.cfg = S.cfg || {bailleur:"", adr:{}}; S.cfg.bourse = v === "1"; persist(); render(); break;
+    case "set-remind": lsSet("loc-remind", v); render(); break;
+    case "remind-go": closeSheet(); V.tab = "month"; V.mf = "todo"; V.bf = "all"; render(); break;
+    case "srch": V.sq = ""; sheetSearch(); setTimeout(() => { const e = $("#sq"); if (e) e.focus(); }, 60); break;
+    case "jdup": dupOp(V.editId); break;
+    case "md-open": collectDraft(); sheetModele(); break;
+    case "md-save": { const nom = $("#md-nom").value.trim(); if (!nom) return toast("Donne un nom au modèle"); const d = V.draft;
+      (S.modeles = S.modeles || []).push({id:uid(), nom, type:d.type, bien:d.bien, cat:d.cat, lib:d.lib, montant:parseNum(d.mont) || 0, compte:d.compte}); persist(); closeSheet(); toast("Modèle enregistré"); render(); break; }
+    case "md-use": { const m = S.modeles.find(x => x.id === id); if (!m) break; V.editId = null; V.draft = newDraft({type:m.type, bien:m.bien, cat:m.cat, lib:m.lib, mont:m.montant ? fmtNum(m.montant) : "", montAuto:!m.montant, compte:m.compte || "Bien", pt:false}); render(); if (!m.montant) autoSuggest(true); toast("Modèle « " + m.nom + " » appliqué"); break; }
+    case "md-del": S.modeles = S.modeles.filter(x => x.id !== id); persist(); render(); break;
+    case "arch-now": openSheet(`<h2>Archiver maintenant ?</h2><p style="margin:0">Toutes les lignes prévues déjà pointées sont rangées dans les archives, sans attendre ${ARCH_DAYS} jours. Les soldes et bilans ne changent pas.</p><div class="btns"><button class="btn" style="flex:1" data-act="arch-ok">Archiver</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`); break;
+    case "arch-ok": { archivePass(true); persist(); closeSheet(); toast(archList().length + " ligne(s) archivée(s)"); render(); break; }
+    case "arch-view": sheetArch(); break;
+    case "arch-restore": { const j = S.journal.find(x => x.id === id); if (j){ j.arch = false; j.fut = false; delete j.done; } persist(); sheetArch(); render(); break; }
+    case "clot-open": sheetCloture(V.y, V.m); break;
+    case "clot-do": clotureDo(); break;
+    case "clot-undo": { const c = (S.clotures || []).find(x => x.id === id); if (!c) break; const t = Date.now(); S.journal.forEach(j => { if (c.ids.includes(j.id)){ j.del = true; j.upd = t; } }); S.clotures = S.clotures.filter(x => x.id !== id); persist(); closeSheet(); toast("Clôture annulée"); render(); break; }
+    case "export-open": sheetExport(); break;
+    case "ex-xlsx": case "ex-pdf": { const k = $("#ex-m").value, y = +k.slice(0, 4), m = +k.slice(5) - 1, nm = "bilan-" + k;
+      if (a === "ex-xlsx") saveFile(nm + ".xlsx", bilanXlsx(y, m), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      else saveFile(nm + ".pdf", bilanPdf(y, m), "application/pdf"); break; }
+    case "quit": sheetQuittance(id); break;
+    case "quit-pdf": { const j = S.journal.find(x => x.id === V.q), o = {bail:$("#q-bail").value.trim(), badr:$("#q-badr").value.trim(), loc:$("#q-loc").value.trim(), adr:$("#q-adr").value.trim(), loyer:parseNum($("#q-loyer").value) || 0, chg:parseNum($("#q-chg").value) || 0, recu:($("#q-recu").value.trim() === "" ? null : parseNum($("#q-recu").value)), ville:$("#q-ville").value.trim()};
+      if (!(o.loyer + o.chg > 0)) return toast("Saisis le montant");
+      S.cfg = S.cfg || {bailleur:"", adr:{}}; S.cfg.bailleur = o.bail; S.cfg.bailleurAdr = o.badr; S.cfg.ville = o.ville; { const bn = S.biens.find(b => b.id === j.bien); if (bn && o.adr) bn.adresse = o.adr; } persist();
+      saveFile("quittance-" + j.bien + "-" + j.date.slice(0, 7) + ".pdf", quittancePdf(j, o), "application/pdf"); break; }
+    case "np": { const el = $("#" + b.dataset.t); if (!el) break; let s = el.value;
+      if (v === "del") s = s.slice(0, -1);
+      else if (v === ","){ if (!s.includes(",")) s = (s || "0") + ","; }
+      else { const dec = s.split(",")[1]; if (dec === undefined || dec.length < 2) s = (s === "0" ? "" : s) + v; }
+      el.value = s; el.dispatchEvent(new Event("input", {bubbles:true})); break; }
+  }
+});
+document.addEventListener("input", ev => {
+  const t = ev.target;
+  if (t.id === "sq"){ V.sq = t.value; $("#sres").innerHTML = searchRes(t.value); return; }
+  if (/^cl-[rs]-/.test(t.id)) clUpdate(t);
+});
+document.addEventListener("change", ev => {
+  const t = ev.target;
+  if (t.id === "sc-from" || t.id === "sc-to"){ const s = schedGet(); s[t.id === "sc-from" ? "from" : "to"] = t.value || s[t.id === "sc-from" ? "from" : "to"]; lsSet("loc-sched", JSON.stringify(s)); applyTheme(); }
+});
+const npadHtml = target => `<div class="npad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button type="button" data-act="np" data-t="${target}" data-v="${n}">${n}</button>`).join("")}<button type="button" data-act="np" data-t="${target}" data-v=",">,</button><button type="button" data-act="np" data-t="${target}" data-v="0">0</button><button type="button" data-act="np" data-t="${target}" data-v="del" aria-label="Effacer">⌫</button></div>`;
+
+
+/* ---------- Premier lancement, biens, bailleur ---------- */
+const slugBien = nom => { let b = stripAcc(nom).toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 14) || "BIEN", id = b, i = 2; while ((S.biens || []).some(x => x.id === id)) id = b + "_" + i++; return id; };
+const bienFields = b => `<label class="f">Nom du bien<input id="bn-nom" value="${esc(b.nom || "")}" placeholder="Ex. Studio, T2, Garage…"></label>
+  <label class="f">Adresse du logement<input id="bn-adr" value="${esc(b.adresse || "")}" placeholder="N°, rue, code postal, ville"></label>
+  <div class="grid2"><label class="f">Solde du compte au départ (€)<input id="bn-solde" inputmode="decimal" value="${fmtNum(b.solde0 ?? "")}" placeholder="0,00"></label><label class="f">à la date du<input id="bn-date" type="date" value="${esc(b.date0 || todayIso())}"></label></div>
+  <div class="small muted">Le solde de départ, c'est l'argent présent sur le compte de ce bien à cette date. Ensuite tout se calcule avec les opérations pointées.</div>
+  <div class="grid2"><label class="f">Loyer mensuel (€)<input id="bn-loyer" inputmode="decimal" value="${fmtNum(b.loyer ?? "")}" placeholder="0,00"></label><label class="f">Mensualité de crédit (€)<input id="bn-credit" inputmode="decimal" value="${fmtNum(b.credit ?? "")}" placeholder="0,00"></label></div>
+  <label class="f">Régime fiscal<input id="bn-regime" value="${esc(b.regime || "LMNP")}"></label>
+  <label class="f">Notes<input id="bn-notes" value="${esc(b.notes || "")}"></label>`;
+function readBien(old){
+  const nom = $("#bn-nom").value.trim(); if (!nom){ toast("Donne un nom au bien"); return null; }
+  const b = {id:old ? old.id : slugBien(nom), nom, adresse:$("#bn-adr").value.trim(), solde0:parseNum($("#bn-solde").value) || 0, date0:$("#bn-date").value || todayIso(), loyer:parseNum($("#bn-loyer").value) || 0, credit:parseNum($("#bn-credit").value) || 0, regime:$("#bn-regime").value.trim(), notes:$("#bn-notes").value.trim(), upd:Date.now()};
+  if (old){ Object.assign(old, b); return old; }
+  b.app = true; S.biens.push(b); return b;
+}
+const locFields = t => `<label class="f">Nom du locataire<input id="t-nom" value="${esc(t.nom || "")}"></label>
+  <div class="grid2"><label class="f">Téléphone<input id="t-tel" type="tel" value="${esc(t.tel || "")}"></label><label class="f">E-mail<input id="t-mail" type="email" autocapitalize="none" value="${esc(t.email || "")}"></label></div>
+  <div class="grid2"><label class="f">Début du bail<input id="t-debut" type="date" value="${esc(t.debut || "")}"></label><label class="f">Fin du bail<input id="t-fin" type="date" value="${esc(t.fin || "")}"></label></div>
+  <div class="grid2"><label class="f">Loyer charges comprises (€)<input id="t-loyer" inputmode="decimal" value="${fmtNum(t.loyer ?? "")}"></label><label class="f">Dont charges (€)<input id="t-chg" inputmode="decimal" value="${fmtNum(t.charges || "")}"></label></div>
+  <label class="f">Dépôt de garantie (€)<input id="t-depot" inputmode="decimal" value="${fmtNum(t.depot ?? "")}"></label>`;
+function readLoc(bien){
+  const nom = $("#t-nom").value.trim(); if (!nom){ toast("Donne le nom du locataire"); return null; }
+  return {id:uid(), bien, nom, tel:$("#t-tel").value.trim(), email:$("#t-mail").value.trim(), debut:$("#t-debut").value, fin:$("#t-fin").value, loyer:parseNum($("#t-loyer").value) || 0, charges:parseNum($("#t-chg").value) || 0, depot:parseNum($("#t-depot").value) || 0, note:"", upd:Date.now()};
+}
+function viewWelcome(){
+  const w = V.wz = V.wz || {step:0}, st = w.step, dots = `<div class="small muted" style="text-align:center">Étape ${Math.min(st, 4)} sur 4</div>`;
+  const p = V.pending ? `<div class="card" style="border-color:var(--accent)"><h2>Fichier lu : ${esc(V.pending.name)}</h2><div class="small">${V.pending.d.biens ? V.pending.d.biens.length + " bien(s), " : ""}${V.pending.d.journal.length} opération(s), ${V.pending.d.locataires.length} locataire(s).</div>
+    <div class="btns"><button class="btn" data-act="imp-merge" style="flex:1">Importer</button><button class="btn ghost" data-act="imp-cancel">Annuler</button></div></div>` : "";
+  if (st === 0) return `<div class="top"><div class="app">Mes locations</div><button class="q" data-act="help" aria-label="Aide">?</button></div>
+    <div class="card hero"><div class="lbl">Bienvenue</div><div class="big" style="font-size:30px">Tes locations, au clair</div><div class="sub">Loyers, charges, soldes de tes appartements, et un échange avec ton classeur Excel.</div></div>
+    ${V.msg ? `<div class="info">${esc(V.msg)}</div>` : ""}${p}
+    <div class="card"><h2>Comment ça marche</h2><div class="rows">
+      <div class="row"><div class="main"><div class="t">1. Tu crées tes biens</div><div class="s">Nom, adresse, solde du compte, loyer, crédit. Puis le locataire.</div></div></div>
+      <div class="row"><div class="main"><div class="t">2. Tu saisis et tu pointes</div><div class="s">Chaque loyer ou charge est une ligne. Tu la pointes quand elle est passée sur le relevé de banque.</div></div></div>
+      <div class="row"><div class="main"><div class="t">3. Tu obtiens bilans et quittances</div><div class="s">En Excel ou en PDF, avec le bailleur, les biens et les locataires.</div></div></div>
+      <div class="row"><div class="main"><div class="t">Tout reste sur ton téléphone</div><div class="s">Aucun envoi sur internet. Tu peux verrouiller l'appli par un code (Réglages).</div></div></div></div></div>
+    <div class="btns"><button class="btn" style="flex:1" data-act="wz-go">Créer mon premier bien</button></div>
+    <div class="card"><h2>J'ai déjà mon classeur Excel</h2><div class="small muted">Importe le fichier <b>export_appli.xlsx</b> : biens, tarifs, opérations et locataires sont repris.</div>
+      <label class="f">Fichier (export_appli.xlsx ou sauvegarde .json)<input id="file" type="file" accept=".xlsx,.xlsm,.json,.xls"></label></div>
+    <div class="btns"><button class="btn ghost" data-act="wz-demo">Voir avec des données d'exemple</button></div>`;
+  if (st === 1) return `<div class="top"><button class="btn ghost sm" data-act="wz-back">‹ Retour</button><button class="q" data-act="help" aria-label="Aide">?</button></div>${dots}
+    <div class="card"><h2>Le bailleur</h2><div class="small muted">C'est toi : ce nom et cette adresse apparaissent sur les quittances et les bilans.</div>
+      <label class="f">Nom du bailleur<input id="wz-bail" value="${esc((S.cfg && S.cfg.bailleur) || "")}" placeholder="Prénom Nom"></label>
+      <label class="f">Adresse du bailleur<input id="wz-badr" value="${esc((S.cfg && S.cfg.bailleurAdr) || "")}" placeholder="N°, rue, code postal, ville"></label>
+      <div class="btns"><button class="btn" style="flex:1" data-act="wz-bail">Suivant</button><button class="btn ghost" data-act="wz-next2">Passer</button></div></div>`;
+  if (st === 2) return `<div class="top"><button class="btn ghost sm" data-act="wz-back">‹ Retour</button><button class="q" data-act="help" aria-label="Aide">?</button></div>${dots}
+    <div class="card"><h2>${live(S.biens).length ? "Un autre bien" : "Ton premier bien"}</h2>${bienFields({})}<div class="btns"><button class="btn" style="flex:1" data-act="wz-bien">Suivant</button></div></div>`;
+  if (st === 3){ const b = S.biens.find(x => x.id === w.bien) || {};
+    return `<div class="top"><div class="app">${esc(b.nom || "Bien")}</div><button class="q" data-act="help" aria-label="Aide">?</button></div>${dots}
+    <div class="card"><h2>Le locataire (facultatif)</h2><div class="small muted">Repris sur la quittance et les bilans. Tu peux le faire plus tard dans Biens › Locataires.</div>${locFields({loyer:b.loyer})}
+      <div class="btns"><button class="btn" style="flex:1" data-act="wz-loc">Enregistrer</button><button class="btn ghost" data-act="wz-skip">Passer</button></div></div>`; }
+  return `<div class="top"><div class="app">C'est prêt</div></div>
+    <div class="card"><h2>${live(S.biens).length} bien(s) créé(s)</h2><div class="rows">${live(S.biens).map(b => `<div class="row"><div class="main"><div class="t">${bienPill(b.id)}</div><div class="s">${esc(b.adresse || "adresse non renseignée")} · loyer ${eur(b.loyer)} · crédit ${eur(b.credit)}</div></div></div>`).join("")}</div>
+      <div class="small muted">Pour ajouter les loyers du mois : onglet Loyers, bouton « Ajouter ». Pour les autres opérations : le + du milieu.</div>
+      <div class="btns"><button class="btn" style="flex:1" data-act="wz-end">Ouvrir mon appli</button><button class="btn ghost" data-act="wz-more">Ajouter un autre bien</button></div></div>`;
+}
+function sheetBien(id){
+  const b = id ? S.biens.find(x => x.id === id) : {};
+  openSheet(`<h2>${id ? "Modifier le bien" : "Ajouter un bien"}</h2>${bienFields(b)}
+    <div class="btns"><button class="btn" style="flex:1" data-act="bn-save" data-id="${id || ""}">Enregistrer</button>${id && !S.journal.some(j => j.bien === id && !j.del) ? `<button class="btn danger" data-act="bn-del" data-id="${id}">Supprimer</button>` : ""}<button class="btn ghost" data-act="sheetclose">Annuler</button></div>
+    ${id ? `<div class="small muted">L'identifiant « ${esc(id)} » ne change pas (il fait le lien avec Excel). Un bien qui a déjà des opérations ne peut pas être supprimé.</div>` : ""}`);
+}
+function sheetBailleur(){ const c = S.cfg || {};
+  openSheet(`<h2>Bailleur</h2><label class="f">Nom<input id="bl-nom" value="${esc(c.bailleur || "")}"></label><label class="f">Adresse<input id="bl-adr" value="${esc(c.bailleurAdr || "")}"></label>
+    <div class="btns"><button class="btn" style="flex:1" data-act="bl-save">Enregistrer</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`); }
+const biensCard = () => `<div class="card"><h2>Bailleur et biens</h2>
+  <div class="kv"><span>Bailleur</span><span>${esc((S.cfg && S.cfg.bailleur) || "non renseigné")}</span></div>
+  <div class="btns"><button class="btn ghost sm" data-act="bl-open">Modifier le bailleur</button></div>
+  <div class="rows">${live(S.biens).map(b => `<div class="row"><div class="main"><div class="t">${bienPill(b.id)}</div><div class="s">${esc(b.adresse || "adresse non renseignée")}</div></div><button class="mini" data-act="bn-edit" data-id="${b.id}">Modifier</button></div>`).join("")}</div>
+  <div class="btns"><button class="btn ghost sm" data-act="bn-new">Ajouter un bien</button></div></div>`;
+document.addEventListener("click", ev => {
+  const b = ev.target.closest("[data-act]"); if (!b) return;
+  const a = b.dataset.act, id = b.dataset.id, w = V.wz = V.wz || {step:0};
+  switch (a){
+    case "wz-go": w.step = 1; w.active = true; render(); break;
+    case "wz-back": w.step = w.step === 2 && live(S.biens).length ? 4 : Math.max(0, w.step - 1); render(); break;
+    case "wz-bail": S.cfg = S.cfg || {}; S.cfg.bailleur = $("#wz-bail").value.trim(); S.cfg.bailleurAdr = $("#wz-badr").value.trim(); persist(); w.step = 2; render(); break;
+    case "wz-next2": w.step = 2; render(); break;
+    case "wz-bien": { const nb = readBien(null); if (!nb) break; persist(); w.bien = nb.id; w.step = 3; render(); break; }
+    case "wz-loc": { const t = readLoc(w.bien); if (!t) break; S.locataires.push(t); persist(); w.step = 4; render(); break; }
+    case "wz-skip": w.step = 4; render(); break;
+    case "wz-more": w.step = 2; render(); break;
+    case "wz-end": V.wz = null; V.tab = "home"; lsSet("loc-tour", "1"); render(); toast("Bienvenue ! Le bouton ? explique chaque écran"); break;
+    case "wz-demo": S = demoData(); persist(); V.wz = null; V.tab = "home"; render(); break;
+    case "bn-new": sheetBien(""); break; case "bn-edit": sheetBien(id); break;
+    case "bn-save": { const old = id ? S.biens.find(x => x.id === id) : null, nb = readBien(old); if (!nb) break; persist(); closeSheet(); toast(id ? "Bien modifié" : "Bien ajouté"); if (!id) V.bsel = nb.id; render(); break; }
+    case "bn-del": S.biens = S.biens.filter(x => x.id !== id); persist(); closeSheet(); render(); break;
+    case "bl-open": sheetBailleur(); break;
+    case "bl-save": S.cfg = S.cfg || {}; S.cfg.bailleur = $("#bl-nom").value.trim(); S.cfg.bailleurAdr = $("#bl-adr").value.trim(); persist(); closeSheet(); toast("Bailleur enregistré"); render(); break;
+  }
+});
+
+/* ---------- Compta : regroupement pour jedeclaremonmeuble.com (indicatif, à ajuster) ---------- */
+const COMPTA_SITE = "https://www.jedeclaremonmeuble.com";
+const COMPTA_MAP = {
+  "Crédit (mensualité)":"Emprunt (capital + intérêts : voir tableau)",
+  "Assurance PNO":"Assurances", "Assurance GMPA":"Assurances",
+  "Syndic / copropriété":"Charges de copropriété",
+  "Eau":"Eau et énergie", "Électricité":"Eau et énergie",
+  "Taxe foncière":"Impôts et taxes", "CFE":"Impôts et taxes",
+  "Comptabilité":"Honoraires et gestion", "CGA / OGA":"Honoraires et gestion", "Abonnement Rendement locatif":"Honoraires et gestion",
+  "Entretien / réparations":"Entretien et réparations",
+  "Mobilier / équipement":"Mobilier et équipement (à immobiliser / amortir)",
+  "Diagnostics":"Diagnostics", "Frais bancaires / cotisations":"Frais bancaires"
+};
+const posteOf = c => COMPTA_MAP[c] || "Autres charges";
+const POSTE_CREDIT = COMPTA_MAP["Crédit (mensualité)"];
+
+/* emprunt d'un bien : {capital, taux, duree (mois), debut (AAAA-MM-JJ), assur (€/mois)} */
+function empOf(id){ const b = S.biens.find(x => x.id === id); return b && b.emprunt && b.emprunt.capital > 0 && b.emprunt.duree > 0 && b.emprunt.debut ? b.emprunt : null; }
+function amort(e){
+  const n = Math.round(e.duree), r = (e.taux || 0) / 1200, cap = e.capital;
+  const m = r === 0 ? cap / n : cap * r / (1 - Math.pow(1 + r, -n));
+  const rows = []; let crd = cap; const y0 = +e.debut.slice(0, 4), m0 = +e.debut.slice(5, 7) - 1;
+  for (let k = 0; k < n; k++){
+    const it = r2(crd * r), kap = k === n - 1 ? r2(crd) : r2(m - it); crd = r2(crd - kap);
+    const mm = m0 + k, y = y0 + Math.floor(mm / 12), mo = mm % 12;
+    rows.push({k:k + 1, y, m:mo, mens:r2(it + kap), it, kap, crd:Math.max(0, crd)});
+  }
+  return {mens:r2(m), rows};
+}
+function empYear(id, y){
+  const e = empOf(id); if (!e) return null;
+  const A = amort(e), R = A.rows.filter(x => x.y === y), prev = A.rows.filter(x => x.y < y);
+  const crdFin = R.length ? R[R.length - 1].crd : (prev.length ? prev[prev.length - 1].crd : e.capital);
+  return {e, mens:A.mens, nb:R.length, it:r2(sum(R.map(x => x.it))), kap:r2(sum(R.map(x => x.kap))), assur:r2((e.assur || 0) * R.length), crd:crdFin};
+}
+
+/* synthèse de l'année pour un bien */
+function comptaBien(id, y){
+  const L = J().filter(j => j.bien === id && yr(j) === y);
+  const rec = L.filter(j => j.type === "Recette");
+  const loyers = r2(sum(rec.filter(j => j.cat === "Loyer").map(j => j.montant)));
+  const autres = r2(sum(rec.filter(j => j.cat !== "Loyer").map(j => j.montant)));
+  const dep = L.filter(j => j.type === "Dépense" && (j.compte || "Bien") !== "Perso");
+  const postes = {};
+  for (const j of dep){ if (j.cat === "Crédit (mensualité)") continue; const p = posteOf(j.cat), o = postes[p] || (postes[p] = {n:p, v:0, nb:0, ok:0}); o.v = r2(o.v + j.montant); o.nb++; if (j.compta) o.ok++; }
+  const credit = r2(sum(dep.filter(j => j.cat === "Crédit (mensualité)").map(j => j.montant)));
+  const ey = empYear(id, y);
+  const charges = r2(sum(Object.values(postes).map(p => p.v)));
+  const interets = ey ? ey.it : 0, assurE = ey ? ey.assur : 0;
+  const aSaisir = dep.filter(j => j.pointe === "x" && !j.compta).length;
+  const fact = live(S.factures).filter(f => f.date && +f.date.slice(0, 4) === y && (f.cat || "").toUpperCase() !== "" );
+  return {id, y, loyers, autres, postes:Object.values(postes).sort((a, b) => b.v - a.v), credit, ey, charges, interets, assurE, aSaisir,
+    resultat:r2(loyers + autres - charges - interets - assurE), fact, lignes:dep.sort((a, b) => a.date.localeCompare(b.date))};
+}
+
+function viewCompta(){
+  const y = V.y, ids = bienIds(); if (!V.csel || (V.csel !== "all" && !ids.includes(V.csel))) V.csel = "all";
+  const sel = V.csel, list = sel === "all" ? ids : [sel], D = list.map(id => comptaBien(id, y));
+  const T = k => r2(sum(D.map(d => d[k])));
+  const posteAll = {}; for (const d of D) for (const p of d.postes){ const o = posteAll[p.n] || (posteAll[p.n] = {n:p.n, v:0}); o.v = r2(o.v + p.v); }
+  const rows = Object.values(posteAll).sort((a, b) => b.v - a.v);
+  const aSaisir = T("aSaisir"), nFact = sum(D.map(d => d.fact.filter(f => !f.jdmm).length));
+  const seg = `<div class="seg"><button class="${sel==="all"?"on":""}" data-act="csel" data-v="all">Tous</button>${ids.map(id => `<button class="${sel===id?"on":""}" data-act="csel" data-v="${esc(id)}">${esc(bienName(id))}</button>`).join("")}</div>`;
+  const emp = D.map(d => { const b = S.biens.find(x => x.id === d.id) || {}; return `<div class="env" style="padding:8px 0;gap:4px"><div class="top"><div>${bienPill(d.id)}</div><button class="mini" data-act="emp-open" data-id="${esc(d.id)}">${d.ey || empOf(d.id) ? "Modifier" : "Renseigner"}</button></div>
+    ${empOf(d.id) ? `<div class="small muted">${eur(empOf(d.id).capital)} à ${String(empOf(d.id).taux).replace(".", ",")} % sur ${empOf(d.id).duree} mois, depuis ${frDate(empOf(d.id).debut)}</div>
+      ${d.ey ? kv("Intérêts " + y, eur(d.ey.it)) + kv("Capital remboursé " + y, eur(d.ey.kap)) + kv("Assurance emprunteur " + y, eur(d.ey.assur)) + kv("Capital restant dû fin " + y, eur(d.ey.crd)) : ""}`
+      : '<div class="small muted">Emprunt non renseigné : les intérêts ne sont pas comptés.</div>'}</div>`; }).join("");
+  return topbar("Compta", yearNav()) + seg + `
+  <div class="hero"><div class="small">Résultat ${y} (indicatif)</div><div class="big num">${eur(T("resultat"))}</div>
+    <div class="small">Loyers ${eur(T("loyers"))} − charges ${eur(T("charges"))} − intérêts ${eur(T("interets"))}</div></div>
+  <div class="tiles"><button class="tile ${aSaisir ? "warn" : ""}" data-act="go" data-v="month" data-sub="" data-f="compta"><span class="n">${aSaisir}</span><span class="l">dépense(s) à saisir en compta</span></button>
+    <div class="tile ${nFact ? "warn" : ""}"><span class="n">${nFact}</span><span class="l">facture(s) non enregistrée(s)</span></div></div>
+  <div class="card"><h2>Recettes ${y}</h2>${kv("Loyers encaissés ou prévus", eur(T("loyers")))}${T("autres") ? kv("Autres recettes", eur(T("autres"))) : ""}
+    <div class="small muted">Les lignes de l'année comptent, pointées ou non. Pointe tes loyers pour t'en servir comme contrôle.</div></div>
+  <div class="card"><h2>Charges ${y} par poste</h2>${catBars(rows, rows.length ? rows[0].v : 0)}${rows.length ? "" : '<div class="empty">Aucune charge cette année.</div>'}
+    <div class="kv tot"><span>Total charges</span><span class="num">${eur(T("charges"))}</span></div>
+    <div class="small muted">La mensualité du crédit n'est pas une charge : on ne déclare que les intérêts et l'assurance, calculés plus bas.</div></div>
+  <div class="card"><h2>Emprunt et intérêts</h2>${emp}</div>
+  <div class="card"><h2>Exporter pour ta compta</h2><div class="small muted">Un fichier Excel (synthèse, détail par poste, emprunt, factures) ou un PDF à garder. Regroupement indicatif, à ajuster avec le site.</div>
+    <div class="btns"><button class="btn" data-act="cmp-xlsx">Excel</button><button class="btn ghost" data-act="cmp-pdf">PDF</button><a class="btn ghost" href="${COMPTA_SITE}" target="_blank" rel="noopener">Ouvrir le site</a></div></div>`;
+}
+
+function sheetEmprunt(id){
+  const e = (S.biens.find(x => x.id === id) || {}).emprunt || {};
+  openSheet(`<h2>Emprunt · ${esc(bienName(id))}</h2>
+    <label class="f">Capital emprunté (€)<input id="em-cap" inputmode="decimal" value="${e.capital ? fmtNum(e.capital) : ""}"></label>
+    <label class="f">Taux annuel hors assurance (%)<input id="em-taux" inputmode="decimal" value="${e.taux != null && e.taux !== "" ? String(e.taux).replace(".", ",") : ""}"></label>
+    <label class="f">Durée (mois)<input id="em-dur" inputmode="numeric" value="${e.duree || ""}"></label>
+    <label class="f">Date de la première échéance<input id="em-deb" type="date" value="${e.debut || ""}"></label>
+    <label class="f">Assurance emprunteur (€ par mois)<input id="em-ass" inputmode="decimal" value="${e.assur ? fmtNum(e.assur) : ""}"></label>
+    <div class="small muted">Les intérêts sont calculés avec un tableau d'amortissement classique. Compare avec ton tableau de la banque.</div>
+    <div class="btns"><button class="btn" style="flex:1" data-act="emp-save" data-id="${esc(id)}">Enregistrer</button>${e.capital ? `<button class="btn danger" data-act="emp-del" data-id="${esc(id)}">Retirer</button>` : ""}<button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
+}
+
+/* ---- exports ---- */
+function comptaData(y, sel){ const ids = sel === "all" ? bienIds() : [sel]; return {y, ids, D:ids.map(id => comptaBien(id, y))}; }
+function comptaXlsx(y, sel){
+  const C = comptaData(y, sel), wb = XLSX.utils.book_new(), dt = iso => isoToSerial(iso), money = "#,##0.00 \"€\"";
+  const add = (name, aoa, widths, fmt) => { const ws = XLSX.utils.aoa_to_sheet(aoa); ws["!cols"] = widths.map(w => ({wch:w}));
+    for (const k of Object.keys(ws)){ if (k[0] === "!") continue; const c = ws[k]; if (c.t === "n" && fmt && fmt(k)) c.z = fmt(k); } XLSX.utils.book_append_sheet(wb, ws, name); };
+  const bl = (S.cfg && S.cfg.bailleur) || "";
+  add("Synthèse", [["Compta " + y + " (regroupement indicatif)"], [bl ? "Bailleur : " + bl : ""], [], ["Bien", "Régime", "Loyers", "Autres recettes", "Charges", "Intérêts d'emprunt", "Assurance emprunteur", "Résultat"]]
+    .concat(C.D.map(d => [bienName(d.id), (S.biens.find(b => b.id === d.id) || {}).regime || "", d.loyers, d.autres, d.charges, d.interets, d.assurE, d.resultat]))
+    .concat([["Total", "", ...["loyers", "autres", "charges", "interets", "assurE", "resultat"].map(k => r2(sum(C.D.map(d => d[k]))))]]),
+    [22, 16, 14, 16, 14, 18, 20, 14], k => /^[C-H]/.test(k) && +k.slice(1) > 4 ? money : null);
+  const post = [["Bien", "Poste", "Montant", "Nb lignes", "Saisies en compta"]]; for (const d of C.D) for (const p of d.postes) post.push([bienName(d.id), p.n, p.v, p.nb, p.ok]);
+  add("Charges par poste", post, [22, 48, 14, 10, 18], k => k[0] === "C" && +k.slice(1) > 1 ? money : null);
+  const det = [["Date", "Bien", "Poste compta", "Catégorie", "Libellé", "Montant", "Payé", "Saisi compta", "Fournisseur / n° facture"]];
+  for (const d of C.D) for (const j of d.lignes) det.push([dt(j.date), bienName(j.bien), j.cat === "Crédit (mensualité)" ? "(non déclaré : voir Emprunt)" : posteOf(j.cat), j.cat, j.lib, j.montant, j.pointe === "x" ? "x" : "", j.compta ? "x" : "", j.fourn]);
+  add("Détail dépenses", det, [12, 16, 40, 24, 32, 14, 8, 12, 26], k => k[0] === "A" && +k.slice(1) > 1 ? "dd/mm/yyyy" : (k[0] === "F" && +k.slice(1) > 1 ? money : null));
+  const em = [["Bien", "Année", "Échéances", "Mensualité", "Intérêts", "Capital remboursé", "Assurance", "Capital restant dû fin d'année"]];
+  for (const d of C.D){ const e = empOf(d.id); if (!e) continue; const A = amort(e); const ys = [...new Set(A.rows.map(x => x.y))];
+    for (const yy of ys){ const ey = empYear(d.id, yy); em.push([bienName(d.id), yy, ey.nb, A.mens, ey.it, ey.kap, ey.assur, ey.crd]); } }
+  add("Emprunt par année", em, [22, 8, 10, 14, 14, 18, 12, 24], k => /^[D-H]/.test(k) && +k.slice(1) > 1 && k[0] !== "C" ? money : null);
+  const fa = [["Bien", "Date", "Fournisseur", "N° facture", "Catégorie", "Description", "Prix", "Enregistrée sur le site"]];
+  for (const f of live(S.factures).filter(f => f.date && +f.date.slice(0, 4) === y)) fa.push(["", dt(f.date), f.fourn, f.num, f.cat, f.desc, f.prix, f.jdmm ? "x" : ""]);
+  add("Factures", fa, [10, 12, 24, 14, 16, 36, 12, 20], k => k[0] === "B" && +k.slice(1) > 1 ? "dd/mm/yyyy" : (k[0] === "G" && +k.slice(1) > 1 ? money : null));
+  return XLSX.write(wb, {type:"array", bookType:"xlsx", compression:true});
+}
+function comptaPdf(y, sel){
+  const C = comptaData(y, sel), d = new PdfDoc("Compta"), M = d.M, R = d.W - M;
+  d.text(M, d.y, "Compta " + y, {size:20, bold:true}); d.y -= 22;
+  d.para("Regroupement indicatif pour remplir ta déclaration en ligne. Les chiffres viennent de l'appli : à contrôler avec tes justificatifs.", 9.5, 13);
+  const bl = (S.cfg && S.cfg.bailleur) || ""; if (bl) d.para("Bailleur : " + bl, 10, 13);
+  for (const x of C.D){ const b = S.biens.find(z => z.id === x.id) || {};
+    d.h(bienName(x.id) + (b.regime ? " · " + b.regime : ""), 14); if (b.adresse) d.para(b.adresse, 9.5, 12);
+    const line = (l, v, bold) => { d.need(16); d.text(M, d.y, l, {size:10, bold}); d.text(R, d.y, eur(v), {size:10, right:true, bold}); d.y -= 15; };
+    line("Loyers", x.loyers); if (x.autres) line("Autres recettes", x.autres);
+    d.y -= 4; d.text(M, d.y, "Charges par poste", {size:10, bold:true, color:"#5C6B66"}); d.y -= 15;
+    for (const p of x.postes) line(p.n, p.v); line("Total charges", x.charges, true);
+    d.y -= 4; d.text(M, d.y, "Emprunt", {size:10, bold:true, color:"#5C6B66"}); d.y -= 15;
+    if (x.ey){ const e = x.ey.e; d.para(eur(e.capital) + " à " + String(e.taux).replace(".", ",") + " % sur " + e.duree + " mois, 1re échéance le " + frDate(e.debut), 9.5, 12);
+      line("Intérêts de l'année", x.ey.it); line("Capital remboursé", x.ey.kap); line("Assurance emprunteur", x.ey.assur); line("Capital restant dû fin " + y, x.ey.crd);
+    } else d.para("Non renseigné.", 9.5, 12);
+    d.y -= 4; d.line(M, d.y + 8, R, d.y + 8); line("Résultat (loyers − charges − intérêts − assurance)", x.resultat, true); }
+  return d.finish("Compta " + y);
+}
+
+document.addEventListener("click", ev => {
+  const b = ev.target.closest("[data-act]"); if (!b) return;
+  const a = b.dataset.act, id = b.dataset.id, v = b.dataset.v;
+  switch (a){
+    case "csel": V.csel = v; render(); break;
+    case "emp-open": sheetEmprunt(id); break;
+    case "emp-save": { const bn = S.biens.find(x => x.id === id); if (!bn) break;
+      const e = {capital:parseNum($("#em-cap").value) || 0, taux:parseNum($("#em-taux").value) || 0, duree:Math.round(parseNum($("#em-dur").value) || 0), debut:$("#em-deb").value, assur:parseNum($("#em-ass").value) || 0};
+      if (!(e.capital > 0 && e.duree > 0 && e.debut)) return toast("Capital, durée et date sont nécessaires");
+      bn.emprunt = e; bn.upd = Date.now(); persist(); closeSheet(); toast("Emprunt enregistré"); render(); break; }
+    case "emp-del": { const bn = S.biens.find(x => x.id === id); if (bn) delete bn.emprunt; persist(); closeSheet(); render(); break; }
+    case "cmp-xlsx": saveFile("compta-" + V.y + ".xlsx", comptaXlsx(V.y, V.csel || "all"), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"); break;
+    case "cmp-pdf": saveFile("compta-" + V.y + ".pdf", comptaPdf(V.y, V.csel || "all"), "application/pdf"); break;
+  }
+});
+
+/* ---------- Placements (livret A, PEL, bourse…), matelas et argent utilisable ---------- */
+const PLACE_CATS = ["Bourse", "Livret A", "PEL", "Autre placement"], CAT_INT = "Intérêts placement";
+function placeOf(id){
+  const L = J().filter(j => (id == null || j.bien === id) && (PLACE_CATS.includes(j.cat) || j.cat === CAT_INT)), by = {};
+  for (const c of PLACE_CATS){ const l = L.filter(j => j.cat === c); by[c] = r2(sum(l.filter(j => j.type === "Sortie").map(j => j.montant)) - sum(l.filter(j => j.type === "Entrée").map(j => j.montant))); }
+  const interets = r2(sum(L.filter(j => j.cat === CAT_INT).map(j => j.montant))), net = r2(sum(Object.values(by)));
+  return {by, interets, net, total:r2(net + interets)};
+}
+function matelasOf(id){
+  const t = todayIso(), loyer = suggest(id, "Loyer", t) || 0, mat = r2(12 * loyer), compte = soldeBien(id), pl = placeOf(id), total = r2(compte + pl.total);
+  const lim = new Date(Date.now() + 90 * 864e5).toISOString().slice(0, 10);
+  const pend = J().filter(j => j.bien === id && j.pointe !== "x" && j.date <= lim && j.compte !== "Perso");
+  const dep = r2(sum(pend.filter(j => j.type === "Dépense").map(j => j.montant))), rec = r2(sum(pend.filter(j => j.type === "Recette").map(j => j.montant)));
+  const reserve = r2(Math.max(0, dep - rec));
+  return {loyer, mat, compte, place:pl.total, total, reserve, dep, rec, usable:r2(total - mat - reserve)};
+}
+function gaugeHtml(m){
+  const max = Math.max(m.total, m.mat + m.reserve, 1), pc = v => Math.max(0, Math.min(100, v / max * 100)).toFixed(1);
+  const a = Math.min(Math.max(m.total, 0), m.mat), b = Math.min(Math.max(m.total - m.mat, 0), m.reserve), c = Math.max(0, m.total - m.mat - m.reserve);
+  return `<div class="mg" role="img" aria-label="Matelas, réserve et argent utilisable"><i style="width:${pc(a)}%;background:#3F6FB5"></i><i style="width:${pc(b)}%;background:#E8890C"></i><i style="width:${pc(c)}%;background:#1FA45B"></i></div>
+    <div class="mgl"><span><b style="background:#3F6FB5"></b>Matelas ${eur(m.mat)}</span><span><b style="background:#E8890C"></b>Réservé ${eur(m.reserve)}</span><span><b style="background:#1FA45B"></b>Utilisable ${eur(Math.max(0, m.usable))}</span></div>`;
+}
+function matelasCard(id){
+  const m = matelasOf(id), neg = m.usable < 0;
+  return `<div class="card"><h2>Matelas et argent utilisable</h2>
+    <div class="small muted">Utilisable aujourd'hui sans te mettre en difficulté</div><div class="big num ${neg ? "neg" : ""}" style="font-size:30px;font-weight:700">${neg ? "manque " + eur(-m.usable) : eur(m.usable)}</div>${gaugeHtml(m)}
+    ${kv("Total du bien (compte + placé)", eur(m.total))}${kv("dont sur le compte", eur(m.compte), "muted")}${kv("dont placé (livret, bourse…)", eur(m.place), "muted")}
+    ${kv("Matelas : 12 mois de loyer (12 × " + eur(m.loyer) + ")", "− " + eur(m.mat))}${kv("Réservé : 3 prochains mois", "− " + eur(m.reserve))}
+    <div class="small muted">Le matelas ne se touche pas. Réservé = charges prévues dans les 3 mois moins loyers prévus (0 si les loyers couvrent). Le reste est utilisable.</div></div>`;
+}
+function matelasHome(){
+  const ids = bienIds(); if (!ids.length) return "";
+  const ms = ids.map(id => ({id, m:matelasOf(id)})), tot = r2(sum(ms.map(x => x.m.usable)));
+  return `<div class="card"><h2>Argent utilisable</h2><div class="big num ${tot < 0 ? "neg" : ""}" style="font-size:30px;font-weight:700">${eur(tot)}</div>
+    <div class="small muted">Au-dessus de 12 mois de loyer par bien, charges des 3 prochains mois déduites.</div>
+    ${ms.map(x => `<button class="rowbtn" style="width:100%;text-align:left" data-act="go" data-v="bld" data-sub="vue" data-bien="${esc(x.id)}"><div class="kv">${bienPill(x.id)}<span class="num ${x.m.usable < 0 ? "neg" : ""}">${eur(x.m.usable)}</span></div>${gaugeHtml(x.m)}</button>`).join("")}</div>`;
+}
+const usedTypes = id => PLACE_CATS.filter(c => J().some(j => j.cat === c && (id == null || j.bien === id)));
+const titleTypes = ty => ty.length < 2 ? (ty[0] || "Bourse") : ty.slice(0, -1).join(", ") + " et " + ty[ty.length - 1];
+function placeCard(id){
+  const p = placeOf(id), rows = [];
+  if (!p.interets && !(id && usedTypes(id).length)) return "";
+  return `<div class="card"><div class="top"><h2>${id ? "Intérêts des placements" : "Intérêts gagnés (tous les biens)"}</h2>${id ? `<button class="btn sm" data-act="int-add" data-id="${esc(id)}">Ajouter des intérêts</button>` : ""}</div>
+    <div class="kv tot"><span>Intérêts gagnés</span><span class="num pos">${eur(p.interets)}</span></div>
+    <div class="small muted">L'argent placé reste compté dans le total du bien. Les intérêts sont notés à part : c'est ce que ton bien te fait gagner en plus.</div></div>`;
+}
+document.addEventListener("click", ev => {
+  const b = ev.target.closest("[data-act]"); if (!b || b.dataset.act !== "int-add") return;
+  const bien = b.dataset.id; V.back = "bld"; V.bsub = "vue"; V.bsel = bien; V.editId = null; V.draft = newDraft({type:"Entrée", bien, cat:CAT_INT, lib:"Intérêts", pt:true}); V.tab = "add"; render();
+});
+
 /* ============ Démarrage ============ */
-const migrate = () => { if (!S.rapp || typeof S.rapp !== "object") S.rapp = {}; for (const k of ["biens","tarifs","journal","factures","locataires","seen","partages"]) if (!Array.isArray(S[k])) S[k] = []; };
+const migrate = () => { if (!S.cfg || typeof S.cfg !== "object") S.cfg = {bailleur:"", adr:{}}; if (!Array.isArray(S.modeles)) S.modeles = []; if (!Array.isArray(S.clotures)) S.clotures = []; if (!S.rapp || typeof S.rapp !== "object") S.rapp = {}; for (const k of ["biens","tarifs","journal","factures","locataires","seen","partages"]) if (!Array.isArray(S[k])) S[k] = []; };
 function startApp(){
   S = load();
-  if (!S || !Array.isArray(S.journal)){ S = demoData(); persist(); }
-  migrate(); render();
+  if (!S || !Array.isArray(S.journal)){ S = emptyData(); persist(); }
+  migrate(); render(); bootRoutines();
 }
 if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) { try { navigator.serviceWorker.register("sw.js").catch(() => {}); } catch(e){} }
+window.HAD_DATA = !!(lsGet(KEY) || lsGet(ENC));
 secCfgLoad();
 faceOK().then(v => { V.faceOK = v; });
 if (secAvailable() && lsGet(ENC)){ SEC.on = true; showLock(); } else startApp();

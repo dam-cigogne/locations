@@ -1109,8 +1109,10 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.9.2";
+const APP_VERSION = "2.9.3";
 const CHANGELOG = [
+  {v:"2.9.3", date:"2026-10-25", titre:"Ton propre texte d'annonce", items:[
+    "Location › Annonce › Modifier : un onglet « Mon texte » pour écrire ou coller ton annonce. S'il n'est pas vide, il remplace le texte généré : copié, partagé et placé dans le PDF tel que tu l'as écrit. Un bouton insère le texte généré comme point de départ."]},
   {v:"2.9.2", date:"2026-10-25", titre:"Inventaire par pièce", items:[
     "L'inventaire du mobilier est regroupé par pièce (Chambre, Séjour, Cuisine…) : touche une pièce pour déplier ses articles, avec le nombre d'articles renseignés. Un bouton « Tout déplier / Tout replier » est en haut."]},
   {v:"2.9.1", date:"2026-10-25", titre:"PDF de l'annonce avec photos", items:[
@@ -3019,7 +3021,7 @@ const nf1 = n => (Math.round(n * 10) / 10).toString().replace(".", ",");
 
 function annDefaults(bien){
   const b = S.biens.find(x => x.id === bien) || {}, t = live(S.locataires).filter(x => x.bien === bien).sort((a, c) => (c.debut || "").localeCompare(a.debut || ""))[0] || {};
-  return {titre:"", type:"Appartement meublé", surf:"", loc:"", loyer:b.loyer || t.loyer || "", charges:t.charges || "", depot:b.loyer || t.depot || "", dispo:"", dpe:"", ges:"", equip:"", mail:(S.cfg && S.cfg.candMail) || "", tel:"", pub:{}, photos:[], statut:"brouillon"};
+  return {titre:"", type:"Appartement meublé", surf:"", loc:"", loyer:b.loyer || t.loyer || "", charges:t.charges || "", depot:b.loyer || t.depot || "", dispo:"", dpe:"", ges:"", equip:"", mail:(S.cfg && S.cfg.candMail) || "", tel:"", pub:{}, photos:[], perso:"", statut:"brouillon"};
 }
 function annOf(bien){ return Object.assign(annDefaults(bien), annGet(bien) || {}); }
 function loyerCC(bien){ const a = annOf(bien); return (Number(a.loyer) || 0) + (Number(a.charges) || 0); }
@@ -3037,7 +3039,8 @@ function candScore(c){
 const candPieces = c => { const need = CAND_PIECES.filter(p => !p[2] || (c.garant === "proche" || c.garant === "autre")), got = need.filter(p => c.pieces && c.pieces[p[0]]).length; return {n:got, m:need.length}; };
 
 /* ---------- Texte de l'annonce ---------- */
-function annText(bien){
+function annText(bien){ const a = annOf(bien); return a.perso && a.perso.trim() ? a.perso.trim() : annGen(bien); }
+function annGen(bien){
   const a = annOf(bien), cc = (Number(a.loyer) || 0) + (Number(a.charges) || 0), L = [];
   L.push((a.titre || a.type + (a.surf ? " " + a.surf + " m²" : "") + (a.loc ? " – " + a.loc : "")).trim());
   L.push("");
@@ -3076,7 +3079,7 @@ function viewAnnonce(bien){
   const sites = SITES_ANN.map(([k, n, u]) => { const d = a.pub && a.pub[k]; return `<div class="row"><label style="display:flex;gap:10px;align-items:center;flex:1"><input type="checkbox" data-pub="${k}" ${d ? "checked" : ""}><span><b style="font-size:14px">${esc(n)}</b>${d ? ` <span class="small muted">· publiée le ${frDate(d)}</span>` : ""}</span></label>${u ? `<a class="mini" target="_blank" rel="noopener" href="${u}">Ouvrir</a>` : ""}</div>`; }).join("");
   return `<div class="card"><div class="top"><h2>Annonce · ${esc(bienName(bien))}</h2><span class="chip ${a.statut === "publiee" ? "ok" : a.statut === "louee" ? "" : "warn"}">${lbl}</span></div>
     ${w.length ? `<div class="info" style="background:var(--warn-soft)">${w.map(x => "• " + esc(x)).join("<br>")}</div>` : ""}
-    <label class="f" style="margin-top:8px">Texte prêt à publier<textarea id="an-txt" readonly style="min-height:240px">${esc(txt)}</textarea></label>
+    <label class="f" style="margin-top:8px">${a.perso && a.perso.trim() ? "Ton texte (utilisé tel quel)" : "Texte prêt à publier"}<textarea id="an-txt" readonly style="min-height:240px">${esc(txt)}</textarea></label>
     <div class="btns"><button class="btn" data-act="an-edit">Modifier l'annonce</button><button class="btn ghost" data-act="an-copy">Copier le texte</button><button class="btn ghost" data-act="an-share">Partager</button></div>
     <div class="btns"><button class="btn" style="flex:1" data-act="an-pdf">Créer le PDF de l'annonce</button></div>
     <div class="small muted">Le PDF reprend le texte et tes photos : envoie-le par Mail ou Messages. Pour les sites d'annonces, ajoute aussi les photos sur le site. Vérifie les mentions obligatoires sur le site choisi et, si ta commune est en zone d'encadrement des loyers, le loyer de référence.</div></div>
@@ -3112,13 +3115,20 @@ function viewCands(bien){
 function sheetAnnonce(){
   const bien = V.lsel, a = annOf(bien);
   openSheet(`<h2>Annonce · ${esc(bienName(bien))}</h2>
+    <div class="seg"><button class="on" data-act="an-tab" data-v="infos">Informations</button><button data-act="an-tab" data-v="texte">Mon texte</button></div>
+    <div id="an-p-texte" style="display:none;flex-direction:column;gap:12px">
+      <div class="info">Écris ou colle ton propre texte d'annonce. S'il n'est pas vide, il remplace le texte généré : il est copié, partagé et placé dans le PDF exactement comme tu l'as écrit (le prix, les photos et les infos clés du PDF restent).</div>
+      <label class="f">Mon texte d'annonce<textarea id="an-perso" style="min-height:300px">${esc(a.perso || "")}</textarea></label>
+      <div class="btns"><button class="btn sm ghost" data-act="an-gen">Insérer le texte généré</button><button class="btn sm ghost" data-act="an-clear">Effacer mon texte</button></div>
+      <div class="small muted">Le texte généré reprend les infos déjà enregistrées. Enregistre avec le bouton en bas ; laisse vide pour garder le texte généré.</div></div>
+    <div id="an-p-infos" style="display:flex;flex-direction:column;gap:12px">
     ${dxF("an-titre", "Titre (facultatif)", a.titre)}${dxF("an-type", "Type de logement", a.type)}
     <div class="tl">${dxF("an-surf", "Surface (m²)", a.surf, 'inputmode="decimal"')}${dxF("an-loc", "Quartier / ville", a.loc)}</div>
     <div class="tl">${dxF("an-loyer", "Loyer hors charges", a.loyer, 'inputmode="decimal"')}${dxF("an-chg", "Charges", a.charges, 'inputmode="decimal"')}</div>
     <div class="tl">${dxF("an-depot", "Dépôt de garantie", a.depot, 'inputmode="decimal"')}${dxF("an-dispo", "Disponible le", a.dispo, 'type="date"')}</div>
     <div class="tl">${dxS("an-dpe", "DPE (énergie)", [["", "—"]].concat("ABCDEFG".split("").map(x => [x, x])), a.dpe)}${dxS("an-ges", "GES", [["", "—"]].concat("ABCDEFG".split("").map(x => [x, x])), a.ges)}</div>
     <label class="f">Équipements, points forts<textarea id="an-equip" style="min-height:90px">${esc(a.equip)}</textarea></label>
-    ${dxF("an-mail", "E-mail pour les candidatures", a.mail, 'type="email" autocapitalize="off"')}${dxF("an-tel", "Téléphone (facultatif)", a.tel, 'type="tel"')}
+    ${dxF("an-mail", "E-mail pour les candidatures", a.mail, 'type="email" autocapitalize="off"')}${dxF("an-tel", "Téléphone (facultatif)", a.tel, 'type="tel"')}</div>
     <div class="btns"><button class="btn" style="flex:1" data-act="an-save">Enregistrer</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
 }
 
@@ -3202,8 +3212,11 @@ document.addEventListener("click", async ev => {
     case "lsub": V.lsub = v; render(); break;
     case "lflt": V.lflt = v; render(); break;
     case "an-edit": sheetAnnonce(); break;
+    case "an-tab": { const t = v === "texte"; $("#an-p-texte").style.display = t ? "flex" : "none"; $("#an-p-infos").style.display = t ? "none" : "flex"; document.querySelectorAll('#sheet [data-act=an-tab]').forEach(x => x.classList.toggle("on", x.dataset.v === v)); break; }
+    case "an-gen": { const cur = $("#an-perso").value.trim(); $("#an-perso").value = (cur ? cur + "\n\n" : "") + annGen(V.lsel); toast("Texte généré inséré : adapte-le"); break; }
+    case "an-clear": $("#an-perso").value = ""; toast("Texte effacé : le texte généré sera utilisé"); break;
     case "an-save": { const num = i => { const x = parseNum($("#" + i).value); return x == null ? "" : x; }, cur = annOf(V.lsel);
-      S.annonces = S.annonces || {}; S.annonces[V.lsel] = Object.assign(cur, {titre:dxV("an-titre"), type:dxV("an-type") || "Appartement meublé", surf:dxV("an-surf"), loc:dxV("an-loc"), loyer:num("an-loyer"), charges:num("an-chg"), depot:num("an-depot"), dispo:dxV("an-dispo"), dpe:$("#an-dpe").value, ges:$("#an-ges").value, equip:$("#an-equip").value.trim(), mail:dxV("an-mail"), tel:dxV("an-tel"), upd:Date.now()});
+      S.annonces = S.annonces || {}; S.annonces[V.lsel] = Object.assign(cur, {titre:dxV("an-titre"), type:dxV("an-type") || "Appartement meublé", surf:dxV("an-surf"), loc:dxV("an-loc"), loyer:num("an-loyer"), charges:num("an-chg"), depot:num("an-depot"), dispo:dxV("an-dispo"), dpe:$("#an-dpe").value, ges:$("#an-ges").value, equip:$("#an-equip").value.trim(), perso:$("#an-perso").value.trim(), mail:dxV("an-mail"), tel:dxV("an-tel"), upd:Date.now()});
       S.cfg = S.cfg || {bailleur:"", adr:{}}; if (S.annonces[V.lsel].mail) S.cfg.candMail = S.annonces[V.lsel].mail;
       persist(); closeSheet(); render(); break; }
     case "an-copy": { const t = annText(V.lsel); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast("Texte copié")).catch(() => { const e = $("#an-txt"); if (e){ e.removeAttribute("readonly"); e.select(); } toast("Sélectionné : copie-le"); }); break; }
@@ -3275,7 +3288,8 @@ async function annoncePdf(bien){
     if (l === "DPE" && DPE_COL[v]){ d.rect(x, d.y - 24, 22, 18, DPE_COL[v]); d.text(x + 11, d.y - 19, v, {size:12, bold:true, center:true, color:"#FFFFFF"}); if (a.ges) d.text(x + 30, d.y - 19, "GES " + a.ges, {size:9.5, color:"#3C4A45"}); }
     else d.text(x, d.y - 17, String(v).slice(0, 26), {size:11, bold:true}); }); d.y -= 38;
   if (photos[0]){ const o = photos[0], h = Math.min(290, W * o.h / o.w), w = h === 290 ? 290 * o.w / o.h : W; d.need(h + 20); d.image(M + (W - w) / 2, d.y - h, w, h, o); d.y -= h + 18; }
-  if (a.equip && a.equip.trim()){ d.h("Description", 13); for (const par of a.equip.trim().split(/\n+/)) d.para(par, 10.5, 15); }
+  const desc = (a.perso && a.perso.trim()) || (a.equip && a.equip.trim()) || "";
+  if (desc){ d.h("Description", 13); for (const par of desc.split(/\n+/)) d.para(par, 10.5, 15); }
   d.h("Conditions", 13); d.para("Loyer : " + eur(a.loyer) + (Number(a.charges) ? " + " + eur(a.charges) + " de charges, soit " + eur(cc) + " charges comprises" : " par mois") + ".", 10.5, 15); d.para("Dépôt de garantie : " + eur(a.depot) + ".", 10.5, 15); if (a.dpe) d.para("Performance énergétique (DPE) : classe " + a.dpe + (a.ges ? " · GES : classe " + a.ges : "") + ".", 10.5, 15);
   d.h("Pour candidater", 13); d.para("Écrivez-moi" + (a.mail ? " à " + a.mail : "") + (a.tel ? " ou appelez le " + a.tel : "") + " en indiquant : votre nom, un numéro de téléphone, votre situation professionnelle, vos revenus mensuels, le nombre d'occupants, votre date d'emménagement souhaitée et, si vous en avez un, votre garant. Une visite vous sera proposée, puis les pièces justificatives vous seront demandées.", 10.5, 15);
   const more = photos.slice(1);

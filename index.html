@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Mes locations</title>
+<meta name="description" content="Appli de gestion locative sur téléphone : loyers, quittances, compta LMNP, locataires, baux et états des lieux signés à l'écran. Tes données restent chez toi.">
+<meta property="og:type" content="website"><meta property="og:site_name" content="Mes locations"><meta property="og:title" content="Mes locations · gestion locative tout-en-un">
+<meta property="og:description" content="Loyers et quittances, compta LMNP, locataires, bail et états des lieux signés à l'écran, annonce et candidatures, bilans Excel/PDF. Sans serveur : tes données restent sur ton téléphone.">
+<meta property="og:image" content="https://dam-cigogne.github.io/locations/icon-512.png"><meta property="og:url" content="https://dam-cigogne.github.io/locations/">
 <meta name="theme-color" content="#0E6B5C">
 <script>
 (function(){
@@ -528,7 +532,15 @@ function buildEchange(){
   sheet("Reglages_appli", ["Cle","Valeur"], [["Version", 1], ["DateExport", Date.now()], ["Bailleur", (S.cfg && S.cfg.bailleur) || ""], ["BailleurAdresse", (S.cfg && S.cfg.bailleurAdr) || ""]], []);
   return XLSX.write(wb,{type:"array",bookType:"xlsx",compression:true});
 }
+/* Dossier d'enregistrement choisi une fois (navigateurs qui le permettent : PC, Android). La poignée est gardée dans une petite base à part. */
+const dirIdb = () => new Promise(res => { try { const r = indexedDB.open("loc-prefs", 1); r.onupgradeneeded = () => r.result.createObjectStore("k"); r.onsuccess = () => res(r.result); r.onerror = () => res(null); } catch(e){ res(null); } });
+async function dirGet(){ const db = await dirIdb(); if (!db) return null; return new Promise(res => { try { const q = db.transaction("k").objectStore("k").get("dir"); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); } catch(e){ res(null); } }); }
+async function dirSet(h){ try { h ? localStorage.setItem("loc-dir", "1") : localStorage.removeItem("loc-dir"); } catch(e){} const db = await dirIdb(); if (!db) return; return new Promise(res => { try { const st = db.transaction("k", "readwrite").objectStore("k"); h ? st.put(h, "dir") : st.delete("dir"); st.transaction.oncomplete = res; st.transaction.onerror = res; } catch(e){ res(); } }); }
 async function saveFile(name, data, mime, note){
+  try { const dh = window.showDirectoryPicker && lsGet("loc-dir") ? await dirGet() : null;
+    if (dh){ if ((await dh.queryPermission({mode:"readwrite"})) !== "granted" && (await dh.requestPermission({mode:"readwrite"})) !== "granted") throw new Error("refusé");
+      const fh = await dh.getFileHandle(name, {create:true}), w = await fh.createWritable(); await w.write(data); await w.close(); toast("Enregistré dans « " + dh.name + " » : " + name); return; } }
+  catch(e){ toast("Dossier non disponible, enregistrement normal"); }
   try { const file = new File([data], name, {type:mime});
     if (navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share(note ? {files:[file], title:name, text:note} : {files:[file], title:name}); toast("Fichier partagé : " + name); return; } }
   catch(e){ if (e && e.name === "AbortError") return; }
@@ -960,7 +972,7 @@ function viewSet(){
     <div class="btns"><button class="btn" data-act="exp-journal">Exporter le journal (.xlsx)</button><button class="btn ghost" data-act="exp-json">Sauvegarde légère (.json)</button></div>
     <div class="btns"><button class="btn" data-act="exp-zip">Sauvegarde complète avec fichiers (.zip)</button></div>
     <div class="small muted"><b>Que fait chaque bouton ?</b><br>• <b>Exporter le journal (.xlsx)</b> : sert à l'exploitation dans ton fichier Excel dédié (comptabilité, bilans). Ce n'est pas une sauvegarde.<br><b>Quelle sauvegarde choisir ?</b><br>• <b>Légère (.json)</b> : tes données (biens, opérations, locataires, fiches, états des lieux et inventaires en texte). Petite, mais <b>sans</b> photos ni fichiers (pièces d'identité, contrats, PDF importés).<br>• <b>Complète avec fichiers (.zip)</b> : tout, photos et documents des locataires compris. C'est celle à faire avant de changer de téléphone. Pour restaurer, importe le .zip ci-dessus tel quel (ne le décompresse pas).<br>Aucune n'est chiffrée et le .zip contient des papiers personnels : garde-les dans un endroit privé, jamais dans un dossier partagé.</div></div>
-  ${biensCard()}${bourseCardSet()}${secCard()}${themeCard()}${confortCard()}${modelesCard()}${archCard()}${demoCard()}${aideCard()}${histCard()}
+  ${biensCard()}${matelasCardSet()}${bourseCardSet()}${dirCard()}${secCard()}${themeCard()}${confortCard()}${modelesCard()}${archCard()}${demoCard()}${ficheCard()}${aideCard()}${histCard()}
   <div class="card"><h2>Données</h2><div class="small muted">${live(S.biens).length} bien(s) · ${live(S.journal).length} opération(s) · ${live(S.factures).length} facture(s) · ${live(S.locataires).length} locataire(s)</div>
     ${V.wipe ? `<div class="small">Cette action efface tout ce qui est stocké sur cet appareil.</div><div class="btns"><button class="btn danger" data-act="wipe-yes">Oui, tout effacer</button><button class="btn ghost" data-act="wipe-no">Annuler</button></div>`
              : `<div class="btns"><button class="btn ghost" data-act="wipe">Tout effacer</button></div>`}</div>
@@ -1147,9 +1159,10 @@ document.addEventListener("change", ev => {
 
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
-/* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous) ET le mode d'emploi HELP. */
-const APP_VERSION = "2.9.21";
+/* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous), le mode d'emploi HELP ET la fiche publique src/fiche.html. */
+const APP_VERSION = "2.9.22";
 const CHANGELOG = [
+  {v:"2.9.22", date:"2026-10-26", titre:"Matelas réglable, dossier d'export, fiche à partager", items:["Accueil › Argent utilisable : un bloc « Comment c'est calculé ? » explique le matelas, le réservé et le reste utilisable.","Réglages › Matelas de sécurité : choisis ton nombre de mois de loyer mis de côté (12 par défaut) et le nombre de mois de charges réservés (3 par défaut). Le calcul de l'Accueil et des biens s'adapte.","Réglages › Où enregistrer les exports ? : sur PC ou Android, choisis un dossier une fois, les exports (journal, sauvegardes, PDF, bilans) s'y enregistrent directement. Sur iPhone, Apple ne le permet pas : l'explication te dit comment retomber sur le même dossier.","Réglages › Fiche de l'appli : une page de présentation (toutes les fonctions) à partager avec un court descriptif au-dessus du lien. Elle est mise à jour avec l'appli.","Candidatures : une carte « Sauvegarde des candidats » indique le nombre de fiches et de fichiers joints, et propose la sauvegarde complète (.zip) qui contient aussi ces fichiers."]},
   {v:"2.9.21", date:"2026-10-26", titre:"Bilan de l'année", items:["Bilan › Exporter : tu peux maintenant choisir « Année complète » en plus d'un mois, en Excel ou en PDF.","Le bilan annuel contient : le résultat par bien, le détail mois par mois, les totaux par catégorie (loyers, travaux, assurance, crédit…) et la liste de toutes les opérations de l'année.","Pratique pour préparer la compta de fin d'année ou comparer deux années. Rien n'est modifié dans tes données."]},
   {v:"2.9.20", date:"2026-10-26", titre:"Annonce : mise en page du PDF", items:["Le texte de ton annonce tient maintenant sur la 1re page : la photo principale s'adapte à la place restante au lieu de pousser le texte sur une page presque vide.","Les autres photos sont rangées en grille régulière (cases de même taille, photo entière centrée), à la suite du texte, au lieu de tailles différentes sur une page à part.","Les champs vides (surface, DPE) ne s'affichent plus avec un tiret : seuls les renseignements remplis apparaissent. Pour les afficher, remplis-les dans Annonce › Modifier."]},
   {v:"2.9.19", date:"2026-10-25", titre:"Annonce : ton texte bien placé", items:["Quand tu écris ton propre texte d'annonce, le PDF le place tel quel sous la photo, comme corps de l'annonce. Les blocs automatiques « Conditions » et « Pour candidater » ne sont plus ajoutés (ton texte les contient déjà). Le bandeau prix et les infos clés (surface, DPE) restent en haut.","Annonce › Mon texte : nouveau champ pour importer ton texte depuis un fichier Word (.docx) ou texte (.txt), sans copier-coller.","Réglages : chaque bouton d'export est expliqué (journal Excel, sauvegarde légère, sauvegarde complète avec fichiers)."]},
@@ -1228,7 +1241,7 @@ const CHANGELOG = [
     "Nouvelle page Compta : charges par poste, emprunt et intérêts, exports Excel et PDF pour jedeclaremonmeuble.com.",
     "Réglages : tu peux afficher ou masquer la partie « bourse » (argent mis de côté).",
     "Livret A, PEL ou autre placement : choisis-le dans Ajouter (Épargne ou Entrée). L'argent placé reste compté dans le bien, les intérêts sont notés à part.",
-    "Chaque bien a un matelas (12 mois de loyer) et une jauge : l'argent utilisable est ce qui dépasse le matelas, charges des 3 prochains mois déduites."]},
+    "Chaque bien a un matelas (12 mois de loyer par défaut, réglable dans Réglages › Matelas de sécurité) et une jauge : l'argent utilisable est ce qui dépasse le matelas, charges des 3 prochains mois déduites."]},
   {v:"2.1.0", date:"2026-10-24", titre:"Premier lancement guidé, biens et locataires partout", items:[
     "Au premier lancement : une page d'explication, puis la création du bailleur, du bien (nom, adresse, solde de départ, loyer, crédit, régime) et du locataire.",
     "Biens et bailleur modifiables dans Biens › Vue et dans Réglages. On peut ajouter un autre bien à tout moment.",
@@ -1399,6 +1412,9 @@ const HELP = {
     "Sauvegarde légère (.json) : tes données, sans photos ni fichiers. Sauvegarde complète avec fichiers (.zip) : tout, y compris pièces d'identité, contrats et photos des locataires ; à faire avant de changer de téléphone, et à restaurer en important le .zip tel quel.",
     "Aucune sauvegarde n'est chiffrée : garde-les dans un endroit privé, jamais dans un dossier partagé.",
     "Le code et Face ID chiffrent tes données sur le téléphone. Si tu oublies le code, il faut tout effacer puis réimporter depuis Excel.",
+    "Matelas de sécurité : le nombre de mois de loyer que tu gardes toujours de côté (12 par défaut) et les mois de charges réservés (3). Ça règle le calcul de « Argent utilisable ».",
+    "Où enregistrer les exports : sur PC ou Android, choisis un dossier une fois et tout s'y enregistre. Sur iPhone, iOS rouvre en général le dernier dossier utilisé dans « Enregistrer dans Fichiers ».",
+    "Fiche de l'appli : une page de présentation à partager (bouton « Partager avec le descriptif »).",
     "Bailleur et biens : modifiables ici. Le bailleur est repris sur les quittances et les bilans.",
     "Apparence : 5 palettes, et le mode sombre automatique, fixe ou à horaires.",
     "Limites : l'appli n'écrit jamais de formule dans Excel et ne touche pas aux colonnes calculées. Les exports PDF et Excel passent par la feuille de partage Apple (« Enregistrer dans Fichiers »)."]}
@@ -1429,6 +1445,11 @@ function histCard(){
     <ul style="margin:4px 0 0;padding-left:16px;font-size:13px;color:var(--muted)">${e.items.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div></div>`).join("")}</div>
     ${!all && CHANGELOG.length > 5 ? `<div class="btns"><button class="btn ghost sm" data-act="hist-all">Voir les ${CHANGELOG.length - 5} autres mises à jour</button></div>` : ""}${all && CHANGELOG.length > 5 ? `<div class="btns"><button class="btn ghost sm" data-act="hist-less">Réduire</button></div>` : ""}</div>`;
 }
+const FICHE_TXT = "Mes locations : l'appli de gestion locative sur téléphone.\n• Loyers, relances et quittances\n• Compta LMNP facilitée (PDF et Excel)\n• Bail, état des lieux et inventaire signés à l'écran\n• Annonce, candidatures et dossier du locataire\n• Bilans par mois ou par année\n• Sans serveur : tes données restent sur ton téléphone";
+const ficheUrl = () => new URL("fiche.html", location.href).toString();
+const ficheCard = () => `<div class="card"><h2>Fiche de l'appli (à partager)</h2>
+  <div class="small muted">Une page de présentation claire avec toutes les fonctions. « Partager » envoie le lien avec un court descriptif au-dessus (points importants) ; la page est mise à jour à chaque nouvelle version de l'appli.</div>
+  <div class="btns"><button class="btn sm" data-act="fiche-share">Partager avec le descriptif</button><button class="btn sm ghost" data-act="fiche-open">Voir la fiche</button><button class="btn sm ghost" data-act="fiche-copy">Copier le lien</button></div></div>`;
 const aideCard = () => `<div class="card"><h2>Aide</h2><div class="btns"><button class="btn" data-act="guide">Tout le guide</button><button class="btn ghost" data-act="tour">Parcours guidé</button><button class="btn ghost" data-act="demo">Mode démo</button></div>
   <div class="small muted">Le mode démo charge des données d'exemple à la place des données de cet appareil.</div></div>`;
 
@@ -1518,6 +1539,18 @@ function sheetCloture(y, m){
     <div class="small muted">1. Compare avec le relevé de banque. 2. Choisis ce que tu mets de côté (proposé : solde moins les charges prévues du mois suivant). Laisse le solde réel vide pour ne rien ajuster.</div>${rows}
     <div class="btns"><button class="btn" style="flex:1" data-act="clot-do">Clôturer le mois</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
 }
+const matelasCardSet = () => `<div class="card"><h2>Matelas de sécurité</h2>
+  <div class="small muted">Le « matelas » est l'argent que tu gardes toujours de côté, exprimé en mois de loyer, avant de considérer que le reste est « utilisable » (page Accueil). Chacun choisit : 12 mois pour une grosse sécurité, 3 à 6 pour un matelas plus léger, 0 pour ne rien garder. Le « réservé » couvre les charges des prochains mois.</div>
+  <div class="kv"><span>Matelas (mois de loyer)</span><span class="seg" style="width:auto"><button data-act="set-mat" data-k="matMois" data-v="-1">−</button><button class="on" style="min-width:48px">${matMois()}</button><button data-act="set-mat" data-k="matMois" data-v="1">+</button></span></div>
+  <div class="kv"><span>Réservé (mois de charges à venir)</span><span class="seg" style="width:auto"><button data-act="set-mat" data-k="resMois" data-v="-1">−</button><button class="on" style="min-width:48px">${resMois()}</button><button data-act="set-mat" data-k="resMois" data-v="1">+</button></span></div>
+  <div class="small muted">Valeurs par défaut : 12 et 3. Ça ne change aucune donnée, seulement le calcul de l'argent utilisable.</div></div>`;
+const dirCard = () => { const ok = !!window.showDirectoryPicker;
+  if (ok) setTimeout(() => dirGet().then(h => { const e = $("#dir-name"); if (e) e.textContent = h ? "Dossier actuel : « " + h.name + " »" : "Aucun dossier choisi : l'appli te demande où enregistrer à chaque fois."; }), 0);
+  return `<div class="card"><h2>Où enregistrer les exports ?</h2>
+  ${ok ? `<div class="small muted">Choisis un dossier une seule fois (par exemple un dossier OneDrive ou iCloud Drive) : le journal, les sauvegardes, les PDF et les bilans s'y enregistrent ensuite directement, sans repasser par la fenêtre « Enregistrer ». L'appli ne peut pas ouvrir le dossier à ta place : retrouve-le dans ton explorateur de fichiers. Si le dossier est supprimé ou l'accès refusé, l'enregistrement normal reprend.</div>
+  <div class="small" id="dir-name"></div>
+  <div class="btns"><button class="btn sm" data-act="dir-pick">Choisir le dossier</button><button class="btn sm ghost" data-act="dir-off">Ne plus utiliser</button></div>`
+  : `<div class="small muted">Sur iPhone et iPad, Apple ne permet pas à une appli de mémoriser un dossier ni de l'ouvrir. À l'enregistrement, choisis « Enregistrer dans Fichiers » : iOS rouvre en général le dernier dossier utilisé, donc après une première fois dans le bon dossier (OneDrive, iCloud Drive), tu y retombes directement. Sur un PC (Chrome ou Edge) ou un téléphone Android, un dossier fixe peut être choisi ici.</div>`}</div>`; };
 const bourseCardSet = () => { const on = bourseOn(); return `<div class="card"><h2>Argent mis de côté (bourse, livret…)</h2>
   <div class="small muted">Chaque mois, tu peux mettre de côté l'argent qui reste sur le compte d'un bien, puis suivre ce qui est placé et ce qui est remboursé. Cet argent peut aller en bourse ou dans un autre placement (assurance vie, livret…) : l'appli ne fait que le suivre. Si tu n'en as pas besoin, masque cette partie : rien n'est supprimé.</div>
   <div class="seg"><button class="${on ? "on" : ""}" data-act="set-bourse" data-v="1">Affiché</button><button class="${on ? "" : "on"}" data-act="set-bourse" data-v="0">Masqué</button></div></div>`; };
@@ -1752,7 +1785,7 @@ function quittancePdf(j, o){
 }
 
 /* ---------- Actions (écran en plus de celles de views.js) ---------- */
-document.addEventListener("click", ev => {
+document.addEventListener("click", async ev => {
   const b = ev.target.closest("[data-act]"); if (!b) return;
   const a = b.dataset.act, id = b.dataset.id, v = b.dataset.v;
   switch (a){
@@ -1770,6 +1803,12 @@ document.addEventListener("click", ev => {
     case "pal": lsSet("loc-pal", v); applyTheme(); render(); break;
     case "tmode": lsSet("loc-theme", v); applyTheme(); render(); break;
     case "set-start": lsSet("loc-start", v); render(); break;
+    case "fiche-share": try { await navigator.share({title:"Mes locations", text:FICHE_TXT, url:ficheUrl()}); } catch(e){ if (!e || e.name !== "AbortError"){ try { await navigator.clipboard.writeText(FICHE_TXT + "\n" + ficheUrl()); toast("Descriptif et lien copiés"); } catch(e2){ toast("Partage impossible"); } } } break;
+    case "fiche-open": window.open(ficheUrl(), "_blank"); break;
+    case "fiche-copy": try { await navigator.clipboard.writeText(ficheUrl()); toast("Lien copié"); } catch(e){ toast("Copie impossible : " + ficheUrl()); } break;
+    case "dir-pick": try { const h = await showDirectoryPicker({mode:"readwrite", id:"loc-export"}); await dirSet(h); toast("Dossier choisi : " + h.name); render(); } catch(e){ if (!e || e.name !== "AbortError") toast("Dossier impossible : " + ((e && e.message) || "erreur")); } break;
+    case "dir-off": await dirSet(null); toast("Enregistrement normal rétabli"); render(); break;
+    case "set-mat": { const k = b.dataset.k; S.cfg = S.cfg || {bailleur:"", adr:{}}; const lim = k === "matMois" ? [0, 36] : [1, 6], cur = k === "matMois" ? matMois() : resMois(); S.cfg[k] = Math.max(lim[0], Math.min(lim[1], cur + (+v))); persist(); render(); break; }
     case "set-bourse": S.cfg = S.cfg || {bailleur:"", adr:{}}; S.cfg.bourse = v === "1"; persist(); render(); break;
     case "set-remind": lsSet("loc-remind", v); render(); break;
     case "remind-go": closeSheet(); V.tab = "month"; V.mf = "todo"; V.bf = "all"; render(); break;
@@ -2205,9 +2244,11 @@ function placeOf(id){
   const interets = r2(sum(L.filter(j => j.cat === CAT_INT).map(j => j.montant))), net = r2(sum(Object.values(by)));
   return {by, interets, net, total:r2(net + interets)};
 }
+const matMois = () => { const v = S.cfg && S.cfg.matMois; return v == null || isNaN(+v) ? 12 : Math.max(0, Math.min(36, Math.round(+v))); };
+const resMois = () => { const v = S.cfg && S.cfg.resMois; return v == null || isNaN(+v) ? 3 : Math.max(1, Math.min(6, Math.round(+v))); };
 function matelasOf(id){
-  const t = todayIso(), loyer = suggest(id, "Loyer", t) || 0, mat = r2(12 * loyer), compte = soldeBien(id), pl = placeOf(id), total = r2(compte + pl.total);
-  const lim = new Date(Date.now() + 90 * 864e5).toISOString().slice(0, 10);
+  const t = todayIso(), loyer = suggest(id, "Loyer", t) || 0, mat = r2(matMois() * loyer), compte = soldeBien(id), pl = placeOf(id), total = r2(compte + pl.total);
+  const lim = new Date(Date.now() + Math.round(resMois() * 30.4) * 864e5).toISOString().slice(0, 10);
   const pend = J().filter(j => j.bien === id && j.pointe !== "x" && j.date <= lim && j.compte !== "Perso");
   const dep = r2(sum(pend.filter(j => j.type === "Dépense").map(j => j.montant))), rec = r2(sum(pend.filter(j => j.type === "Recette").map(j => j.montant)));
   const reserve = r2(Math.max(0, dep - rec));
@@ -2224,14 +2265,17 @@ function matelasCard(id){
   return `<div class="card"><h2>Matelas et argent utilisable</h2>
     <div class="small muted">Utilisable aujourd'hui sans te mettre en difficulté</div><div class="big num ${neg ? "neg" : ""}" style="font-size:30px;font-weight:700">${neg ? "manque " + eur(-m.usable) : eur(m.usable)}</div>${gaugeHtml(m)}
     ${kv("Total du bien (compte + placé)", eur(m.total))}${kv("dont sur le compte", eur(m.compte), "muted")}${kv("dont placé (livret, bourse…)", eur(m.place), "muted")}
-    ${kv("Matelas : 12 mois de loyer (12 × " + eur(m.loyer) + ")", "− " + eur(m.mat))}${kv("Réservé : 3 prochains mois", "− " + eur(m.reserve))}
-    <div class="small muted">Le matelas ne se touche pas. Réservé = charges prévues dans les 3 mois moins loyers prévus (0 si les loyers couvrent). Le reste est utilisable.</div></div>`;
+    ${kv("Matelas : " + matMois() + " mois de loyer (" + matMois() + " × " + eur(m.loyer) + ")", "− " + eur(m.mat))}${kv("Réservé : " + resMois() + " prochains mois", "− " + eur(m.reserve))}
+    <div class="small muted">Le matelas ne se touche pas. Réservé = charges prévues dans les ${resMois()} mois moins loyers prévus (0 si les loyers couvrent). Le reste est utilisable.</div></div>`;
 }
 function matelasHome(){
   const ids = bienIds(); if (!ids.length) return "";
   const ms = ids.map(id => ({id, m:matelasOf(id)})), tot = r2(sum(ms.map(x => x.m.usable)));
   return `<div class="card"><h2>Argent utilisable</h2><div class="big num ${tot < 0 ? "neg" : ""}" style="font-size:30px;font-weight:700">${eur(tot)}</div>
-    <div class="small muted">Au-dessus de 12 mois de loyer par bien, charges des 3 prochains mois déduites.</div>
+    <div class="small muted">Au-dessus de ${matMois()} mois de loyer par bien, charges des ${resMois()} prochains mois déduites.</div>
+    <details class="small muted" style="margin:4px 0"><summary style="cursor:pointer;font-weight:700">Comment c'est calculé ?</summary>
+      <div style="margin-top:4px"><b>Argent utilisable</b> = ce que tu peux sortir ou placer sans te mettre en difficulté.<br>Pour chaque bien : <b>compte du bien + argent déjà placé</b> (livret, bourse…), moins le <b>matelas</b> (${matMois()} mois de loyer : on n'y touche pas, c'est ta sécurité en cas de loyers impayés ou de gros travaux), moins le <b>réservé</b> (charges prévues dans les ${resMois()} prochains mois, après déduction des loyers prévus). Le reste est utilisable.<br>Bleu = matelas, orange = réservé, vert = utilisable. Si c'est négatif, l'appli affiche « manque ».<br>Tu peux changer le nombre de mois dans Réglages › Matelas de sécurité. Rien n'est sorti de ton compte : c'est un repère.</div>
+      <div class="btns" style="margin-top:6px"><button class="btn sm ghost" data-act="go" data-v="set">Régler le matelas</button></div></details>
     ${ms.map(x => `<button class="rowbtn" style="width:100%;text-align:left" data-act="go" data-v="bld" data-sub="vue" data-bien="${esc(x.id)}"><div class="kv">${bienPill(x.id)}<span class="num ${x.m.usable < 0 ? "neg" : ""}">${eur(x.m.usable)}</span></div>${gaugeHtml(x.m)}</button>`).join("")}</div>`;
 }
 const usedTypes = id => PLACE_CATS.filter(c => J().some(j => j.cat === c && (id == null || j.bien === id)));
@@ -3282,6 +3326,9 @@ function viewCands(bien){
     ${candCard(bien)}
     ${next.length ? `<div class="card"><h2>Prochaines visites</h2><div class="rows">${next.map(c => `<div class="row"><div class="main"><div class="t">${fmtVisite(c.visite)} · ${esc(c.nom)}</div></div><button class="mini" data-act="cd-ics" data-id="${c.id}">Calendrier</button></div>`).join("")}</div></div>` : ""}
     <div class="card"><div class="rows">${list.length ? list.map(row).join("") : '<div class="empty">Aucun candidat. Quand une demande arrive par e-mail, ajoute-la avec « + Candidat ».</div>'}</div></div>
+    ${(() => { const cl = candList().filter(c => !c.del); const nf = cl.reduce((n, c) => n + (c.fichiers || []).length, 0); return `<div class="card"><h2>Sauvegarde des candidats</h2>
+      <div class="small muted"><b>${cl.length} fiche(s)</b> et <b>${nf} fichier(s)</b> joints (pièces importées dans les fiches). Les fiches (coordonnées, situation, notes, pièces cochées) sont dans toutes les sauvegardes. Les <b>fichiers</b> restent sur cet appareil : ils ne sont que dans la <b>sauvegarde complète (.zip)</b>. Pour changer d'appareil ou ne rien perdre, fais-la ici, puis restaure-la dans Réglages › Importer un fichier.</div>
+      <div class="btns"><button class="btn sm" data-act="exp-zip">Sauvegarde complète (.zip)</button></div></div>`; })()}
     <div class="card"><h2>Comment ça marche</h2><div class="small muted">1. Publie l'annonce avec ton e-mail.<br>2. Pour chaque demande, crée une fiche candidat et réponds avec les courriers prêts à l'emploi.<br>3. Planifie la visite, puis demande le dossier.<br>4. Coche les pièces reçues (tu peux les joindre sur cet appareil).<br>5. « Retenir » crée le locataire du bien et prépare l'arrivée.</div>
     ${refus ? `<div class="btns"><button class="btn sm ghost" data-act="cd-purge">Effacer les ${refus} dossier(s) refusé(s)</button></div><div class="small muted">Les données d'un candidat non retenu ne doivent pas être gardées : efface-les une fois la location conclue.</div>` : ""}</div>`;
 }

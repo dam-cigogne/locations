@@ -1162,8 +1162,9 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous), le mode d'emploi HELP ET la fiche publique src/fiche.html (et, pour une grosse nouveauté, les affiches : voir src/affiches/README.txt). */
-const APP_VERSION = "2.9.26";
+const APP_VERSION = "2.9.28";
 const CHANGELOG = [
+  {v:"2.9.28", date:"2026-10-26", titre:"Ta liste en Word, dans les deux sens", items:["Dans les deux sens : « Word ⬆ » lit ta propre liste (.docx ou .txt), reconnaît les postes (CFE, taxe foncière, GMPA, PNO, comptable, CGA, etc.), te montre ce qu'il a compris pour vérification, puis tu enregistres. Il relit aussi le fichier exporté par l'appli.","Compta › Synthèse › À ne pas oublier : le bouton « Word ⬇ » exporte ta liste en fichier .docx (une case par ligne, ☑ saisi / ☐ à faire), prêt à imprimer ou à garder. Il suit l'année et le bien choisis."]},
   {v:"2.9.26", date:"2026-10-26", titre:"Ta liste « À ne pas oublier »", items:["La liste de Compta › Synthèse s'adapte à toi : « Personnaliser ma liste » te laisse choisir les postes à suivre (taxe foncière, assurances, CFE, comptable, etc.), chacun « par logement » ou « global », plus les recettes et les intérêts d'emprunt.","« Liste de départ » remet la liste proposée au début."]},
   {v:"2.9.25", date:"2026-10-26", titre:"Liste « À ne pas oublier » en compta", items:["Compta › Synthèse : une carte « À ne pas oublier » reprend ta liste de déclaration : recettes, CFE, taxe foncière, GMPA, PNO, comptabilité, CGA, Rendement locatif, intérêts d'emprunt.","Elle se coche toute seule d'après ton journal : ✅ saisi sur le site, 🟠 dans le journal mais pas encore saisi, ❌ rien trouvé pour l'année."]},
   {v:"2.9.24", date:"2026-10-26", titre:"Affiches de l'appli", items:["Réglages › Fiche de l'appli : 3 affiches A4 (claire, sombre, avec une capture de l'appli) et la carte d'aperçu du lien. Touche-en une pour la voir en grand, puis « Partager / enregistrer » (envoi, Photos, Fichiers, impression).","Les affiches sont aussi sur la page de la fiche, pour ceux qui reçoivent le lien.","Elles sont mises à jour avec l'appli quand une grosse nouveauté arrive."]},
@@ -1331,7 +1332,7 @@ const HELP = {
     "Choisis l'année et le bien (ou « Tous »). Le résultat = loyers − charges − intérêts d'emprunt − assurance emprunteur.",
     "Les charges sont rangées par poste, comme sur le site. Le regroupement est indicatif : on l'ajustera.",
     "Emprunt : renseigne capital, taux, durée et date de la 1re échéance. L'appli calcule les intérêts de chaque année.",
-    "« À ne pas oublier » (Synthèse) : TA liste de déclaration, cochée automatiquement d'après le journal de l'année. ❌ = rien trouvé, à vérifier. « Personnaliser ma liste » : choisis les postes à suivre, par logement ou global.",
+    "« À ne pas oublier » (Synthèse) : TA liste de déclaration, cochée automatiquement d'après le journal de l'année. ❌ = rien trouvé, à vérifier. « Personnaliser ma liste » : choisis les postes à suivre, par logement ou global. « Word ⬇ » exporte la liste en .docx à imprimer. « Word ⬆ » importe TA liste Word : l'appli reconnaît les postes, te montre ce qu'elle a compris et tu vérifies avant d'enregistrer.",
     "« À saisir en compta » ouvre les dépenses payées pas encore saisies sur le site.",
     "Excel ou PDF : un fichier prêt à garder ou à consulter pendant que tu remplis le site."]},
   add:{t:"Ajouter une opération", p:"Une opération = une ligne du journal (comme dans Excel).", l:[
@@ -2037,14 +2038,51 @@ function checklistCompta(y, list){
     items.push(e ? {label:lb, st:ey && ey.it > 0 ? "ok" : "mid", n:1, ok:ey && ey.it > 0 ? 1 : 0, txt:ey ? eur(ey.it) : ""} : {label:lb, st:"no", n:0, ok:0, txt:"emprunt à renseigner"}); }
   return items;
 }
-function sheetCheck(){
-  const cfg = checkCfg(), cs = allCats("Dépense").filter(c => c !== "Crédit (mensualité)");
+const ckNorm = t => String(t).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const CK_RULES = [[/\b(recette|loyer)/, "rec"], [/interet|emprunt/, "int"], [/\bcfe\b/, "CFE"], [/foncier/, "Taxe foncière"], [/gmpa/, "Assurance GMPA"], [/\bpno\b/, "Assurance PNO"], [/compta/, "Comptabilité"], [/\b(cga|oga)\b|cgaction/, "CGA / OGA"], [/rendement/, "Abonnement Rendement locatif"], [/syndic|copro/, "Syndic / copropriété"], [/\beau\b/, "Eau"], [/electricit/, "Électricité"], [/entretien|reparation/, "Entretien / réparations"], [/mobilier|equipement/, "Mobilier / équipement"], [/diagnostic/, "Diagnostics"], [/bancaire|cotisation/, "Frais bancaires / cotisations"]];
+const CK_GLOBAL = ["CFE", "Comptabilité", "CGA / OGA", "Abonnement Rendement locatif"];
+function parseChecklistText(text){
+  const cfg = {rec:false, int:false, cats:{}}, notes = [], seen = new Set(), bw = bienIds().map(id => ckNorm(bienName(id)).split(/[^a-z0-9]+/).filter(w => w.length >= 2 && w !== "appartement"));
+  for (let raw of String(text).split(/\r?\n/)){
+    let l = raw.replace(/^[\s☑☐✓✔✅❌🟠◐•\-*·\d.)]+/, "").split(/\s[:·]\s/)[0].trim(); if (l.length < 3) continue;
+    const n = ckNorm(l); if (/^(declaration|liste a ne pas|☑)/.test(n) || /edit|saisi sur le site/.test(n) && /=/.test(n)) continue;
+    const r = CK_RULES.find(x => x[0].test(n)); if (!r){ notes.push(l); continue; }
+    if (r[1] === "rec") cfg.rec = true; else if (r[1] === "int") cfg.int = true;
+    else { const named = bw.some(ws => ws.length && ws.some(w => n.includes(w))), c = r[1], was = cfg.cats[c];
+      cfg.cats[c] = named || was === "bien" ? "bien" : CK_GLOBAL.includes(c) ? "all" : "bien";
+      if (seen.has(c) && named) cfg.cats[c] = "bien"; seen.add(c); } }
+  return {cfg, notes};
+}
+function importChecklist(){
+  const i = document.createElement("input"); i.type = "file"; i.accept = ".docx,.txt,.md";
+  i.onchange = async () => { const f = i.files && i.files[0]; if (!f) return;
+    try { const {cfg, notes} = parseChecklistText(await docTextOf(f)); if (!cfg.rec && !cfg.int && !Object.keys(cfg.cats).length) return toast("Je n'ai reconnu aucune ligne dans ce fichier"); sheetCheck(cfg, notes); }
+    catch(e){ toast("Lecture impossible : " + (e.message || e)); } };
+  i.click();
+}
+function sheetCheck(over, notes){
+  const cfg = over || checkCfg(), cs = allCats("Dépense").filter(c => c !== "Crédit (mensualité)");
   openSheet(`<h2>Ma liste « À ne pas oublier »</h2>
+    ${over ? '<div class="small" style="padding:8px;border-radius:10px;background:rgba(255,160,0,.15)"><b>Vérifie avant d\'enregistrer.</b> Voici ce que j\'ai compris de ton fichier Word : corrige si besoin, puis « Enregistrer ».' + (notes && notes.length ? '<br>Lignes non reconnues (à ajouter à la main si besoin) : ' + notes.map(esc).join(" · ") : "") + '</div>' : ""}
     <div class="small muted">Choisis ce que TU dois penser à saisir dans ta compta. « Par logement » = une ligne par bien ; « Global » = une seule ligne pour tous les biens (ex. une taxe ou un abonnement commun).</div>
     <label class="f" style="flex-direction:row;gap:8px;align-items:center"><input type="checkbox" id="ck-rec" ${cfg.rec ? "checked" : ""}> Recettes (loyers)</label>
     <label class="f" style="flex-direction:row;gap:8px;align-items:center"><input type="checkbox" id="ck-int" ${cfg.int ? "checked" : ""}> Intérêts d'emprunt (par logement)</label>
     ${cs.map(c => { const m = (cfg.cats || {})[c] || ""; return `<label class="f">${esc(c)}<select class="ck-cat" data-c="${esc(c)}"><option value="">— ne pas suivre</option><option value="bien" ${m === "bien" ? "selected" : ""}>Par logement</option><option value="all" ${m === "all" ? "selected" : ""}>Global</option></select></label>`; }).join("")}
     <div class="btns"><button class="btn" style="flex:1" data-act="ck-save">Enregistrer</button><button class="btn ghost" data-act="ck-reset">Liste de départ</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
+}
+async function checklistDocx(y, list){
+  const it = checklistCompta(y, list), enc = new TextEncoder(), x = t => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const par = (t, o = {}) => `<w:p><w:pPr>${o.h ? '<w:pStyle w:val="Heading1"/>' : ""}<w:spacing w:after="${o.h ? 160 : 80}"/></w:pPr><w:r><w:rPr>${o.b || o.h ? "<w:b/>" : ""}${o.g ? '<w:color w:val="666666"/>' : ""}${o.h ? '<w:sz w:val="32"/>' : ""}</w:rPr><w:t xml:space="preserve">${x(t)}</w:t></w:r></w:p>`;
+  const tx = a => a.txt || (a.st === "ok" ? "saisi sur le site" : a.st === "mid" ? a.ok + "/" + a.n + " saisi(s) sur le site" : "rien dans le journal");
+  const body = par("Déclaration comptabilité · " + y, {h:1}) + par("Liste à ne pas oublier, éditée le " + frDate(todayIso()) + (list.length === 1 ? " · " + bienName(list[0]) : ""), {g:1})
+    + it.map(a => par((a.st === "ok" ? "☑ " : "☐ ") + a.label + " : " + tx(a))).join("")
+    + par("☑ = saisi sur le site · ☐ = à faire ou à vérifier.", {g:1});
+  const doc = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' + body + '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/></w:sectPr></w:body></w:document>';
+  const files = [
+    {name:"[Content_Types].xml", data:enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>')},
+    {name:"_rels/.rels", data:enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>')},
+    {name:"word/document.xml", data:enc.encode(doc)}];
+  await saveFile("a-ne-pas-oublier-" + y + ".docx", zipStore(files), "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
 }
 function checklistCard(y, list){
   const it = checklistCompta(y, list), done = it.filter(x => x.st === "ok").length;
@@ -2052,7 +2090,7 @@ function checklistCard(y, list){
   return `<div class="card"><h2>À ne pas oublier ${y}</h2><div class="small muted">${done} sur ${it.length} complet(s). ✓ saisi sur le site · ◐ dans le journal, à saisir · ✗ rien trouvé : vérifie si tu as bien tout ajouté.</div>
     ${it.map(x => `<div class="kv"><span>${x.st === "ok" ? "✅" : x.st === "mid" ? "🟠" : "❌"} ${esc(x.label)}</span><span class="small muted">${esc(tx(x))}</span></div>`).join("")}
     <div class="small muted">Un point ❌ est normal si la dépense n'existe pas pour ce bien cette année.</div>
-    <div class="btns"><button class="btn ghost" data-act="ck-open">Personnaliser ma liste</button></div></div>`;
+    <div class="btns"><button class="btn ghost" data-act="ck-open">Personnaliser ma liste</button><button class="btn ghost" data-act="ck-docx">Word ⬇</button><button class="btn ghost" data-act="ck-imp">Word ⬆</button></div></div>`;
 }
 function viewCompta(){
   const y = V.y, ids = bienIds(); if (!V.csel || (V.csel !== "all" && !ids.includes(V.csel))) V.csel = "all";
@@ -2279,6 +2317,8 @@ document.addEventListener("click", ev => {
       const e = {capital:parseNum($("#em-cap").value) || 0, taux:parseNum($("#em-taux").value) || 0, duree:Math.round(parseNum($("#em-dur").value) || 0), debut:$("#em-deb").value, fonds:$("#em-fonds").value, assur:parseNum($("#em-ass").value) || 0};
       if (!(e.capital > 0 && e.duree > 0 && e.debut)) return toast("Capital, durée et date sont nécessaires");
       bn.emprunt = e; bn.upd = Date.now(); persist(); closeSheet(); toast("Emprunt enregistré"); render(); break; }
+    case "ck-docx": checklistDocx(V.y, V.csel === "all" ? bienIds() : [V.csel]); break;
+    case "ck-imp": importChecklist(); break;
     case "ck-open": sheetCheck(); break;
     case "ck-save": { const cats = {}; document.querySelectorAll(".ck-cat").forEach(x => { if (x.value) cats[x.dataset.c] = x.value; });
       S.check = {rec:$("#ck-rec").checked, int:$("#ck-int").checked, cats}; persist(); closeSheet(); toast("Liste enregistrée"); render(); break; }

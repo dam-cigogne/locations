@@ -1162,8 +1162,9 @@ document.addEventListener("change", ev => {
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
 /* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous), le mode d'emploi HELP ET la fiche publique src/fiche.html (et, pour une grosse nouveauté, les affiches : voir src/affiches/README.txt). */
-const APP_VERSION = "2.9.25";
+const APP_VERSION = "2.9.26";
 const CHANGELOG = [
+  {v:"2.9.26", date:"2026-10-26", titre:"Ta liste « À ne pas oublier »", items:["La liste de Compta › Synthèse s'adapte à toi : « Personnaliser ma liste » te laisse choisir les postes à suivre (taxe foncière, assurances, CFE, comptable, etc.), chacun « par logement » ou « global », plus les recettes et les intérêts d'emprunt.","« Liste de départ » remet la liste proposée au début."]},
   {v:"2.9.25", date:"2026-10-26", titre:"Liste « À ne pas oublier » en compta", items:["Compta › Synthèse : une carte « À ne pas oublier » reprend ta liste de déclaration : recettes, CFE, taxe foncière, GMPA, PNO, comptabilité, CGA, Rendement locatif, intérêts d'emprunt.","Elle se coche toute seule d'après ton journal : ✅ saisi sur le site, 🟠 dans le journal mais pas encore saisi, ❌ rien trouvé pour l'année."]},
   {v:"2.9.24", date:"2026-10-26", titre:"Affiches de l'appli", items:["Réglages › Fiche de l'appli : 3 affiches A4 (claire, sombre, avec une capture de l'appli) et la carte d'aperçu du lien. Touche-en une pour la voir en grand, puis « Partager / enregistrer » (envoi, Photos, Fichiers, impression).","Les affiches sont aussi sur la page de la fiche, pour ceux qui reçoivent le lien.","Elles sont mises à jour avec l'appli quand une grosse nouveauté arrive."]},
   {v:"2.9.23", date:"2026-10-26", titre:"Plus de fichiers « texte » à l'enregistrement", items:["Quand tu enregistres une sauvegarde ou un export dans Fichiers, iOS créait en plus un petit fichier « texte » (le nom du fichier). C'est corrigé : l'appli n'envoie plus que le fichier.","Pour que la nouvelle sauvegarde remplace l'ancienne, choisis « Remplacer » quand iOS le propose. Si tu choisis « Garder les deux », il crée « … 2 », « … 3 » : c'est iOS, l'appli ne peut pas l'empêcher."]},
@@ -1330,7 +1331,7 @@ const HELP = {
     "Choisis l'année et le bien (ou « Tous »). Le résultat = loyers − charges − intérêts d'emprunt − assurance emprunteur.",
     "Les charges sont rangées par poste, comme sur le site. Le regroupement est indicatif : on l'ajustera.",
     "Emprunt : renseigne capital, taux, durée et date de la 1re échéance. L'appli calcule les intérêts de chaque année.",
-    "« À ne pas oublier » (Synthèse) : la liste de ta déclaration, cochée automatiquement d'après le journal de l'année. ❌ = rien trouvé, à vérifier.",
+    "« À ne pas oublier » (Synthèse) : TA liste de déclaration, cochée automatiquement d'après le journal de l'année. ❌ = rien trouvé, à vérifier. « Personnaliser ma liste » : choisis les postes à suivre, par logement ou global.",
     "« À saisir en compta » ouvre les dépenses payées pas encore saisies sur le site.",
     "Excel ou PDF : un fichier prêt à garder ou à consulter pendant que tu remplis le site."]},
   add:{t:"Ajouter une opération", p:"Une opération = une ligne du journal (comme dans Excel).", l:[
@@ -2023,28 +2024,35 @@ function checkItem(label, lines){
   const st = !n ? "no" : ok === n ? "ok" : "mid";
   return {label, st, n, ok};
 }
+const CHECK_DEF = {rec:true, int:true, cats:{"Taxe foncière":"bien", "Assurance GMPA":"bien", "Assurance PNO":"bien", "CFE":"all", "Comptabilité":"all", "CGA / OGA":"all", "Abonnement Rendement locatif":"all"}};
+const checkCfg = () => S.check || CHECK_DEF;
 function checklistCompta(y, list){
-  const L = J().filter(j => yr(j) === y && j.compte !== "Perso"), items = [];
+  const L = J().filter(j => yr(j) === y && j.compte !== "Perso"), items = [], cfg = checkCfg();
   const cat = (c, ids) => L.filter(j => j.type === "Dépense" && j.cat === c && (!ids || ids.includes(j.bien)));
-  items.push(checkItem("Recettes (loyers)", L.filter(j => j.type === "Recette" && list.includes(j.bien))));
-  items.push(checkItem("Taxe CFE", cat("CFE")));
-  for (const id of list){ const nm = bienName(id);
-    items.push(checkItem("Taxe foncière " + nm, cat("Taxe foncière", [id])));
-    items.push(checkItem("GMPA " + nm, cat("Assurance GMPA", [id])));
-    items.push(checkItem("PNO " + nm, cat("Assurance PNO", [id]))); }
-  items.push(checkItem("Frais de comptabilité", cat("Comptabilité")));
-  items.push(checkItem("Frais CGA / OGA", cat("CGA / OGA")));
-  items.push(checkItem("Abonnement Rendement locatif", cat("Abonnement Rendement locatif")));
-  for (const id of list){ const e = empOf(id), ey = e && empYear(id, y);
-    items.push(e ? {label:"Intérêts d'emprunt " + bienName(id), st:ey && ey.it > 0 ? "ok" : "mid", n:1, ok:ey && ey.it > 0 ? 1 : 0, txt:ey ? eur(ey.it) : ""} : {label:"Intérêts d'emprunt " + bienName(id), st:"no", n:0, ok:0, txt:"emprunt à renseigner"}); }
+  if (cfg.rec) items.push(checkItem("Recettes (loyers)", L.filter(j => j.type === "Recette" && list.includes(j.bien))));
+  for (const c of allCats("Dépense")){ const m = (cfg.cats || {})[c]; if (!m || c === "Crédit (mensualité)") continue;
+    if (m === "all") items.push(checkItem(c, cat(c)));
+    else for (const id of list) items.push(checkItem(c + " · " + bienName(id), cat(c, [id]))); }
+  if (cfg.int) for (const id of list){ const e = empOf(id), ey = e && empYear(id, y), lb = "Intérêts d'emprunt · " + bienName(id);
+    items.push(e ? {label:lb, st:ey && ey.it > 0 ? "ok" : "mid", n:1, ok:ey && ey.it > 0 ? 1 : 0, txt:ey ? eur(ey.it) : ""} : {label:lb, st:"no", n:0, ok:0, txt:"emprunt à renseigner"}); }
   return items;
+}
+function sheetCheck(){
+  const cfg = checkCfg(), cs = allCats("Dépense").filter(c => c !== "Crédit (mensualité)");
+  openSheet(`<h2>Ma liste « À ne pas oublier »</h2>
+    <div class="small muted">Choisis ce que TU dois penser à saisir dans ta compta. « Par logement » = une ligne par bien ; « Global » = une seule ligne pour tous les biens (ex. une taxe ou un abonnement commun).</div>
+    <label class="f" style="flex-direction:row;gap:8px;align-items:center"><input type="checkbox" id="ck-rec" ${cfg.rec ? "checked" : ""}> Recettes (loyers)</label>
+    <label class="f" style="flex-direction:row;gap:8px;align-items:center"><input type="checkbox" id="ck-int" ${cfg.int ? "checked" : ""}> Intérêts d'emprunt (par logement)</label>
+    ${cs.map(c => { const m = (cfg.cats || {})[c] || ""; return `<label class="f">${esc(c)}<select class="ck-cat" data-c="${esc(c)}"><option value="">— ne pas suivre</option><option value="bien" ${m === "bien" ? "selected" : ""}>Par logement</option><option value="all" ${m === "all" ? "selected" : ""}>Global</option></select></label>`; }).join("")}
+    <div class="btns"><button class="btn" style="flex:1" data-act="ck-save">Enregistrer</button><button class="btn ghost" data-act="ck-reset">Liste de départ</button><button class="btn ghost" data-act="sheetclose">Annuler</button></div>`);
 }
 function checklistCard(y, list){
   const it = checklistCompta(y, list), done = it.filter(x => x.st === "ok").length;
   const ic = {ok:"✓", mid:"◐", no:"✗"}, tx = x => x.txt || (x.st === "ok" ? "saisi sur le site" : x.st === "mid" ? x.ok + "/" + x.n + " saisi(s) sur le site" : "rien dans le journal");
   return `<div class="card"><h2>À ne pas oublier ${y}</h2><div class="small muted">${done} sur ${it.length} complet(s). ✓ saisi sur le site · ◐ dans le journal, à saisir · ✗ rien trouvé : vérifie si tu as bien tout ajouté.</div>
     ${it.map(x => `<div class="kv"><span>${x.st === "ok" ? "✅" : x.st === "mid" ? "🟠" : "❌"} ${esc(x.label)}</span><span class="small muted">${esc(tx(x))}</span></div>`).join("")}
-    <div class="small muted">Un point ❌ est normal si la dépense n'existe pas pour ce bien cette année (pas de taxe, par exemple).</div></div>`;
+    <div class="small muted">Un point ❌ est normal si la dépense n'existe pas pour ce bien cette année.</div>
+    <div class="btns"><button class="btn ghost" data-act="ck-open">Personnaliser ma liste</button></div></div>`;
 }
 function viewCompta(){
   const y = V.y, ids = bienIds(); if (!V.csel || (V.csel !== "all" && !ids.includes(V.csel))) V.csel = "all";
@@ -2271,6 +2279,10 @@ document.addEventListener("click", ev => {
       const e = {capital:parseNum($("#em-cap").value) || 0, taux:parseNum($("#em-taux").value) || 0, duree:Math.round(parseNum($("#em-dur").value) || 0), debut:$("#em-deb").value, fonds:$("#em-fonds").value, assur:parseNum($("#em-ass").value) || 0};
       if (!(e.capital > 0 && e.duree > 0 && e.debut)) return toast("Capital, durée et date sont nécessaires");
       bn.emprunt = e; bn.upd = Date.now(); persist(); closeSheet(); toast("Emprunt enregistré"); render(); break; }
+    case "ck-open": sheetCheck(); break;
+    case "ck-save": { const cats = {}; document.querySelectorAll(".ck-cat").forEach(x => { if (x.value) cats[x.dataset.c] = x.value; });
+      S.check = {rec:$("#ck-rec").checked, int:$("#ck-int").checked, cats}; persist(); closeSheet(); toast("Liste enregistrée"); render(); break; }
+    case "ck-reset": delete S.check; persist(); closeSheet(); toast("Liste de départ remise"); render(); break;
     case "emp-del": { const bn = S.biens.find(x => x.id === id); if (bn) delete bn.emprunt; persist(); closeSheet(); render(); break; }
     case "cmp-xlsx": saveFile("compta-" + V.y + ".xlsx", comptaXlsx(V.y, V.csel || "all"), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"); break;
     case "cmp-pdf": saveFile("compta-" + V.y + ".pdf", comptaPdf(V.y, V.csel || "all"), "application/pdf"); break;

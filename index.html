@@ -241,6 +241,7 @@ details.h p{margin:6px 0 0;font-size:14px}details.h ul{margin:6px 0 0;padding-le
 #viewer .vimg{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;touch-action:pinch-zoom pan-x pan-y;-webkit-overflow-scrolling:touch}
 #viewer .vimg img{max-width:100%;max-height:100%;object-fit:contain}
 #viewer iframe{flex:1;border:0;background:#fff;width:100%}
+.affs{display:grid;grid-template-columns:1fr 1fr;gap:8px}.affs button{background:var(--card,#fff);border:1px solid var(--bd,#DDE5E1);border-radius:12px;padding:6px;font:inherit;color:inherit;text-align:center;cursor:pointer}.affs img{width:100%;aspect-ratio:1/1.1;object-fit:cover;object-position:top;border-radius:8px;display:block}.affs span{display:block;font-size:12.5px;margin-top:4px}
 </style>
 </head>
 <body>
@@ -1160,9 +1161,10 @@ document.addEventListener("change", ev => {
 
 
 /* ============ Extras : thèmes, nouveautés, aide, confort, exports ============ */
-/* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous), le mode d'emploi HELP ET la fiche publique src/fiche.html. */
-const APP_VERSION = "2.9.23";
+/* RÈGLE : à chaque nouvelle fonction, mettre à jour CHANGELOG (ci-dessous), le mode d'emploi HELP ET la fiche publique src/fiche.html (et, pour une grosse nouveauté, les affiches : voir src/affiches/README.txt). */
+const APP_VERSION = "2.9.24";
 const CHANGELOG = [
+  {v:"2.9.24", date:"2026-10-26", titre:"Affiches de l'appli", items:["Réglages › Fiche de l'appli : 3 affiches A4 (claire, sombre, avec une capture de l'appli) et la carte d'aperçu du lien. Touche-en une pour la voir en grand, puis « Partager / enregistrer » (envoi, Photos, Fichiers, impression).","Les affiches sont aussi sur la page de la fiche, pour ceux qui reçoivent le lien.","Elles sont mises à jour avec l'appli quand une grosse nouveauté arrive."]},
   {v:"2.9.23", date:"2026-10-26", titre:"Plus de fichiers « texte » à l'enregistrement", items:["Quand tu enregistres une sauvegarde ou un export dans Fichiers, iOS créait en plus un petit fichier « texte » (le nom du fichier). C'est corrigé : l'appli n'envoie plus que le fichier.","Pour que la nouvelle sauvegarde remplace l'ancienne, choisis « Remplacer » quand iOS le propose. Si tu choisis « Garder les deux », il crée « … 2 », « … 3 » : c'est iOS, l'appli ne peut pas l'empêcher."]},
   {v:"2.9.22", date:"2026-10-26", titre:"Matelas réglable, dossier d'export, fiche à partager", items:["Accueil › Argent utilisable : un bloc « Comment c'est calculé ? » explique le matelas, le réservé et le reste utilisable.","Réglages › Matelas de sécurité : choisis ton nombre de mois de loyer mis de côté (12 par défaut) et le nombre de mois de charges réservés (3 par défaut). Le calcul de l'Accueil et des biens s'adapte.","Réglages › Où enregistrer les exports ? : sur PC ou Android, choisis un dossier une fois, les exports (journal, sauvegardes, PDF, bilans) s'y enregistrent directement et la nouvelle sauvegarde remplace l'ancienne (même nom de fichier). Sur iPhone, Apple ne le permet pas : l'explication te dit comment retomber sur le même dossier.","Réglages › Fiche de l'appli : une page de présentation (toutes les fonctions) à partager avec un court descriptif au-dessus du lien. Elle est mise à jour avec l'appli.","Candidatures : une carte « Sauvegarde des candidats » indique le nombre de fiches et de fichiers joints, et propose la sauvegarde complète (.zip) qui contient aussi ces fichiers."]},
   {v:"2.9.21", date:"2026-10-26", titre:"Bilan de l'année", items:["Bilan › Exporter : tu peux maintenant choisir « Année complète » en plus d'un mois, en Excel ou en PDF.","Le bilan annuel contient : le résultat par bien, le détail mois par mois, les totaux par catégorie (loyers, travaux, assurance, crédit…) et la liste de toutes les opérations de l'année.","Pratique pour préparer la compta de fin d'année ou comparer deux années. Rien n'est modifié dans tes données."]},
@@ -1416,7 +1418,7 @@ const HELP = {
     "Le code et Face ID chiffrent tes données sur le téléphone. Si tu oublies le code, il faut tout effacer puis réimporter depuis Excel.",
     "Matelas de sécurité : le nombre de mois de loyer que tu gardes toujours de côté (12 par défaut) et les mois de charges réservés (3). Ça règle le calcul de « Argent utilisable ».",
     "Où enregistrer les exports : sur PC ou Android, choisis un dossier une fois et tout s'y enregistre. Sur iPhone, iOS rouvre en général le dernier dossier utilisé dans « Enregistrer dans Fichiers ».",
-    "Fiche de l'appli : une page de présentation à partager (bouton « Partager avec le descriptif »).",
+    "Fiche de l'appli : une page de présentation à partager (bouton « Partager avec le descriptif ») et 3 affiches A4 + une carte d'aperçu, à voir en grand et à enregistrer ou envoyer.",
     "Bailleur et biens : modifiables ici. Le bailleur est repris sur les quittances et les bilans.",
     "Apparence : 5 palettes, et le mode sombre automatique, fixe ou à horaires.",
     "Limites : l'appli n'écrit jamais de formule dans Excel et ne touche pas aux colonnes calculées. Les exports PDF et Excel passent par la feuille de partage Apple (« Enregistrer dans Fichiers »)."]}
@@ -1448,9 +1450,11 @@ function histCard(){
     ${!all && CHANGELOG.length > 5 ? `<div class="btns"><button class="btn ghost sm" data-act="hist-all">Voir les ${CHANGELOG.length - 5} autres mises à jour</button></div>` : ""}${all && CHANGELOG.length > 5 ? `<div class="btns"><button class="btn ghost sm" data-act="hist-less">Réduire</button></div>` : ""}</div>`;
 }
 const FICHE_TXT = "Mes locations : l'appli de gestion locative sur téléphone.\n• Loyers, relances et quittances\n• Compta LMNP facilitée (PDF et Excel)\n• Bail, état des lieux et inventaire signés à l'écran\n• Annonce, candidatures et dossier du locataire\n• Bilans par mois ou par année\n• Sans serveur : tes données restent sur ton téléphone";
+const AFFICHES = [["affiche-claire.jpg", "Affiche claire"], ["affiche-sombre.jpg", "Affiche sombre"], ["affiche-appli.jpg", "Affiche avec l'appli"], ["apercu.png", "Carte d'aperçu du lien"]];
 const ficheUrl = () => new URL("fiche.html", location.href).toString();
 const ficheCard = () => `<div class="card"><h2>Fiche de l'appli (à partager)</h2>
   <div class="small muted">Une page de présentation claire avec toutes les fonctions. « Partager » envoie le lien avec un court descriptif au-dessus (points importants) ; la page est mise à jour à chaque nouvelle version de l'appli.</div>
+  <div class="affs">${AFFICHES.map(a => `<button type="button" data-act="aff-open" data-f="${a[0]}"><img src="${a[0]}" alt="${a[1]}" loading="lazy"><span>${a[1]}</span></button>`).join("")}</div>
   <div class="btns"><button class="btn sm" data-act="fiche-share">Partager avec le descriptif</button><button class="btn sm ghost" data-act="fiche-open">Voir la fiche</button><button class="btn sm ghost" data-act="fiche-copy">Copier le lien</button></div></div>`;
 const aideCard = () => `<div class="card"><h2>Aide</h2><div class="btns"><button class="btn" data-act="guide">Tout le guide</button><button class="btn ghost" data-act="tour">Parcours guidé</button><button class="btn ghost" data-act="demo">Mode démo</button></div>
   <div class="small muted">Le mode démo charge des données d'exemple à la place des données de cet appareil.</div></div>`;
@@ -1806,6 +1810,10 @@ document.addEventListener("click", async ev => {
     case "tmode": lsSet("loc-theme", v); applyTheme(); render(); break;
     case "set-start": lsSet("loc-start", v); render(); break;
     case "fiche-share": try { await navigator.share({title:"Mes locations", text:FICHE_TXT, url:ficheUrl()}); } catch(e){ if (!e || e.name !== "AbortError"){ try { await navigator.clipboard.writeText(FICHE_TXT + "\n" + ficheUrl()); toast("Descriptif et lien copiés"); } catch(e2){ toast("Partage impossible"); } } } break;
+    case "aff-open": { const f = b.dataset.f, a = AFFICHES.find(x => x[0] === f); if (!a) break; openSheet(`<h2>${esc(a[1])}</h2><img src="${esc(f)}" alt="${esc(a[1])}" style="width:100%;border-radius:12px;border:1px solid var(--bd)">
+      <div class="small muted">« Partager » ouvre la feuille de partage : tu peux l'envoyer, l'enregistrer dans Photos ou dans Fichiers, ou l'imprimer. Elle est mise à jour avec l'appli.</div>
+      <div class="btns"><button class="btn" style="flex:1" data-act="aff-share" data-f="${esc(f)}">Partager / enregistrer</button><button class="btn ghost" data-act="sheetclose">Fermer</button></div>`); break; }
+    case "aff-share": { const f = b.dataset.f; try { const r = await fetch(f + "?v=" + APP_VERSION), buf = await r.arrayBuffer(); await saveFile(f, buf, /\.png$/.test(f) ? "image/png" : "image/jpeg"); } catch(e){ toast("Image indisponible : vérifie ta connexion"); } break; }
     case "fiche-open": window.open(ficheUrl(), "_blank"); break;
     case "fiche-copy": try { await navigator.clipboard.writeText(ficheUrl()); toast("Lien copié"); } catch(e){ toast("Copie impossible : " + ficheUrl()); } break;
     case "dir-pick": try { const h = await showDirectoryPicker({mode:"readwrite", id:"loc-export"}); await dirSet(h); toast("Dossier choisi : " + h.name); render(); } catch(e){ if (!e || e.name !== "AbortError") toast("Dossier impossible : " + ((e && e.message) || "erreur")); } break;
